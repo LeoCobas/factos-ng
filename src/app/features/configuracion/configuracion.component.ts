@@ -347,4 +347,9 @@ export class ConfiguracionComponent {
           </div>
         </div>
       </div>
-
+    </div>
+  `,
+  imports: []
+})
+export class ConfiguracionPlaceholderComponent {
+}

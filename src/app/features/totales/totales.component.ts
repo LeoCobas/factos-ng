@@ -1,6 +1,7 @@
- m import { Component, signal, computed } from '@angular/core';
+import { Component, signal, computed } from '@angular/core';
 import { format, startOfMonth, endOfMonth, subMonths, startOfDay, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { CurrencyPipe } from '@angular/common';
 
 interface PeriodoTotal {
   nombre: string;
@@ -77,7 +78,7 @@ interface PeriodoTotal {
       <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 p-6">
         <div class="text-center">
           <h3 class="text-xl font-bold text-gray-900 mb-2">
-            Resumen del Año {{ añoActual() }}
+            Resumen del Año {{ getAnoActual() }}
           </h3>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
             <div class="text-center">
@@ -128,7 +129,7 @@ interface PeriodoTotal {
       </div>
     </div>
   `,
-  imports: []
+  imports: [CurrencyPipe]
 })
 export class TotalesComponent {
   // Datos simulados (en la app real vendrían de Supabase)
@@ -143,7 +144,7 @@ export class TotalesComponent {
     { fecha: '2024-07-25', monto: 11900, estado: 'emitida' },
   ]);
 
-  añoActual = computed(() => new Date().getFullYear());
+  getAnoActual = computed(() => new Date().getFullYear());
 
   periodos = computed((): PeriodoTotal[] => {
     const hoy = new Date();
@@ -214,16 +215,16 @@ export class TotalesComponent {
   });
 
   totalAnual = computed(() => {
-    const añoActual = this.añoActual();
+    const anoActual = this.getAnoActual();
     return this.facturas()
-      .filter(f => f.estado === 'emitida' && f.fecha.startsWith(añoActual.toString()))
+      .filter(f => f.estado === 'emitida' && f.fecha.startsWith(anoActual.toString()))
       .reduce((sum, f) => sum + f.monto, 0);
   });
 
   facturasAnuales = computed(() => {
-    const añoActual = this.añoActual();
+    const anoActual = this.getAnoActual();
     return this.facturas()
-      .filter(f => f.estado === 'emitida' && f.fecha.startsWith(añoActual.toString()))
+      .filter(f => f.estado === 'emitida' && f.fecha.startsWith(anoActual.toString()))
       .length;
   });
 

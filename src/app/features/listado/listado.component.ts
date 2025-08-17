@@ -1,6 +1,7 @@
 import { Component, signal, computed } from '@angular/core';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { CurrencyPipe } from '@angular/common';
 
 interface Factura {
   id: string;
@@ -178,7 +179,7 @@ interface Factura {
       </div>
     }
   `,
-  imports: []
+  imports: [CurrencyPipe]
 })
 export class ListadoComponent {
   fechaSeleccionada = signal(format(new Date(), 'yyyy-MM-dd'));

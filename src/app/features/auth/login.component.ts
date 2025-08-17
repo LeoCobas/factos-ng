@@ -1,6 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -81,7 +82,8 @@ export class LoginComponent {
 
   constructor(
     private fb: FormBuilder,
-    private router: Router
+    private router: Router,
+    private authService: AuthService
   ) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
@@ -101,11 +103,12 @@ export class LoginComponent {
     const { email, password } = this.loginForm.value;
 
     try {
-      // Por ahora, simulamos el login
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { error } = await this.authService.signIn(email, password);
       
-      // Navegar al dashboard
-      this.router.navigate(['/']);
+      if (error) {
+        this.error.set(error.message || 'Error al iniciar sesión');
+      }
+      // Si no hay error, el AuthService ya redirige automáticamente
     } catch (err) {
       this.error.set('Error inesperado. Inténtalo de nuevo.');
     } finally {
