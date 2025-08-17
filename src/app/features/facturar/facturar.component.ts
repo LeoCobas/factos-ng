@@ -1,248 +1,419 @@
-import { Component, signal, effect, inject, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, OnInit, inject, signal, effect, ElementRef, ViewChild } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { TusFacturasService } from '../../core/services/tusfacturas.service';
+import { FacturacionService } from '../../core/services/facturacion.service';
+import { ComprobanteEmitido, EstadoFacturacion } from '../../core/types/facturacion.types';
 
 @Component({
   selector: 'app-facturar',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule],
   template: `
-    <!-- Simplified design without duplicate navigation -->
-    <div class="space-y-6">
-      <!-- Main form -->
-      <form [formGroup]="facturaForm" (ngSubmit)="onSubmit()" class="space-y-6">
-        <!-- Monto Total Card -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <label class="block text-sm font-medium text-gray-700 mb-4">
-            Monto Total
-          </label>
-          
-          <div class="relative">
-            <input
-              #montoInput
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              formControlName="monto"
-              class="w-full text-center text-4xl font-light text-gray-500 bg-transparent border-none outline-none focus:text-gray-900 placeholder-gray-300"
-              style="appearance: none; -moz-appearance: textfield;"
-              inputmode="decimal"
-              (focus)="onMontoFocus()"
-              (blur)="onMontoBlur()"
-            />
-          </div>
-          
-          @if (facturaForm.get('monto')?.invalid && facturaForm.get('monto')?.touched) {
-            <p class="mt-2 text-sm text-red-600 text-center">El monto es requerido</p>
-          }
+    <div class="min-h-screen bg-gray-50 p-4">
+      <div class="max-w-md mx-auto">
+        <!-- Título -->
+        <h1 class="text-3xl font-bold text-gray-900 mb-8 text-center">Facturar</h1>
+        
+        <!-- Formulario de facturación -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6" 
+             [class.opacity-50]="isLoading()">
+          <form [formGroup]="facturacionForm" (ngSubmit)="onSubmit()">
+            <!-- Campo Monto -->
+            <div class="mb-6">
+              <label for="monto" class="block text-sm font-medium text-gray-700 mb-2">
+                Monto
+              </label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-lg">$</span>
+                <input
+                  #montoInput
+                  id="monto"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max="999999.99"
+                  formControlName="monto"
+                  class="w-full pl-8 pr-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="0,00"
+                  [disabled]="isLoading()"
+                />
+              </div>
+              <div class="text-xs text-gray-500 mt-1">
+                Máximo 2 decimales
+              </div>
+            </div>
+
+            <!-- Campo Fecha -->
+            <div class="mb-6">
+              <label for="fecha" class="block text-sm font-medium text-gray-700 mb-2">
+                Fecha
+              </label>
+              <input
+                id="fecha"
+                type="date"
+                formControlName="fecha"
+                class="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                [disabled]="isLoading()"
+              />
+            </div>
+
+            <!-- Botón Facturar -->
+            <button
+              type="submit"
+              [disabled]="facturacionForm.invalid || isLoading()"
+              class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors text-lg"
+            >
+              @if (isLoading()) {
+                <div class="flex items-center justify-center">
+                  <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                  Emitiendo factura...
+                </div>
+              } @else {
+                Emitir Factura
+              }
+            </button>
+          </form>
         </div>
 
-        <!-- Fecha Card -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <label class="block text-sm font-medium text-gray-700 mb-4">
-            Fecha
-          </label>
-          
-          <p class="text-sm text-gray-600 mb-4">
-            Permitido hasta 10 días atrás según normativa ARCA.
-          </p>
-          
-          <div class="relative">
-            <input
-              type="date"
-              formControlName="fecha"
-              class="w-full p-4 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-12"
-            />
-            <svg class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-            </svg>
-          </div>
-        </div>
-
-        <!-- Estado de configuración -->
-        @if (!tusFacturasService.estaConfigurado()) {
-          <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div class="flex">
-              <div class="text-amber-600 mr-3">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+        <!-- Card de Éxito -->
+        @if (mostrarExito()) {
+          <div class="bg-green-50 border border-green-200 rounded-xl p-6 mb-6 animate-fade-in">
+            <div class="flex items-center mb-4">
+              <div class="flex-shrink-0">
+                <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <div>
-                <p class="text-sm font-medium text-amber-800">Configuración requerida</p>
-                <p class="text-sm text-amber-700 mt-1">Necesitas configurar tu API de TusFacturas antes de emitir facturas.</p>
+              <h3 class="ml-3 text-lg font-semibold text-green-900">Factura emitida</h3>
+            </div>
+            
+            @if (facturaEmitida()) {
+              <div class="bg-white rounded-lg p-4 mb-4">
+                <div class="text-center">
+                  <div class="text-2xl font-bold text-gray-900 mb-1">
+                    {{ formatearTipoYNumero(facturaEmitida()!) }}
+                  </div>
+                  <div class="text-3xl font-bold text-green-600">
+                    {{ formatearMonto(facturaEmitida()!.total) }}
+                  </div>
+                  <div class="text-sm text-gray-600 mt-1">
+                    CAE: {{ facturaEmitida()!.cae }}
+                  </div>
+                </div>
               </div>
+
+              <!-- Botones de acción -->
+              <div class="grid grid-cols-2 gap-3">
+                <button
+                  (click)="verPDF()"
+                  class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+                >
+                  Ver PDF
+                </button>
+                <button
+                  (click)="compartir()"
+                  class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+                >
+                  Compartir
+                </button>
+                <button
+                  (click)="imprimir()"
+                  class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+                >
+                  Imprimir
+                </button>
+                <button
+                  (click)="volver()"
+                  class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+                >
+                  Volver
+                </button>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Card de Error -->
+        @if (mostrarError()) {
+          <div class="bg-red-50 border border-red-200 rounded-xl p-6 mb-6 animate-fade-in">
+            <div class="flex items-center mb-4">
+              <div class="flex-shrink-0">
+                <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 class="ml-3 text-lg font-semibold text-red-900">Error en la emisión</h3>
+            </div>
+            
+            <div class="bg-white rounded-lg p-4 mb-4">
+              <p class="text-red-800 text-center">
+                {{ mensajeError() }}
+              </p>
+            </div>
+
+            <!-- Botones de error -->
+            <div class="grid grid-cols-2 gap-3">
+              <button
+                (click)="reintentar()"
+                class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+              >
+                Reintentar
+              </button>
+              <button
+                (click)="volver()"
+                class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+              >
+                Volver
+              </button>
             </div>
           </div>
         }
-
-        <!-- Errores -->
-        @if (error()) {
-          <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p class="text-sm text-red-600">{{ error() }}</p>
-          </div>
-        }
-
-        <!-- Éxito -->
-        @if (facturaEmitida()) {
-          <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div class="flex">
-              <div class="text-green-600 mr-3">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                </svg>
-              </div>
-              <div>
-                <p class="text-sm font-medium text-green-800">¡Factura emitida exitosamente!</p>
-                <p class="text-sm text-green-700 mt-1">{{ facturaEmitida()?.mensaje }}</p>
-                @if (facturaEmitida()?.numeroComprobante) {
-                  <p class="text-sm text-green-700 mt-1">Número: {{ facturaEmitida()?.numeroComprobante }}</p>
-                }
-              </div>
-            </div>
-          </div>
-        }
-
-        <!-- Botón de emisión -->
-        <button
-          type="submit"
-          [disabled]="loading() || facturaForm.invalid || !tusFacturasService.estaConfigurado()"
-          class="w-full h-14 bg-slate-700 text-white font-medium text-lg rounded-lg hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
-        >
-          @if (loading()) {
-            <span class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></span>
-          }
-          {{ loading() ? 'Emitiendo Factura...' : 'Emitir Factura' }}
-        </button>
-      </form>
+      </div>
     </div>
   `,
+  styles: [`
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .animate-fade-in {
+      animation: fade-in 0.3s ease-out;
+    }
+  `]
 })
-export class FacturarComponent implements AfterViewInit {
-  @ViewChild('montoInput') montoInputRef!: ElementRef<HTMLInputElement>;
+export class FacturarComponent implements OnInit {
+  @ViewChild('montoInput') montoInput!: ElementRef<HTMLInputElement>;
   
   private fb = inject(FormBuilder);
-  tusFacturasService = inject(TusFacturasService);
-
-  // Signals
-  loading = signal(false);
-  error = signal<string | null>(null);
-  facturaEmitida = signal<any>(null);
-
-  facturaForm: FormGroup;
+  private facturacionService = inject(FacturacionService);
+  
+  // Señales para el estado del componente
+  public isLoading = signal(false);
+  public facturaEmitida = signal<ComprobanteEmitido | null>(null);
+  public mensajeError = signal<string>('');
+  
+  // Estados computados
+  public mostrarExito = signal(false);
+  public mostrarError = signal(false);
+  
+  // Formulario reactivo
+  public facturacionForm: FormGroup;
 
   constructor() {
-    this.facturaForm = this.fb.group({
-      monto: [null, [Validators.required, Validators.min(0.01)]],
-      fecha: [format(new Date(), 'yyyy-MM-dd'), Validators.required]
+    // Crear formulario con validaciones
+    this.facturacionForm = this.fb.group({
+      monto: ['', [Validators.required, Validators.min(0.01), Validators.max(999999.99)]],
+      fecha: [this.obtenerFechaHoy(), [Validators.required]]
     });
 
-    // Effect para auto-focus después de emitir factura
+    // Effect para sincronizar con el servicio de facturación
     effect(() => {
-      if (this.facturaEmitida()) {
-        setTimeout(() => {
-          this.montoInputRef?.nativeElement?.focus();
-        }, 100);
+      const estado = this.facturacionService.estadoFacturacion();
+      const resultado = this.facturacionService.ultimoResultado();
+      
+      this.isLoading.set(estado === 'loading');
+      
+      if (estado === 'success' && resultado?.factura) {
+        this.facturaEmitida.set(resultado.factura);
+        this.mostrarExito.set(true);
+        this.mostrarError.set(false);
+        this.mensajeError.set('');
+      } else if (estado === 'error' && resultado?.error) {
+        this.facturaEmitida.set(null);
+        this.mostrarExito.set(false);
+        this.mostrarError.set(true);
+        this.mensajeError.set(resultado.error);
       }
     });
   }
 
-  ngAfterViewInit() {
-    // Auto-focus en el campo monto al cargar
+  ngOnInit(): void {
+    // Enfocar el campo monto al cargar
     setTimeout(() => {
-      this.montoInputRef?.nativeElement?.focus();
+      this.montoInput?.nativeElement?.focus();
     }, 100);
   }
 
-  // Eventos del input de monto
-  onMontoFocus() {
-    const input = this.montoInputRef?.nativeElement;
-    if (input && input.value === '0') {
-      input.value = '';
-      this.facturaForm.get('monto')?.setValue(null);
-    }
-  }
-
-  onMontoBlur() {
-    const input = this.montoInputRef?.nativeElement;
-    if (input && !input.value) {
-      input.placeholder = '0.00';
-    }
-  }
-
-  async onSubmit() {
-    if (this.facturaForm.invalid || !this.tusFacturasService.estaConfigurado()) {
+  /**
+   * Maneja el envío del formulario
+   */
+  async onSubmit(): Promise<void> {
+    if (this.facturacionForm.invalid || this.isLoading()) {
       return;
     }
 
-    this.loading.set(true);
-    this.error.set(null);
+    const formValues = this.facturacionForm.value;
+    
+    // Validar monto con máximo 2 decimales
+    const monto = parseFloat(formValues.monto);
+    if (isNaN(monto) || monto <= 0) {
+      this.mostrarErrorPersonalizado('El monto debe ser mayor a 0');
+      return;
+    }
+
+    // Verificar decimales
+    const montoStr = monto.toString();
+    const decimales = montoStr.includes('.') ? montoStr.split('.')[1] : '';
+    if (decimales.length > 2) {
+      this.mostrarErrorPersonalizado('El monto no puede tener más de 2 decimales');
+      return;
+    }
+
+    // Preparar datos para facturación
+    const datosFacturacion = {
+      monto: Math.round(monto * 100) / 100, // Asegurar 2 decimales máximo
+      fecha: formValues.fecha
+    };
+
+    // Emitir factura
+    await this.facturacionService.emitirFactura(datosFacturacion);
+  }
+
+  /**
+   * Muestra un error personalizado
+   */
+  private mostrarErrorPersonalizado(mensaje: string): void {
+    this.mensajeError.set(mensaje);
+    this.mostrarError.set(true);
+    this.mostrarExito.set(false);
     this.facturaEmitida.set(null);
+  }
+
+  /**
+   * Abre el PDF de la factura
+   */
+  async verPDF(): Promise<void> {
+    const factura = this.facturaEmitida();
+    if (!factura || !factura.url_pdf) {
+      return;
+    }
 
     try {
-      const formData = this.facturaForm.value;
-      
-      // Usar el método correcto del servicio
-      this.tusFacturasService.emitirFacturaConsumidorFinal(
-        'Servicios profesionales',
-        parseFloat(formData.monto),
-        formData.fecha
-      ).subscribe({
-        next: (resultado) => {
-          if (resultado.codigo === 200) {
-            this.facturaEmitida.set({
-              mensaje: resultado.mensaje,
-              numeroComprobante: resultado.comprobante?.numero,
-              pdf: resultado.comprobante?.urlPdf
-            });
-            
-            // Limpiar formulario para nueva factura
-            this.facturaForm.patchValue({
-              monto: null,
-              fecha: format(new Date(), 'yyyy-MM-dd')
-            });
-            
-            // Auto-focus para siguiente factura
-            setTimeout(() => {
-              this.montoInputRef?.nativeElement?.focus();
-            }, 1000);
-            
-          } else {
-            this.error.set(resultado.mensaje || 'Error al emitir la factura');
-          }
-          this.loading.set(false);
-        },
-        error: (err) => {
-          this.error.set(err.message || 'Error inesperado al emitir la factura');
-          this.loading.set(false);
-        }
-      });
-    } catch (err: any) {
-      this.error.set(err.message || 'Error inesperado al emitir la factura');
-      this.loading.set(false);
+      // Abrir PDF usando pdf-proxy
+      const pdfUrl = `/functions/v1/pdf-proxy?url=${encodeURIComponent(factura.url_pdf)}`;
+      window.open(pdfUrl, '_blank');
+    } catch (error) {
+      console.error('Error abriendo PDF:', error);
+      this.mostrarErrorPersonalizado('Error al abrir el PDF');
     }
   }
 
-  nuevaFactura() {
-    this.facturaEmitida.set(null);
-    this.error.set(null);
-    this.facturaForm.patchValue({
-      monto: null,
-      fecha: format(new Date(), 'yyyy-MM-dd')
-    });
+  /**
+   * Comparte la factura
+   */
+  async compartir(): Promise<void> {
+    const factura = this.facturaEmitida();
+    if (!factura) return;
+
+    const texto = `Factura ${this.formatearTipoYNumero(factura)} por ${this.formatearMonto(factura.total)}`;
     
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Factura Electrónica',
+          text: texto,
+          url: factura.url_pdf || ''
+        });
+      } catch (error) {
+        console.log('Compartir cancelado por el usuario');
+      }
+    } else {
+      // Fallback para navegadores sin Web Share API
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(texto);
+        alert('Información copiada al portapapeles');
+      }
+    }
+  }
+
+  /**
+   * Imprime la factura
+   */
+  async imprimir(): Promise<void> {
+    const factura = this.facturaEmitida();
+    if (!factura || !factura.url_pdf) {
+      return;
+    }
+
+    try {
+      // Crear iframe oculto para imprimir
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = `/functions/v1/pdf-proxy?url=${encodeURIComponent(factura.url_pdf)}`;
+      
+      document.body.appendChild(iframe);
+      
+      iframe.onload = () => {
+        try {
+          iframe.contentWindow?.print();
+        } catch (error) {
+          console.error('Error imprimiendo:', error);
+          // Fallback: abrir en nueva ventana
+          window.open(iframe.src, '_blank');
+        }
+        // Remover iframe después de un tiempo
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+        }, 1000);
+      };
+    } catch (error) {
+      console.error('Error en imprimir:', error);
+      this.mostrarErrorPersonalizado('Error al imprimir');
+    }
+  }
+
+  /**
+   * Vuelve al formulario y resetea estados
+   */
+  volver(): void {
+    this.facturacionService.resetearEstado();
+    this.mostrarExito.set(false);
+    this.mostrarError.set(false);
+    this.facturaEmitida.set(null);
+    this.mensajeError.set('');
+    
+    // Limpiar monto y enfocar
+    this.facturacionForm.patchValue({ monto: '' });
     setTimeout(() => {
-      this.montoInputRef?.nativeElement?.focus();
+      this.montoInput?.nativeElement?.focus();
     }, 100);
   }
 
-  verPDF() {
-    const factura = this.facturaEmitida();
-    if (factura?.pdf) {
-      window.open(factura.pdf, '_blank');
-    }
+  /**
+   * Reintenta la facturación con los mismos datos
+   */
+  async reintentar(): Promise<void> {
+    this.mostrarError.set(false);
+    this.mensajeError.set('');
+    await this.onSubmit();
+  }
+
+  /**
+   * Obtiene la fecha de hoy en formato YYYY-MM-DD
+   */
+  private obtenerFechaHoy(): string {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  /**
+   * Formatea el tipo y número de comprobante
+   */
+  formatearTipoYNumero(factura: ComprobanteEmitido): string {
+    const numero = this.facturacionService.formatearNumeroComprobante(factura.numero);
+    return `${factura.tipo} ${numero}`;
+  }
+
+  /**
+   * Formatea el monto como moneda argentina
+   */
+  formatearMonto(monto: number): string {
+    return this.facturacionService.formatearMonto(monto);
   }
 }
