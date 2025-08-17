@@ -1,4 +1,4 @@
-import { Component, signal, effect, inject } from '@angular/core';
+import { Component, signal, effect, inject, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -6,283 +6,243 @@ import { TusFacturasService } from '../../core/services/tusfacturas.service';
 
 @Component({
   selector: 'app-facturar',
+  standalone: true,
+  imports: [ReactiveFormsModule],
   template: `
-    <div class="max-w-2xl mx-auto space-y-6">
-      <div class="text-center">
-        <h1 class="text-3xl font-bold text-gray-900">Facturar</h1>
-        <p class="text-gray-600 mt-2">
-          Emisión de comprobantes a consumidor final
-        </p>
-      </div>
-
-      <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-        <form [formGroup]="facturaForm" (ngSubmit)="onSubmit()" class="space-y-6">
-          <!-- Monto -->
-          <div>
-            <label for="monto" class="block text-sm font-medium text-gray-700 mb-2">
-              Monto Total (IVA incluido)
-            </label>
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-              <input
-                #montoInput
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                formControlName="monto"
-                class="w-full h-12 pl-8 pr-4 text-lg rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                [class.border-red-300]="facturaForm.get('monto')?.invalid && facturaForm.get('monto')?.touched"
-                inputmode="decimal"
-              />
-            </div>
-            @if (facturaForm.get('monto')?.invalid && facturaForm.get('monto')?.touched) {
-              <p class="mt-1 text-sm text-red-600">El monto es requerido</p>
-            }
+    <!-- Simplified design without duplicate navigation -->
+    <div class="space-y-6">
+      <!-- Main form -->
+      <form [formGroup]="facturaForm" (ngSubmit)="onSubmit()" class="space-y-6">
+        <!-- Monto Total Card -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <label class="block text-sm font-medium text-gray-700 mb-4">
+            Monto Total
+          </label>
+          
+          <div class="relative">
+            <input
+              #montoInput
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              formControlName="monto"
+              class="w-full text-center text-4xl font-light text-gray-500 bg-transparent border-none outline-none focus:text-gray-900 placeholder-gray-300"
+              style="appearance: none; -moz-appearance: textfield;"
+              inputmode="decimal"
+              (focus)="onMontoFocus()"
+              (blur)="onMontoBlur()"
+            />
           </div>
+          
+          @if (facturaForm.get('monto')?.invalid && facturaForm.get('monto')?.touched) {
+            <p class="mt-2 text-sm text-red-600 text-center">El monto es requerido</p>
+          }
+        </div>
 
-          <!-- Fecha -->
-          <div>
-            <label for="fecha" class="block text-sm font-medium text-gray-700 mb-2">
-              Fecha de emisión
-            </label>
+        <!-- Fecha Card -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <label class="block text-sm font-medium text-gray-700 mb-4">
+            Fecha
+          </label>
+          
+          <p class="text-sm text-gray-600 mb-4">
+            Permitido hasta 10 días atrás según normativa ARCA.
+          </p>
+          
+          <div class="relative">
             <input
               type="date"
               formControlName="fecha"
-              class="w-full h-10 px-3 py-2 rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              class="w-full p-4 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-12"
             />
-          </div>
-
-          <!-- Concepto (readonly desde configuración) -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Concepto a facturar
-            </label>
-            <div class="p-3 bg-gray-50 rounded-md border">
-              <p class="text-gray-700">{{ conceptoActual() || 'Configurar concepto en Configuración' }}</p>
-            </div>
-          </div>
-
-          <!-- Tipo de comprobante (readonly desde configuración) -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Tipo de comprobante
-            </label>
-            <div class="p-3 bg-gray-50 rounded-md border">
-              <p class="text-gray-700">{{ tipoComprobanteActual() || 'Configurar tipo en Configuración' }}</p>
-            </div>
-          </div>
-
-          <!-- Estado de configuración -->
-          @if (!tusFacturasService.estaConfigurado()) {
-            <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <div class="flex">
-                <div class="text-amber-600 mr-3">
-                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                  </svg>
-                </div>
-                <div class="text-sm text-amber-700">
-                  <p class="font-medium">Configuración requerida</p>
-                  <p>Necesitas configurar tu API de TusFacturas antes de emitir facturas.</p>
-                </div>
-              </div>
-            </div>
-          }
-
-          <!-- Mensajes de operación -->
-          @if (mensajeOperacion()) {
-            <div class="p-4 rounded-lg" 
-                 [class]="mensajeOperacion()?.tipo === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'">
-              <div class="flex">
-                <div class="mr-3">
-                  @if (mensajeOperacion()?.tipo === 'success') {
-                    <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                    </svg>
-                  } @else {
-                    <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-                    </svg>
-                  }
-                </div>
-                <div class="text-sm">
-                  <p class="font-medium">{{ mensajeOperacion()?.titulo }}</p>
-                  <p>{{ mensajeOperacion()?.mensaje }}</p>
-                  @if (mensajeOperacion()?.detalles) {
-                    <ul class="mt-2 list-disc list-inside">
-                      @for (detalle of mensajeOperacion()?.detalles; track detalle) {
-                        <li>{{ detalle }}</li>
-                      }
-                    </ul>
-                  }
-                </div>
-              </div>
-            </div>
-          }
-
-          <!-- Errores -->
-          @if (error()) {
-            <div class="p-4 rounded-md bg-red-50 border border-red-200">
-              <p class="text-sm text-red-600">{{ error() }}</p>
-            </div>
-          }
-
-          <!-- Botón de emisión -->
-          <button
-            type="submit"
-            [disabled]="loading() || facturaForm.invalid || !tusFacturasService.estaConfigurado()"
-            class="w-full h-12 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-          >
-            @if (loading()) {
-              <span class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></span>
-            }
-            {{ loading() ? 'Emitiendo factura...' : 'Emitir Factura' }}
-          </button>
-
-          @if (!tusFacturasService.estaConfigurado()) {
-            <p class="text-sm text-amber-600 text-center">
-              ⚠️ Completar configuración antes de facturar
-            </p>
-          }
-        </form>
-      </div>
-
-      <!-- Factura emitida -->
-      @if (facturaEmitida()) {
-        <div class="bg-green-50 rounded-lg border border-green-200 p-6">
-          <div class="text-center space-y-4">
-            <div class="text-green-600">
-              <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-            </div>
-            
-            <div>
-              <h3 class="text-lg font-semibold text-green-800">¡Factura emitida exitosamente!</h3>
-              <p class="text-green-700">{{ facturaEmitida()?.mensaje }}</p>
-            </div>
-
-            @if (facturaEmitida()?.numeroComprobante) {
-              <div class="bg-white rounded-md p-4 border">
-                <p class="text-sm text-gray-600">Número de comprobante</p>
-                <p class="text-lg font-mono font-bold">{{ facturaEmitida()?.numeroComprobante }}</p>
-              </div>
-            }
-
-            <div class="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                (click)="verPDF()"
-                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Ver PDF
-              </button>
-              <button
-                (click)="nuevaFactura()"
-                class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
-              >
-                Nueva Factura
-              </button>
-            </div>
+            <svg class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
           </div>
         </div>
-      }
+
+        <!-- Estado de configuración -->
+        @if (!tusFacturasService.estaConfigurado()) {
+          <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div class="flex">
+              <div class="text-amber-600 mr-3">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-amber-800">Configuración requerida</p>
+                <p class="text-sm text-amber-700 mt-1">Necesitas configurar tu API de TusFacturas antes de emitir facturas.</p>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Errores -->
+        @if (error()) {
+          <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p class="text-sm text-red-600">{{ error() }}</p>
+          </div>
+        }
+
+        <!-- Éxito -->
+        @if (facturaEmitida()) {
+          <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div class="flex">
+              <div class="text-green-600 mr-3">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-green-800">¡Factura emitida exitosamente!</p>
+                <p class="text-sm text-green-700 mt-1">{{ facturaEmitida()?.mensaje }}</p>
+                @if (facturaEmitida()?.numeroComprobante) {
+                  <p class="text-sm text-green-700 mt-1">Número: {{ facturaEmitida()?.numeroComprobante }}</p>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Botón de emisión -->
+        <button
+          type="submit"
+          [disabled]="loading() || facturaForm.invalid || !tusFacturasService.estaConfigurado()"
+          class="w-full h-14 bg-slate-700 text-white font-medium text-lg rounded-lg hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+        >
+          @if (loading()) {
+            <span class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></span>
+          }
+          {{ loading() ? 'Emitiendo Factura...' : 'Emitir Factura' }}
+        </button>
+      </form>
     </div>
   `,
-  imports: [ReactiveFormsModule]
 })
-export class FacturarComponent {
+export class FacturarComponent implements AfterViewInit {
+  @ViewChild('montoInput') montoInputRef!: ElementRef<HTMLInputElement>;
+  
   private fb = inject(FormBuilder);
   tusFacturasService = inject(TusFacturasService);
 
+  // Signals
   loading = signal(false);
   error = signal<string | null>(null);
   facturaEmitida = signal<any>(null);
-  mensajeOperacion = signal<{
-    tipo: 'success' | 'error';
-    titulo: string;
-    mensaje: string;
-    detalles?: string[];
-  } | null>(null);
-  
-  // Configuración (se obtendría de la base de datos)
-  conceptoActual = signal('Venta de productos/servicios');
-  tipoComprobanteActual = signal('Factura C - Monotributista');
 
   facturaForm: FormGroup;
 
   constructor() {
     this.facturaForm = this.fb.group({
-      monto: ['', [Validators.required, Validators.min(0.01)]],
+      monto: [null, [Validators.required, Validators.min(0.01)]],
       fecha: [format(new Date(), 'yyyy-MM-dd'), Validators.required]
     });
 
-    // Cargar configuración al inicio
-    this.tusFacturasService.cargarConfiguracion();
-
-    // Auto-focus en el campo monto al cargar
+    // Effect para auto-focus después de emitir factura
     effect(() => {
-      setTimeout(() => {
-        const montoInput = document.querySelector('input[formControlName="monto"]') as HTMLInputElement;
-        if (montoInput) {
-          montoInput.focus();
-        }
-      }, 100);
+      if (this.facturaEmitida()) {
+        setTimeout(() => {
+          this.montoInputRef?.nativeElement?.focus();
+        }, 100);
+      }
     });
   }
 
+  ngAfterViewInit() {
+    // Auto-focus en el campo monto al cargar
+    setTimeout(() => {
+      this.montoInputRef?.nativeElement?.focus();
+    }, 100);
+  }
+
+  // Eventos del input de monto
+  onMontoFocus() {
+    const input = this.montoInputRef?.nativeElement;
+    if (input && input.value === '0') {
+      input.value = '';
+      this.facturaForm.get('monto')?.setValue(null);
+    }
+  }
+
+  onMontoBlur() {
+    const input = this.montoInputRef?.nativeElement;
+    if (input && !input.value) {
+      input.placeholder = '0.00';
+    }
+  }
+
   async onSubmit() {
-    if (this.facturaForm.invalid) {
-      this.facturaForm.markAllAsTouched();
+    if (this.facturaForm.invalid || !this.tusFacturasService.estaConfigurado()) {
       return;
     }
 
     this.loading.set(true);
     this.error.set(null);
+    this.facturaEmitida.set(null);
 
     try {
-      const { monto, fecha } = this.facturaForm.value;
+      const formData = this.facturaForm.value;
       
-      // Simular llamada a TusFacturas API
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simular respuesta exitosa
-      this.facturaEmitida.set({
-        mensaje: 'Comprobante emitido y enviado a AFIP',
-        numeroComprobante: '0001-00000042',
-        cae: '74830150816942',
-        monto: monto,
-        fecha: fecha
+      // Usar el método correcto del servicio
+      this.tusFacturasService.emitirFacturaConsumidorFinal(
+        'Servicios profesionales',
+        parseFloat(formData.monto),
+        formData.fecha
+      ).subscribe({
+        next: (resultado) => {
+          if (resultado.codigo === 200) {
+            this.facturaEmitida.set({
+              mensaje: resultado.mensaje,
+              numeroComprobante: resultado.comprobante?.numero,
+              pdf: resultado.comprobante?.urlPdf
+            });
+            
+            // Limpiar formulario para nueva factura
+            this.facturaForm.patchValue({
+              monto: null,
+              fecha: format(new Date(), 'yyyy-MM-dd')
+            });
+            
+            // Auto-focus para siguiente factura
+            setTimeout(() => {
+              this.montoInputRef?.nativeElement?.focus();
+            }, 1000);
+            
+          } else {
+            this.error.set(resultado.mensaje || 'Error al emitir la factura');
+          }
+          this.loading.set(false);
+        },
+        error: (err) => {
+          this.error.set(err.message || 'Error inesperado al emitir la factura');
+          this.loading.set(false);
+        }
       });
-
-      // Limpiar formulario
-      this.facturaForm.patchValue({
-        monto: '',
-        fecha: format(new Date(), 'yyyy-MM-dd')
-      });
-      
-    } catch (err) {
-      this.error.set('Error al emitir la factura. Inténtalo de nuevo.');
-    } finally {
+    } catch (err: any) {
+      this.error.set(err.message || 'Error inesperado al emitir la factura');
       this.loading.set(false);
     }
-  }
-
-  verPDF() {
-    // Aquí se abriría el PDF en una nueva ventana o modal
-    console.log('Ver PDF de la factura');
   }
 
   nuevaFactura() {
     this.facturaEmitida.set(null);
     this.error.set(null);
+    this.facturaForm.patchValue({
+      monto: null,
+      fecha: format(new Date(), 'yyyy-MM-dd')
+    });
     
-    // Re-enfocar el campo monto
     setTimeout(() => {
-      const montoInput = document.querySelector('input[formControlName="monto"]') as HTMLInputElement;
-      if (montoInput) {
-        montoInput.focus();
-      }
+      this.montoInputRef?.nativeElement?.focus();
     }, 100);
+  }
+
+  verPDF() {
+    const factura = this.facturaEmitida();
+    if (factura?.pdf) {
+      window.open(factura.pdf, '_blank');
+    }
   }
 }

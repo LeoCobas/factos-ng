@@ -17,12 +17,16 @@ export const routes: Routes = [
         loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent)
       },
       {
-        path: 'clientes',
-        loadComponent: () => import('./features/clientes/clientes.component').then(m => m.ClientesComponent)
+        path: 'facturar',
+        loadComponent: () => import('./features/facturar/facturar.component').then(m => m.FacturarComponent)
       },
       {
-        path: 'facturas',
-        loadComponent: () => import('./features/facturas/facturas.component').then(m => m.FacturasComponent)
+        path: 'listado',
+        loadComponent: () => import('./features/listado/listado.component').then(m => m.ListadoComponent)
+      },
+      {
+        path: 'totales',
+        loadComponent: () => import('./features/totales/totales.component').then(m => m.TotalesComponent)
       },
       {
         path: 'configuracion',
