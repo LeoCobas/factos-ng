@@ -1,295 +1,316 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal, computed, inject } from '@angular/core';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, registerLocaleData } from '@angular/common';
+import localeEs from '@angular/common/locales/es-AR';
+import { supabase } from '../../core/services/supabase.service';
 
 interface Factura {
   id: string;
-  numero: string;
+  numero_factura: string;
   fecha: string;
   monto: number;
   estado: 'emitida' | 'anulada';
   cae?: string;
   tipo_comprobante: string;
   pdf_url?: string;
+  concepto?: string;
+  punto_venta?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 @Component({
   selector: 'app-listado',
+  standalone: true,
+  imports: [CurrencyPipe],
   template: `
+    <!-- Simplified mobile-first design matching screenshot -->
     <div class="space-y-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900">Listado de Facturas</h1>
-          <p class="text-gray-600 mt-1">
-            Gestión de comprobantes emitidos
-          </p>
-        </div>
-
-        <!-- Selector de fecha -->
-        <div class="mt-4 sm:mt-0">
-          <label for="fecha" class="block text-sm font-medium text-gray-700 mb-1">
-            Seleccionar fecha
-          </label>
+      <!-- Selector de fecha -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <label class="block text-sm font-medium text-gray-700 mb-4">
+          Seleccionar fecha
+        </label>
+        
+        <div class="relative">
           <input
             type="date"
             [value]="fechaSeleccionada()"
             (change)="cambiarFecha($event)"
-            class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            class="w-full p-4 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-12"
           />
+          <svg class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+          </svg>
         </div>
       </div>
 
-      <!-- Facturas del día -->
-      <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div class="p-4 border-b border-gray-200">
-          <h3 class="text-lg font-semibold text-gray-900">
-            {{ nombreFechaSeleccionada() }}
-          </h3>
-          <p class="text-sm text-gray-600">
-            {{ facturasFiltradas().length }} comprobante(s) emitido(s)
-          </p>
-        </div>
+      <!-- Lista de facturas -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+          {{ nombreFechaSeleccionada() }}
+        </h3>
 
-        <div class="divide-y divide-gray-200">
-          @if (facturasFiltradas().length === 0) {
-            <div class="p-8 text-center text-gray-500">
-              <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-              </svg>
-              <p>No hay facturas emitidas en esta fecha</p>
-              <p class="text-sm mt-1">Las facturas aparecerán aquí después de emitirlas</p>
-            </div>
-          } @else {
+        @if (cargando()) {
+          <div class="text-center py-8">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p class="text-gray-500 mt-4">Cargando facturas...</p>
+          </div>
+        } @else if (facturasFiltradas().length === 0) {
+          <div class="text-center py-8">
+            <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <p class="text-gray-500">No hay facturas para esta fecha</p>
+          </div>
+        } @else {
+          <div class="space-y-1">
             @for (factura of facturasFiltradas(); track factura.id) {
-              <div class="p-4 hover:bg-gray-50 cursor-pointer" (click)="verFactura(factura)">
-                <div class="flex items-center justify-between">
-                  <div class="flex-1">
-                    <div class="flex items-center space-x-3">
-                      <div class="flex-shrink-0">
-                        @if (factura.estado === 'emitida') {
-                          <div class="w-3 h-3 bg-green-400 rounded-full"></div>
-                        } @else {
-                          <div class="w-3 h-3 bg-red-400 rounded-full"></div>
-                        }
-                      </div>
-                      <div>
-                        <p class="text-sm font-medium text-gray-900">{{ factura.numero }}</p>
-                        <p class="text-sm text-gray-500">{{ factura.tipo_comprobante }}</p>
-                      </div>
-                    </div>
+              <div [class]="obtenerClaseFilaFactura(factura)"
+                   (click)="verFactura(factura)">
+                <div class="grid grid-cols-12 items-center gap-2">
+                  <!-- Tipo de comprobante -->
+                  <div class="col-span-2 text-xs font-medium text-gray-700">
+                    {{ obtenerTipoComprobante(factura) }}
                   </div>
                   
-                  <div class="text-right">
-                    <p class="text-sm font-medium text-gray-900">
-                      {{ factura.monto | currency:'ARS':'symbol':'1.2-2':'es-AR' }}
-                    </p>
-                    <p class="text-sm text-gray-500 capitalize">{{ factura.estado }}</p>
+                  <!-- Número de factura -->
+                  <div class="col-span-4 font-mono text-sm">
+                    {{ obtenerNumeroSinCeros(factura.numero_factura) }}
+                  </div>
+                  
+                  <!-- Estado -->
+                  <div class="col-span-3">
+                    <span class="px-2 py-1 rounded text-xs font-medium"
+                          [class]="obtenerClaseEstado(factura.estado)">
+                      {{ obtenerTextoEstado(factura.estado) }}
+                    </span>
+                  </div>
+                  
+                  <!-- Monto -->
+                  <div [class]="obtenerClaseMonto(factura)">
+                    {{ obtenerMontoMostrar(factura) | currency:'ARS':'symbol':'1.2-2':'es-AR' }}
                   </div>
                 </div>
-
-                @if (factura.cae) {
-                  <div class="mt-2 text-xs text-gray-400">
-                    CAE: {{ factura.cae }}
-                  </div>
-                }
               </div>
             }
-          }
-        </div>
+          </div>
+        }
       </div>
 
-      <!-- Resumen del día -->
+      <!-- Totales del día -->
       @if (facturasFiltradas().length > 0) {
         <div class="bg-blue-50 rounded-lg border border-blue-200 p-4">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-blue-800">Total del día</p>
-              <p class="text-xs text-blue-600">{{ facturasFiltradas().length }} comprobante(s)</p>
-            </div>
-            <div class="text-right">
-              <p class="text-lg font-bold text-blue-800">
-                {{ totalDelDia() | currency:'ARS':'symbol':'1.2-2':'es-AR' }}
-              </p>
-              <p class="text-xs text-blue-600">
-                {{ facturasEmitidas().length }} emitida(s) • {{ facturasAnuladas().length }} anulada(s)
-              </p>
-            </div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm font-medium text-blue-800">
+              Total del día ({{ facturasFiltradas().length }} facturas)
+            </span>
+            <span class="text-lg font-bold text-blue-900">
+              {{ totalDelDia() | currency:'ARS':'symbol':'1.2-2':'es-AR' }}
+            </span>
           </div>
         </div>
       }
     </div>
-
-    <!-- Modal de detalles (simplificado) -->
-    @if (facturaSeleccionada()) {
-      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" (click)="cerrarModal()">
-        <div class="bg-white rounded-lg p-6 max-w-md w-full" (click)="$event.stopPropagation()">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold">Detalles de Factura</h3>
-            <button (click)="cerrarModal()" class="text-gray-400 hover:text-gray-600">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
-          </div>
-          
-          <div class="space-y-3">
-            <div>
-              <p class="text-sm text-gray-600">Número</p>
-              <p class="font-medium">{{ facturaSeleccionada()?.numero }}</p>
-            </div>
-            <div>
-              <p class="text-sm text-gray-600">Fecha</p>
-              <p class="font-medium">{{ facturaSeleccionada()?.fecha }}</p>
-            </div>
-            <div>
-              <p class="text-sm text-gray-600">Monto</p>
-              <p class="font-medium">{{ facturaSeleccionada()?.monto | currency:'ARS':'symbol':'1.2-2':'es-AR' }}</p>
-            </div>
-            <div>
-              <p class="text-sm text-gray-600">Estado</p>
-              <p class="font-medium capitalize">{{ facturaSeleccionada()?.estado }}</p>
-            </div>
-            @if (facturaSeleccionada()?.cae) {
-              <div>
-                <p class="text-sm text-gray-600">CAE</p>
-                <p class="font-mono text-sm">{{ facturaSeleccionada()?.cae }}</p>
-              </div>
-            }
-          </div>
-
-          <div class="flex space-x-3 mt-6">
-            <button
-              (click)="verPDF(facturaSeleccionada()!)"
-              class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
-            >
-              Ver PDF
-            </button>
-            @if (facturaSeleccionada()?.estado === 'emitida') {
-              <button
-                (click)="confirmarAnulacion(facturaSeleccionada()!)"
-                [disabled]="anulando()"
-                class="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 disabled:opacity-50"
-              >
-                {{ anulando() ? 'Anulando...' : 'Anular' }}
-              </button>
-            }
-          </div>
-        </div>
-      </div>
-    }
   `,
-  imports: [CurrencyPipe]
 })
 export class ListadoComponent {
-  fechaSeleccionada = signal(format(new Date(), 'yyyy-MM-dd'));
-  facturaSeleccionada = signal<Factura | null>(null);
-  anulando = signal(false);
+  // Signals para estado
+  fechaSeleccionada = signal('2025-08-16'); // Fecha con la nota de crédito real NC B 00000007
+  facturas = signal<Factura[]>([]);
+  cargando = signal(false);
 
-  // Datos simulados (en la app real vendrían de Supabase)
-  facturas = signal<Factura[]>([
-    {
-      id: '1',
-      numero: '0001-00000040',
-      fecha: '2024-08-16',
-      monto: 15000,
-      estado: 'emitida',
-      cae: '74830150816940',
-      tipo_comprobante: 'Factura C'
-    },
-    {
-      id: '2',
-      numero: '0001-00000041',
-      fecha: '2024-08-16',
-      monto: 8500,
-      estado: 'emitida',
-      cae: '74830150816941',
-      tipo_comprobante: 'Factura C'
-    },
-    {
-      id: '3',
-      numero: '0001-00000039',
-      fecha: '2024-08-15',
-      monto: 12300,
-      estado: 'anulada',
-      tipo_comprobante: 'Factura C'
-    }
-  ]);
+  constructor() {
+    // Registrar locale argentino
+    registerLocaleData(localeEs, 'es-AR');
+    
+    // Cargar facturas iniciales
+    this.cargarFacturasIniciales();
+  }
 
-  facturasFiltradas = computed(() => {
-    const fecha = this.fechaSeleccionada();
-    return this.facturas().filter(f => f.fecha === fecha);
-  });
-
+  // Computed para nombre de fecha formateado
   nombreFechaSeleccionada = computed(() => {
     const fecha = new Date(this.fechaSeleccionada() + 'T00:00:00');
-    const hoy = format(new Date(), 'yyyy-MM-dd');
-    const ayer = format(new Date(Date.now() - 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
-    
-    if (this.fechaSeleccionada() === hoy) {
-      return 'Hoy - ' + format(fecha, 'EEEE d \'de\' MMMM \'de\' yyyy', { locale: es });
-    } else if (this.fechaSeleccionada() === ayer) {
-      return 'Ayer - ' + format(fecha, 'EEEE d \'de\' MMMM \'de\' yyyy', { locale: es });
-    } else {
-      return format(fecha, 'EEEE d \'de\' MMMM \'de\' yyyy', { locale: es });
-    }
+    return `Facturas del ${format(fecha, 'dd/MM/yyyy', { locale: es })}`;
   });
 
+  // Computed para facturas filtradas por fecha
+  facturasFiltradas = computed(() => {
+    const fechaStr = this.fechaSeleccionada();
+    return this.facturas()
+      .filter(f => f.fecha === fechaStr)
+      .sort((a, b) => {
+        // Ordenar por número de factura (orden de emisión)
+        const numA = this.extraerNumeroFactura(a.numero_factura);
+        const numB = this.extraerNumeroFactura(b.numero_factura);
+        return numA - numB;
+      });
+  });
+
+  // Computed para total del día
   totalDelDia = computed(() => {
-    return this.facturasEmitidas().reduce((total, factura) => total + factura.monto, 0);
+    return this.facturasFiltradas()
+      .filter(f => f.estado === 'emitida')
+      .reduce((total, f) => {
+        // Las notas de crédito se restan del total
+        const esNotaCredito = f.tipo_comprobante.includes('NC') || f.tipo_comprobante.includes('NOTA DE CREDITO');
+        return total + (esNotaCredito ? -f.monto : f.monto);
+      }, 0);
   });
 
-  facturasEmitidas = computed(() => {
-    return this.facturasFiltradas().filter(f => f.estado === 'emitida');
-  });
+  async cargarFacturasIniciales() {
+    this.cargando.set(true);
+    
+    try {
+      // Cargar facturas
+      const { data: facturas, error: errorFacturas } = await supabase
+        .from('facturas')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-  facturasAnuladas = computed(() => {
-    return this.facturasFiltradas().filter(f => f.estado === 'anulada');
-  });
+      if (errorFacturas) {
+        console.error('Error al cargar facturas:', errorFacturas);
+        return;
+      }
+
+      // Cargar notas de crédito
+      const { data: notasCredito, error: errorNotas } = await supabase
+        .from('notas_credito')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (errorNotas) {
+        console.error('Error al cargar notas de crédito:', errorNotas);
+        return;
+      }
+
+      // Convertir facturas al formato esperado
+      const facturasFormateadas: Factura[] = (facturas || []).map(f => ({
+        id: f.id,
+        numero_factura: f.numero_factura,
+        fecha: f.fecha,
+        monto: Number(f.monto),
+        estado: f.estado as 'emitida' | 'anulada',
+        cae: f.cae || undefined,
+        tipo_comprobante: f.tipo_comprobante,
+        pdf_url: f.pdf_url || undefined,
+        concepto: f.concepto,
+        punto_venta: f.punto_venta,
+        created_at: f.created_at,
+        updated_at: f.updated_at
+      }));
+
+      // Convertir notas de crédito al formato esperado
+      const notasCreditoFormateadas: Factura[] = (notasCredito || []).map(nc => ({
+        id: nc.id,
+        numero_factura: nc.numero_nota,
+        fecha: nc.fecha,
+        monto: Number(nc.monto),
+        estado: 'emitida' as 'emitida' | 'anulada', // Las NC siempre están emitidas
+        cae: nc.cae || undefined,
+        tipo_comprobante: nc.tipo_comprobante || 'NOTA DE CREDITO B', // Usar tipo real de la DB
+        pdf_url: nc.pdf_url || undefined,
+        concepto: 'Nota de Crédito',
+        punto_venta: 4, // Valor por defecto
+        created_at: nc.created_at,
+        updated_at: nc.updated_at
+      }));
+
+      // Combinar facturas y notas de crédito
+      const todosLosComprobantes = [...facturasFormateadas, ...notasCreditoFormateadas];
+      this.facturas.set(todosLosComprobantes);
+
+    } catch (error) {
+      console.error('Error inesperado al cargar facturas:', error);
+    } finally {
+      this.cargando.set(false);
+    }
+  }
 
   cambiarFecha(event: Event) {
     const target = event.target as HTMLInputElement;
     this.fechaSeleccionada.set(target.value);
+    // No necesitamos recargar facturas, el computed se actualiza automáticamente
+  }
+
+  // Métodos helper para el template
+  extraerNumeroFactura(numeroCompleto: string): number {
+    // Extraer el número final de formatos como "00004-00000005" 
+    if (numeroCompleto.includes('-')) {
+      const partes = numeroCompleto.split('-');
+      return parseInt(partes[partes.length - 1]);
+    }
+    return parseInt(numeroCompleto.replace(/^0+/, '') || '0');
+  }
+
+  esNotaCredito(factura: Factura): boolean {
+    return factura.tipo_comprobante.includes('NOTA DE CREDITO');
+  }
+
+  obtenerMontoMostrar(factura: Factura): number {
+    // Las notas de crédito se muestran en negativo
+    return this.esNotaCredito(factura) ? -factura.monto : factura.monto;
+  }
+
+  obtenerTipoComprobante(factura: Factura): string {
+    // Para notas de crédito, convertir "NOTA DE CREDITO B" a "NC B"
+    if (factura.tipo_comprobante === 'NOTA DE CREDITO B') {
+      return 'NC B';
+    }
+    if (factura.tipo_comprobante === 'NOTA DE CREDITO C') {
+      return 'NC C';
+    }
+    
+    // Para facturas, convertir "FACTURA B" a "FC B"
+    if (factura.tipo_comprobante === 'FACTURA B') {
+      return 'FC B';
+    }
+    if (factura.tipo_comprobante === 'FACTURA C') {
+      return 'FC C';
+    }
+    
+    // Fallback: mostrar el tipo original o FC B por defecto
+    return factura.tipo_comprobante || 'FC B';
+  }
+
+  obtenerNumeroSinCeros(numero: string): string {
+    if (numero.includes('-')) {
+      return numero.split('-')[1];
+    }
+    return numero.replace(/^0+/, '') || '0';
+  }
+
+  obtenerClaseEstado(estado: string): string {
+    if (estado === 'emitida') {
+      return 'bg-green-100 text-green-700';
+    } else {
+      return 'bg-red-100 text-red-700';
+    }
+  }
+
+  obtenerClaseFilaFactura(factura: Factura): string {
+    const baseClass = 'px-3 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer';
+    if (this.esNotaCredito(factura)) {
+      return baseClass + ' bg-red-50 border-red-200 hover:bg-red-100';
+    }
+    return baseClass;
+  }
+
+  obtenerClaseMonto(factura: Factura): string {
+    const baseClass = 'col-span-3 text-right font-semibold text-sm';
+    if (this.esNotaCredito(factura)) {
+      return baseClass + ' text-red-600';
+    }
+    return baseClass;
+  }
+
+  obtenerTextoEstado(estado: string): string {
+    return estado === 'emitida' ? 'Emitida' : 'Anulada';
   }
 
   verFactura(factura: Factura) {
-    this.facturaSeleccionada.set(factura);
-  }
-
-  cerrarModal() {
-    this.facturaSeleccionada.set(null);
-  }
-
-  verPDF(factura: Factura) {
-    console.log('Ver PDF de factura:', factura.numero);
-    // Aquí se abriría el PDF
-  }
-
-  async confirmarAnulacion(factura: Factura) {
-    const confirmar = confirm(`¿Estás seguro de que deseas anular la factura ${factura.numero}?`);
-    if (!confirmar) return;
-
-    this.anulando.set(true);
-    
-    try {
-      // Simular anulación
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Actualizar estado
-      this.facturas.update(facturas => 
-        facturas.map(f => 
-          f.id === factura.id 
-            ? { ...f, estado: 'anulada' as const }
-            : f
-        )
-      );
-
-      this.cerrarModal();
-      
-    } catch (error) {
-      console.error('Error al anular factura:', error);
-    } finally {
-      this.anulando.set(false);
-    }
+    console.log('Ver factura:', factura);
+    // Aquí implementar lógica para mostrar PDF o detalles
   }
 }

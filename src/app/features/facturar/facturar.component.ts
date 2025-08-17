@@ -14,7 +14,7 @@ import { TusFacturasService } from '../../core/services/tusfacturas.service';
       <!-- Main form -->
       <form [formGroup]="facturaForm" (ngSubmit)="onSubmit()" class="space-y-6">
         <!-- Monto Total Card -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <label class="block text-sm font-medium text-gray-700 mb-4">
             Monto Total
           </label>
@@ -41,7 +41,7 @@ import { TusFacturasService } from '../../core/services/tusfacturas.service';
         </div>
 
         <!-- Fecha Card -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <label class="block text-sm font-medium text-gray-700 mb-4">
             Fecha
           </label>

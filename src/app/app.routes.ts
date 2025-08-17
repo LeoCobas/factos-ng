@@ -14,7 +14,8 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent)
+        redirectTo: 'facturar',
+        pathMatch: 'full'
       },
       {
         path: 'facturar',

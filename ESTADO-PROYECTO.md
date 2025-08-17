@@ -25,10 +25,10 @@
 ### Componentes
 - [x] `LoginComponent` - Formulario de login funcional
 - [x] `MainLayoutComponent` - Layout principal con navegación
-- [x] `DashboardComponent` - Dashboard básico
-- [x] `ClientesComponent` - Página de clientes
-- [x] `FacturasComponent` - Página de facturas  
-- [x] `ConfiguracionComponent` - Página de configuración
+- [x] `FacturarComponent` - Formulario principal de facturación  
+- [x] `ListadoComponent` - Lista de facturas con datos reales de Supabase
+- [x] `TotalesComponent` - Resúmenes y estadísticas
+- [x] `ConfiguracionComponent` - Configuración de TusFacturas
 
 ### Rutas
 - [x] Lazy loading configurado
@@ -99,9 +99,12 @@ ng generate service nombre     # Generar servicio
 
 ## 🌐 URLs
 
-- **Desarrollo**: http://localhost:4200/
+- **Desarrollo**: http://localhost:4200/ (redirige a /facturar)
 - **Login**: http://localhost:4200/login
-- **Dashboard**: http://localhost:4200/
+- **Facturar**: http://localhost:4200/facturar (página principal)
+- **Listado**: http://localhost:4200/listado
+- **Totales**: http://localhost:4200/totales
+- **Configuración**: http://localhost:4200/configuracion
 
 ## 📊 Tamaño del Bundle
 
