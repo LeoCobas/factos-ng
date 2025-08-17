@@ -258,8 +258,13 @@ export class FacturacionService {
         return null;
       }
 
-      // Nombre del archivo en Storage
-      const nombreArchivo = `facturas/${comprobante.tipo}_${comprobante.punto_venta}_${comprobante.numero}.pdf`;
+      // Nombre del archivo en Storage con estructura organizada
+      const fecha = new Date(comprobante.fecha);
+      const año = fecha.getFullYear();
+      const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+      const dia = String(fecha.getDate()).padStart(2, '0');
+      
+      const nombreArchivo = `${año}/${mes}/${dia}/${comprobante.tipo}_${comprobante.punto_venta.toString().padStart(4, '0')}_${comprobante.numero.toString().padStart(8, '0')}.pdf`;
 
       // Descargar PDF desde TusFacturas usando pdf-proxy
       const { data: { session } } = await this.supabaseClient.auth.getSession();
@@ -285,7 +290,7 @@ export class FacturacionService {
 
       // Subir a Supabase Storage
       const { data, error } = await this.supabaseClient.storage
-        .from('facturas')
+        .from('facturas-pdf')
         .upload(nombreArchivo, pdfBlob, {
           contentType: 'application/pdf',
           upsert: true
@@ -341,7 +346,7 @@ export class FacturacionService {
   public async obtenerURLPDF(nombreArchivo: string): Promise<string | null> {
     try {
       const { data } = this.supabaseClient.storage
-        .from('facturas')
+        .from('facturas-pdf')
         .getPublicUrl(nombreArchivo);
 
       return data.publicUrl;

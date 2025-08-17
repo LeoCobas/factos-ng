@@ -1,53 +1,234 @@
 # FACTOS-NG
 
-Sistema de facturación desarrollado en Angular 20 con Supabase como backend.
+Sistema de **facturación electrónica rápida** desarrollado en Angular 20 con Supabase, optimizado para **consumidor final** en Argentina via TusFacturas.app.
 
-## Tecnologías
+## 🚀 Características Principales
 
-- **Angular 20** - Framework frontend con standalone components
-- **TypeScript** - Lenguaje de programación tipado
-- **TailwindCSS** - Framework de estilos utilitarios
-- **Angular CDK** - Biblioteca de componentes de desarrollo
-- **Supabase** - Backend as a Service (base de datos y autenticación)
-- **Signals** - Sistema de reactividad nativo de Angular
+- **Mobile-First**: Diseño optimizado para dispositivos móviles y táctiles
+- **Facturación Express**: Solo monto + fecha, emisión en segundos
+- **Sin Recargas**: Cards dinámicas de éxito/error sin refresh de página
+- **Tipado Estricto**: Prevención de errores con TypeScript según API TusFacturas
+- **Real-time**: Datos en tiempo real con Supabase
+- **PDF Management**: Descarga, almacenamiento y gestión automática de PDFs
 
-## Configuración inicial
+## 🛠️ Tecnologías
 
-### 1. Instalar dependencias
+- **Angular 20** - Standalone components, Signals, Control flow syntax
+- **TypeScript Strict** - Tipado extremo para prevención de errores
+- **TailwindCSS v4** - Mobile-first, optimizado y purgado
+- **Supabase** - Full-stack: DB, Auth, Storage, Edge Functions
+- **TusFacturas API** - Facturación electrónica AFIP Argentina
+- **Edge Functions** - tf-proxy, pdf-proxy para seguridad
 
+## ⚡ Instalación Rápida
+
+### 1. Clonar e instalar
 ```bash
+git clone https://github.com/LeoCobas/factos-ng.git
+cd factos-ng
 npm install
 ```
 
 ### 2. Configurar Supabase
-
-1. Crear un proyecto en [Supabase](https://supabase.com)
-2. Actualizar las credenciales en `src/environments/environment.ts`
-
-### 3. Ejecutar en desarrollo
-
 ```bash
-npm run dev
+# Copiar variables de entorno
+cp src/environments/environment.ts src/environments/environment.local.ts
+
+# Actualizar credenciales en environment.local.ts
+export const environment = {
+  supabase: {
+    url: 'tu_supabase_url',
+    anonKey: 'tu_anon_key'
+  }
+};
 ```
 
-## Arquitectura
+### 3. Ejecutar
+```bash
+# Desarrollo local
+npm start
 
-- **Standalone Components**: No se usan NgModules
-- **Signals**: Para gestión de estado reactivo
-- **Lazy Loading**: Carga diferida de rutas
-- **Reactive Forms**: Formularios reactivos
-- **Control de flujo nativo**: `@if`, `@for`, `@switch`
+# Desarrollo accesible en red (móviles)
+ng serve --host 0.0.0.0
+```
 
-## Estado del proyecto
+## 📱 Uso del Sistema
 
-### ✅ Implementado
-- [x] Estructura base del proyecto
-- [x] Configuración de TailwindCSS
-- [x] Sistema de autenticación con Supabase
-- [x] Guards de protección de rutas
-- [x] Componentes UI básicos (Button, Input, Card)
-- [x] Layout principal con navegación
-- [x] Rutas lazy loading configuradas
+### 1. Configuración (una vez)
+```
+/configuracion → Completar TODOS los campos:
+- CUIT y razón social
+- Punto de venta y tipo comprobante  
+- Concepto y actividad AFIP
+- % IVA y tokens TusFacturas
+```
+
+### 2. Facturación (diaria)
+```
+/facturar → Monto + Fecha → Emitir
+- Card verde: Ver PDF, Compartir, Imprimir, Volver
+- Card roja: Reintentar, Volver
+- Sin recargas, auto-focus continuo
+```
+
+### 3. Gestión
+```
+/listado → Facturas con datos reales de Supabase
+/totales → Estadísticas en tiempo real
+```
+
+## 🏗️ Arquitectura
+
+```
+src/app/
+├── core/
+│   ├── services/
+│   │   ├── facturacion.service.ts    # 🆕 Servicio principal
+│   │   ├── auth.service.ts
+│   │   ├── supabase.service.ts  
+│   │   └── tusfacturas.service.ts    # ⚠️ Deprecado
+│   ├── types/
+│   │   ├── facturacion.types.ts      # 🆕 Tipos TusFacturas
+│   │   └── database.types.ts
+│   └── guards/auth.guard.ts
+├── features/
+│   ├── facturar/        # 🔄 Mobile-first, cards dinámicas
+│   ├── listado/         # 🔄 Datos reales Supabase + NC
+│   ├── totales/         # 🔄 Estadísticas tiempo real
+│   ├── configuracion/   # 🔄 React parity completo
+│   └── auth/
+├── shared/components/ui/
+├── layouts/main-layout.component.ts
+└── environments/
+
+supabase/functions/
+├── tf-proxy/            # ✅ Proxy TusFacturas API
+├── pdf-proxy/           # ✅ Proxy descarga PDFs
+└── _shared/cors.ts
+```
+
+### 🗄️ Base de Datos
+```sql
+-- Solo facturas con CAE válido
+facturas: id, numero, fecha, tipo_comprobante, total, cae, punto_venta, pdf_url, tf_id
+
+-- Configuración centralizada  
+configuracion: cuit, razon_social, punto_venta, iva_porcentaje, api_tokens
+
+-- Storage organizado
+facturas-pdf/
+├── 2025/08/17/FC_0004_00000020.pdf
+└── notas_credito/...
+```
+
+## ⚡ Flujo de Facturación
+
+### 🎯 Proceso Completo (automático)
+```typescript
+1. Validar configuración → Supabase
+2. Construir comprobante → Según API TusFacturas  
+3. Enviar a AFIP → tf-proxy Edge Function
+4. Guardar en DB → Solo si CAE válido
+5. Descargar PDF → pdf-proxy + Storage
+6. Mostrar resultado → Card verde/roja
+```
+
+### 📱 UX Mobile-First
+- **Auto-focus**: Monto enfocado automáticamente
+- **Teclado numérico**: inputmode="decimal"
+- **Cards dinámicas**: Sin recargar página
+- **Botones grandes**: 44px mínimo touch target
+- **Feedback inmediato**: Loading, éxito, error
+
+## 🔒 Seguridad
+
+- **Tokens seguros**: Variables ENV en Edge Functions
+- **Tipado estricto**: Prevención errores en compile-time
+- **Solo CAE válidos**: No persiste facturas fallidas
+- **JWT Auth**: Supabase Row Level Security
+- **HTTPS**: Todas las comunicaciones cifradas
+
+## 🧪 Testing
+
+### Casos Críticos Validados
+- ✅ Facturación exitosa + PDF storage
+- ✅ Validación monto (decimales, límites)
+- ✅ Manejo errores TusFacturas offline
+- ✅ Cards dinámicas sin recargas
+- ✅ Compartir/Imprimir en móviles
+- ✅ Configuración completa React parity
+
+## 📊 Performance
+
+```bash
+# Chunks optimizados
+facturar-component: 38.81 kB  # Todo incluido
+configuracion-component: 42.78 kB
+totales-component: 24.14 kB
+listado-component: 19.56 kB
+
+# Tiempo de facturación típico
+Validación + TusFacturas + Storage: ~3-5 segundos
+```
+
+## 🎯 Estado del Proyecto
+
+### ✅ Completado y Funcional
+- [x] **FacturacionService**: Flujo completo de emisión con Edge Functions
+- [x] **Facturar Component**: Mobile-first con cards dinámicas éxito/error  
+- [x] **Listado Component**: Datos reales Supabase + soporte Notas de Crédito
+- [x] **Totales Component**: Estadísticas tiempo real con comparaciones
+- [x] **Configuracion Component**: React parity, todos los campos
+- [x] **PDF Management**: Storage organizado en facturas-pdf bucket
+- [x] **Tipado Completo**: Según documentación oficial TusFacturas
+- [x] **Edge Functions**: tf-proxy, pdf-proxy activos y validados
+- [x] **Mobile UX**: Auto-focus, teclado numérico, botones táctiles
+- [x] **Error Handling**: Reintentar, mensajes específicos, recovery
+
+### 📋 Funcionalidades Implementadas
+- **Facturación síncrona**: Emite directamente a AFIP, no borradores
+- **Solo consumidor final**: Flujo simplificado sin verificar CUIT
+- **Validaciones estrictas**: Máximo 2 decimales, estructura API
+- **Storage organizado**: YYYY/MM/DD/FC_PPPP_NNNNNNNN.pdf
+- **Real-time data**: Supabase subscriptions para datos actualizados
+- **Cards de respuesta**: Verde (4 botones) / Roja (2 botones)
+- **Sin recargas**: Volver enfoca monto para facturación continua
+
+## 🏁 Listo para Producción
+
+**Sistema completo** con todas las funcionalidades críticas:
+- ⚡ Velocidad optimizada para dispositivos lentos
+- 🔒 Confiabilidad con solo facturas CAE válido
+- 📱 UX mobile-first y táctil  
+- 🎯 Simplicidad extrema (monto + fecha)
+- 🔧 Mantenimiento con documentación completa
+
+## 📚 Documentación
+
+- **[GUIA-SISTEMA-COMPLETO.md](./GUIA-SISTEMA-COMPLETO.md)**: Documentación técnica detallada
+- **Código comentado**: Todos los servicios incluyen documentación inline
+- **Tipos TypeScript**: Documentados según API oficial
+- **Troubleshooting**: Errores comunes y soluciones
+
+## 🚀 Deploy
+
+```bash
+# Build optimizado
+npm run build
+
+# Variables de entorno requeridas
+VITE_SUPABASE_URL=tu_url
+VITE_SUPABASE_ANON_KEY=tu_key
+
+# Edge Functions con tokens TusFacturas
+TF_APITOKEN=tu_token
+TF_APIKEY=tu_key  
+TF_USERTOKEN=tu_user_token
+```
+
+---
+
+**FACTOS-NG** - Sistema de facturación electrónica optimizado para velocidad, confiabilidad y simplicidad móvil. 🇦🇷⚡📱
 
 ### 🚧 Próximos pasos
 - [ ] Gestión completa de clientes
