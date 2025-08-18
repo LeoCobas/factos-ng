@@ -73,7 +73,9 @@ interface Factura {
                 
                 <!-- Tarjeta principal (clickeable) -->
                 <div [class]="obtenerClaseFilaFactura(factura) + ' p-3 cursor-pointer hover:bg-gray-50'"
-                     (click)="toggleExpansion(factura.id)">
+                     (click)="testClick(factura.id)"
+                     role="button"
+                     tabindex="0">
                   <div class="flex items-center justify-between gap-3">
                     <!-- Tipo de comprobante -->
                     <div class="text-xs font-medium text-gray-700 min-w-0 flex-shrink-0 text-left">
@@ -204,20 +206,42 @@ export class ListadoComponent {
   facturaExpandida = signal<string | null>(null); // ID de factura expandida
 
   constructor(private pdfService: PdfService) {
+    console.log('🏗️ Inicializando ListadoComponent');
+    
     // Registrar locale argentino
     registerLocaleData(localeEs, 'es-AR');
     
     // Cargar facturas iniciales
     this.cargarFacturasIniciales();
+    
+    console.log('📊 Estado inicial facturaExpandida:', this.facturaExpandida());
   }
 
   // Función para alternar la expansión de una tarjeta
-  toggleExpansion(facturaId: string) {
+  toggleExpansion(facturaId: string, event?: Event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
+    console.log('🔄 Toggle expansion llamado para factura:', facturaId);
+    console.log('📋 Estado actual facturaExpandida:', this.facturaExpandida());
+    
     if (this.facturaExpandida() === facturaId) {
+      console.log('➡️ Contrayendo factura');
       this.facturaExpandida.set(null);
     } else {
+      console.log('➡️ Expandiendo factura');
       this.facturaExpandida.set(facturaId);
     }
+    
+    console.log('📋 Nuevo estado facturaExpandida:', this.facturaExpandida());
+  }
+
+  // Método de prueba simple
+  testClick(facturaId: string) {
+    console.log('🧪 TEST CLICK para factura:', facturaId);
+    alert('Click funcionando para factura: ' + facturaId);
   }
 
   // Métodos de acción para PDF (adaptados de facturar-nuevo)
