@@ -1,5 +1,5 @@
 [build]
-  publish = "dist/factos-ng"
+  publish = "dist/factos-ng/browser"
   command = "npm run build"
 
 [build.environment]
