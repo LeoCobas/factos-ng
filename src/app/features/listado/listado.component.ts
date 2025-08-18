@@ -48,7 +48,7 @@ interface Factura {
 
       <!-- Lista de facturas -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+        <h3 class="block text-sm font-medium text-gray-700 mb-4">
           {{ nombreFechaSeleccionada() }}
         </h3>
 
@@ -67,29 +67,26 @@ interface Factura {
         } @else {
           <div class="space-y-1">
             @for (factura of facturasFiltradas(); track factura.id) {
-              <div [class]="obtenerClaseFilaFactura(factura)"
+              <div [class]="obtenerClaseFilaFactura(factura) + ' p-2'"
                    (click)="verFactura(factura)">
-                <div class="grid grid-cols-12 items-center gap-2">
+                <div class="flex items-center justify-between gap-3">
                   <!-- Tipo de comprobante -->
-                  <div class="col-span-2 text-xs font-medium text-gray-700">
+                  <div class="text-xs font-medium text-gray-700 min-w-0 flex-shrink-0 text-left">
                     {{ obtenerTipoComprobante(factura) }}
                   </div>
-                  
                   <!-- Número de factura -->
-                  <div class="col-span-4 font-mono text-sm">
+                  <div class="font-mono text-sm min-w-0 flex-shrink-0 text-right">
                     {{ obtenerNumeroSinCeros(factura.numero_factura) }}
                   </div>
-                  
                   <!-- Estado -->
-                  <div class="col-span-3">
+                  <div class="min-w-0 flex-shrink-0 text-center">
                     <span class="px-2 py-1 rounded text-xs font-medium"
                           [class]="obtenerClaseEstado(factura.estado)">
                       {{ obtenerTextoEstado(factura.estado) }}
                     </span>
                   </div>
-                  
                   <!-- Monto -->
-                  <div [class]="obtenerClaseMonto(factura)">
+                  <div class="text-right font-semibold text-sm min-w-0" [class]="obtenerClaseMonto(factura).replace('col-span-3', '')">
                     {{ obtenerMontoMostrar(factura) | currency:'ARS':'symbol':'1.2-2':'es-AR' }}
                   </div>
                 </div>
