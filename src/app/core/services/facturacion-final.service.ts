@@ -23,7 +23,7 @@ export interface ConfigData {
 @Injectable({
   providedIn: 'root'
 })
-export class FacturacionNuevaService {
+export class FacturacionService {
   private readonly supabaseUrl = 'https://tprqqdqtrzujrhvuqiha.supabase.co';
   
   constructor() {}
@@ -55,6 +55,7 @@ export class FacturacionNuevaService {
    */
   async emitirFactura(facturaData: FacturaRequestData): Promise<any> {
     try {
+      console.log('🆕 USANDO EL NUEVO SERVICIO DE FACTURACIÓN - facturacion-final.service.ts');
       console.log('🚀 Iniciando emisión de factura...');
       
       // Obtener configuración

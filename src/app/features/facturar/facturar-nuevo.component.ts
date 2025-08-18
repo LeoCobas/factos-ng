@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { FacturacionNuevaService } from '../../core/services/facturacion-final.service';
+import { FacturacionService } from '../../core/services/facturacion.service';
 
 @Component({
   selector: 'app-facturar-nuevo',
@@ -107,7 +107,7 @@ export class FacturarNuevoComponent {
 
   constructor(
     private fb: FormBuilder,
-    private facturacionService: FacturacionNuevaService
+    private facturacionService: FacturacionService
   ) {
     // Inicializar formulario
     this.formFactura = this.fb.group({
@@ -117,16 +117,32 @@ export class FacturarNuevoComponent {
   }
 
   private obtenerFechaHoy(): string {
+    // Obtener fecha actual en zona horaria local (Argentina)
     const hoy = new Date();
-    return hoy.toISOString().split('T')[0]; // formato YYYY-MM-DD
+    const año = hoy.getFullYear();
+    const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoy.getDate()).padStart(2, '0');
+    return `${año}-${mes}-${dia}`; // formato YYYY-MM-DD para input date
   }
 
   private convertirFechaADDMMYYYY(fechaISO: string): string {
+    // Crear fecha sin problemas de zona horaria
     const [año, mes, dia] = fechaISO.split('-');
-    return `${dia}/${mes}/${año}`;
+    
+    // Validar que tenemos una fecha válida
+    const fecha = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia));
+    
+    // Formatear como DD/MM/YYYY
+    const diaFormateado = String(fecha.getDate()).padStart(2, '0');
+    const mesFormateado = String(fecha.getMonth() + 1).padStart(2, '0');
+    const añoFormateado = fecha.getFullYear();
+    
+    return `${diaFormateado}/${mesFormateado}/${añoFormateado}`;
   }
 
   async emitirFactura(): Promise<void> {
+    console.log('🆕 USANDO EL NUEVO COMPONENTE - facturar-nuevo.component.ts');
+    
     if (this.formFactura.invalid) {
       this.formFactura.markAllAsTouched();
       return;
@@ -142,7 +158,11 @@ export class FacturarNuevoComponent {
       // Convertir fecha a formato DD/MM/YYYY que espera la API
       const fechaFormateada = this.convertirFechaADDMMYYYY(fecha);
       
-      console.log('📋 Datos del formulario:', { monto: parseFloat(monto), fecha: fechaFormateada });
+      console.log('� Fecha original del input:', fecha);
+      console.log('📅 Fecha convertida para API:', fechaFormateada);
+      console.log('📅 Fecha actual Argentina:', new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' }));
+      
+      console.log('�📋 Datos del formulario:', { monto: parseFloat(monto), fecha: fechaFormateada });
 
       const resultado = await this.facturacionService.emitirFactura({
         monto: parseFloat(monto),
