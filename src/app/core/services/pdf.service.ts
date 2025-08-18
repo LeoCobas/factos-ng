@@ -36,6 +36,32 @@ export class PdfService {
   }
 
   /**
+   * Descarga PDF directamente sin proxy (para cuando no hay problemas CORS)
+   */
+  private async downloadPdfBlobDirect(pdfUrl: string): Promise<Blob> {
+    console.log('📥 Descargando PDF directamente:', pdfUrl);
+    
+    const response = await fetch(pdfUrl, {
+      method: 'GET',
+      mode: 'cors',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error descargando PDF: ${response.status} ${response.statusText}`);
+    }
+    
+    const blob = await response.blob();
+    console.log('✅ PDF descargado directamente:', blob.size, 'bytes', blob.type);
+    
+    // Asegurar que el tipo MIME sea correcto
+    if (blob.type !== 'application/pdf') {
+      return new Blob([blob], { type: 'application/pdf' });
+    }
+    
+    return blob;
+  }
+
+  /**
    * Descargar PDF usando proxy para evitar CORS
    */
   private async downloadPdfBlob(pdfUrl: string): Promise<Blob> {
@@ -356,8 +382,8 @@ export class PdfService {
   private async printAndroid(pdfInfo: PdfInfo): Promise<boolean> {
     console.log('📱 Impresión Android');
     
-    // Descargar PDF como blob
-    const pdfBlob = await this.downloadPdfBlob(pdfInfo.url);
+    // Descargar PDF directamente (sin proxy)
+    const pdfBlob = await this.downloadPdfBlobDirect(pdfInfo.url);
     const blobUrl = URL.createObjectURL(pdfBlob);
     
     // Mostrar instrucciones y abrir PDF
@@ -396,8 +422,8 @@ export class PdfService {
   private async printDesktop(pdfInfo: PdfInfo): Promise<boolean> {
     console.log('🖥️ Impresión desktop');
     
-    // Descargar PDF como blob
-    const pdfBlob = await this.downloadPdfBlob(pdfInfo.url);
+    // Descargar PDF directamente (sin proxy)
+    const pdfBlob = await this.downloadPdfBlobDirect(pdfInfo.url);
     const blobUrl = URL.createObjectURL(pdfBlob);
     
     // Crear iframe oculto para impresión
