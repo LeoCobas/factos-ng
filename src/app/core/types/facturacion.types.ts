@@ -1,63 +1,70 @@
-// Tipos para la API de TusFacturas según documentación oficial
-// https://developers.tusfacturas.app/api-factura-electronica-afip-facturacion-ventas/referencia-api-afip-arca
+// Tipos para la API de TusFacturas - Estructura que funciona exitosamente
+// Basado en la implementación del proyecto anterior React
 
-// ===== TIPOS DE COMPROBANTE =====
-export interface TipoComprobante {
-  id: number;
-  nombre: string;
-  codigo: string;
+// ===== INTERFACES PRINCIPALES =====
+export interface Cliente {
+  documento_tipo: string;
+  condicion_iva: string;
+  condicion_iva_operacion?: string;
+  domicilio: string;
+  condicion_pago: string;
+  documento_nro: string;
+  razon_social: string;
+  provincia: string;
+  email: string;
+  envia_por_mail: string;
+  rg5329: string;
 }
 
-// ===== ESTRUCTURA DEL COMPROBANTE SEGÚN API =====
-export interface ComprobanteRequest {
-  // Datos obligatorios del comprobante
-  fecha: string; // AAAA-MM-DD
-  tipo: string; // FC, ND, NC
-  moneda: string; // ARS
-  idioma: number; // 1=Español
-  cotizacion: number; // Cotización de la moneda (1 para ARS)
-  
-  // Cliente (para consumidor final)
-  cliente: ClienteConsumidorFinal;
-  
-  // Detalle de la facturación
-  detalle: DetalleItem[];
-  
-  // Bonificaciones, descuentos, etc (opcional)
-  bonificacion?: number;
-  descuento?: number;
-  recargo?: number;
-  
-  // Observaciones (opcional)
-  observaciones?: string;
-}
-
-// ===== CLIENTE CONSUMIDOR FINAL =====
-export interface ClienteConsumidorFinal {
-  documento_tipo: string; // "DNI", "LE", "LC", "CI", etc.
-  documento_nro: string; // "0" para consumidor final
-  razon_social: string; // "CONSUMIDOR FINAL"
-  email?: string;
-  domicilio?: string;
-  provincia?: string;
-  envia_por_mail?: string; // "S" o "N"
-}
-
-// ===== DETALLE DE ITEMS =====
-export interface DetalleItem {
-  cantidad: number;
-  producto: ProductoServicio;
-  precio_unitario: number;
-  alicuota: number; // % de IVA (21, 10.5, 0, etc.)
-  unidad_bulto?: number;
-}
-
-export interface ProductoServicio {
+export interface Producto {
   descripcion: string;
-  unidad_medida?: string;
-  codigo?: string;
-  codigo_barras?: string;
+  codigo: number;
+  lista_precios: string;
+  leyenda: string;
+  unidad_bulto: number;
+  alicuota: number;
+  actualiza_precio: string;
+  rg5329: string;
+  precio_unitario_sin_iva: number;
 }
+
+export interface Detalle {
+  cantidad: number;
+  afecta_stock: string;
+  actualiza_precio: string;
+  bonificacion_porcentaje: number;
+  producto: Producto;
+}
+
+export interface Comprobante {
+  rubro: string;
+  percepciones_iva: number;
+  tipo: string;
+  numero: number;
+  bonificacion: number;
+  operacion: string;
+  detalle: Detalle[];
+  fecha: string;
+  vencimiento: string;
+  rubro_grupo_contable: string;
+  total: number;
+  cotizacion: number;
+  moneda: string;
+  punto_venta: string;
+  tributos: any[];
+  datos_informativos?: { paga_misma_moneda?: 'S' | 'N' };
+}
+
+export interface FacturaRequest {
+  apitoken: string;
+  cliente: Cliente;
+  apikey: string;
+  comprobante: Comprobante;
+  usertoken: string;
+}
+
+// ===== TIPOS DE ACTIVIDAD PARA VALIDACIÓN DE FECHAS =====
+export type Actividad = 'bienes' | 'servicios';
 
 // ===== RESPUESTA DE LA API =====
 export interface FacturacionResponse {

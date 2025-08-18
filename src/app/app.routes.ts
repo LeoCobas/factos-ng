@@ -19,7 +19,7 @@ export const routes: Routes = [
       },
       {
         path: 'facturar',
-        loadComponent: () => import('./features/facturar/facturar.component').then(m => m.FacturarComponent)
+        loadComponent: () => import('./features/facturar/facturar-nuevo.component').then(m => m.FacturarNuevoComponent)
       },
       {
         path: 'listado',

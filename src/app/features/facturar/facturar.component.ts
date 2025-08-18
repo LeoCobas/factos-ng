@@ -33,9 +33,8 @@ import { ComprobanteEmitido, EstadoFacturacion } from '../../core/types/facturac
                   min="0.01"
                   max="999999.99"
                   formControlName="monto"
-                  class="w-full pl-8 pr-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  class="w-full pl-8 pr-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="0,00"
-                  [disabled]="isLoading()"
                 />
               </div>
               <div class="text-xs text-gray-500 mt-1">
@@ -52,8 +51,7 @@ import { ComprobanteEmitido, EstadoFacturacion } from '../../core/types/facturac
                 id="fecha"
                 type="date"
                 formControlName="fecha"
-                class="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                [disabled]="isLoading()"
+                class="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -219,6 +217,15 @@ export class FacturarComponent implements OnInit {
       const resultado = this.facturacionService.ultimoResultado();
       
       this.isLoading.set(estado === 'loading');
+      
+      // Controlar el estado disabled de los campos según el loading
+      if (estado === 'loading') {
+        this.facturacionForm.get('monto')?.disable();
+        this.facturacionForm.get('fecha')?.disable();
+      } else {
+        this.facturacionForm.get('monto')?.enable();
+        this.facturacionForm.get('fecha')?.enable();
+      }
       
       if (estado === 'success' && resultado?.factura) {
         this.facturaEmitida.set(resultado.factura);

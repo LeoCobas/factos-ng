@@ -109,49 +109,92 @@ export class FacturacionService {
   private construirComprobante(
     formulario: FormularioFacturacion, 
     config: ConfiguracionFacturacion
-  ): ComprobanteRequest {
+  ): any {
+    console.log('construirComprobante - Entrada:', { formulario, config });
+    
+    // Convertir fecha de YYYY-MM-DD a DD/MM/YYYY como requiere TusFacturas
+    const [año, mes, dia] = formulario.fecha.split('-');
+    const fechaTusFacturas = `${dia}/${mes}/${año}`;
     
     // Cliente consumidor final según API
-    const cliente: ClienteConsumidorFinal = {
+    const cliente = {
       documento_tipo: "DNI",
       documento_nro: "0", // Consumidor final
       razon_social: "CONSUMIDOR FINAL",
-      envia_por_mail: "N"
+      envia_por_mail: "N",
+      email: "",
+      domicilio: "",
+      provincia: ""
     };
 
     // Detalle del servicio/producto
-    const detalle: DetalleItem[] = [{
+    const detalle = [{
       cantidad: 1,
       producto: {
         descripcion: "Servicios Profesionales",
-        unidad_medida: "unidad"
+        unidad_medida: "unidad",
+        codigo: "SERV001"
       },
       precio_unitario: formulario.monto,
       alicuota: config.iva_porcentaje
     }];
 
-    return {
-      fecha: formulario.fecha,
-      tipo: config.tipo_comprobante_default,
+    const comprobante = {
+      fecha: fechaTusFacturas, // DD/MM/YYYY
+      tipo: config.tipo_comprobante_default || "FC", // Factura C
+      operacion: "V", // V=Venta (obligatorio)
+      punto_venta: config.punto_venta || 1,
+      numero: null, // TusFacturas asigna automáticamente
       moneda: "ARS",
       idioma: 1,
       cotizacion: 1,
+      concepto: 2, // 2=Servicios
+      
+      // Para servicios, se requiere periodo
+      periodo_facturado_desde: fechaTusFacturas,
+      periodo_facturado_hasta: fechaTusFacturas,
+      
       cliente,
       detalle,
+      
+      // Observaciones
       observaciones: `Facturación electrónica - ${new Date().toLocaleString()}`
     };
+    
+    console.log('construirComprobante - Salida:', comprobante);
+    return comprobante;
   }
 
   /**
    * Valida el comprobante antes de enviarlo
    */
-  private validarComprobante(comprobante: ComprobanteRequest): { valido: boolean; error?: string } {
-    // Validar fecha
-    if (!comprobante.fecha || !/^\d{4}-\d{2}-\d{2}$/.test(comprobante.fecha)) {
-      return { valido: false, error: 'Fecha inválida' };
+  private validarComprobante(comprobante: any): { valido: boolean; error?: string } {
+    // Validar fecha (DD/MM/YYYY)
+    if (!comprobante.fecha || !/^\d{2}\/\d{2}\/\d{4}$/.test(comprobante.fecha)) {
+      return { valido: false, error: 'Fecha inválida (debe ser DD/MM/YYYY)' };
     }
 
-    // Validar monto
+    // Validar tipo de comprobante
+    if (!comprobante.tipo) {
+      return { valido: false, error: 'Tipo de comprobante requerido' };
+    }
+
+    // Validar operación
+    if (!comprobante.operacion) {
+      return { valido: false, error: 'Operación requerida (V=Venta)' };
+    }
+
+    // Validar punto de venta
+    if (!comprobante.punto_venta || comprobante.punto_venta <= 0) {
+      return { valido: false, error: 'Punto de venta inválido' };
+    }
+
+    // Validar cliente
+    if (!comprobante.cliente || !comprobante.cliente.documento_nro) {
+      return { valido: false, error: 'Datos del cliente requeridos' };
+    }
+
+    // Validar detalle
     if (!comprobante.detalle || comprobante.detalle.length === 0) {
       return { valido: false, error: 'Debe incluir al menos un item' };
     }
@@ -168,20 +211,29 @@ export class FacturacionService {
       return { valido: false, error: 'El monto no puede tener más de 2 decimales' };
     }
 
+    // Validar concepto para servicios
+    if (comprobante.concepto === 2) {
+      if (!comprobante.periodo_facturado_desde || !comprobante.periodo_facturado_hasta) {
+        return { valido: false, error: 'Para servicios se requiere periodo facturado' };
+      }
+    }
+
     return { valido: true };
   }
 
   /**
    * Llama a TusFacturas a través de la Edge Function
    */
-  private async llamarTusFacturas(comprobante: ComprobanteRequest): Promise<FacturacionResponse> {
+  private async llamarTusFacturas(comprobante: any): Promise<FacturacionResponse> {
     try {
+      console.log('🚀 Iniciando llamada a TusFacturas...');
       const { data: { session } } = await this.supabaseClient.auth.getSession();
       
       if (!session) {
         throw new Error('No hay sesión activa');
       }
 
+      console.log('🔑 Sesión obtenida, haciendo request a tf-proxy...');
       const response = await fetch(`${this.supabaseUrl}/functions/v1/tf-proxy?path=facturacion/nuevo`, {
         method: 'POST',
         headers: {
@@ -191,11 +243,21 @@ export class FacturacionService {
         body: JSON.stringify(comprobante)
       });
 
+      console.log(`📊 Response status: ${response.status}`);
+      const responseText = await response.text();
+      console.log(`📄 Response text: ${responseText}`);
+
       if (!response.ok) {
-        throw new Error(`Error HTTP: ${response.status}`);
+        throw new Error(`Error HTTP ${response.status}: ${responseText}`);
       }
 
-      const resultado: FacturacionResponse = await response.json();
+      let resultado: FacturacionResponse;
+      try {
+        resultado = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('❌ Error parsing JSON:', parseError);
+        throw new Error(`Error parsing response: ${responseText}`);
+      }
       
       // TusFacturas puede devolver error en el cuerpo aunque el HTTP sea 200
       if (resultado.error) {
@@ -206,10 +268,11 @@ export class FacturacionService {
         throw new Error(resultado.errores.join(', '));
       }
 
+      console.log('✅ Respuesta exitosa de TusFacturas');
       return resultado;
 
     } catch (error) {
-      console.error('Error llamando a TusFacturas:', error);
+      console.error('❌ Error llamando a TusFacturas:', error);
       throw error;
     }
   }
