@@ -56,7 +56,7 @@ export class FacturacionService {
    */
   async emitirFactura(facturaData: FacturaRequestData): Promise<any> {
     try {
-      console.log('🆕 USANDO EL NUEVO SERVICIO DE FACTURACIÓN - facturacion-final.service.ts');
+      console.log('🆕 USANDO EL NUEVO SERVICIO DE FACTURACIÓN - facturacion.service.ts - VERSION 2.0');
       console.log('🚀 Iniciando emisión de factura...');
       
       // Obtener configuración
