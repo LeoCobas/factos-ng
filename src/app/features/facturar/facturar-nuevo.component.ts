@@ -8,15 +8,13 @@ import { FacturacionService } from '../../core/services/facturacion.service';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   template: `
-    <div class="min-h-screen bg-gray-50 py-6">
-      <div class="max-w-md mx-auto">
-        <div class="bg-white shadow-lg rounded-lg p-6">
-          <h2 class="text-2xl font-bold text-center mb-6">Emitir Factura</h2>
-          
-          <form [formGroup]="formFactura" (ngSubmit)="emitirFactura()" class="space-y-6">
+    <div class="max-w-md mx-auto">
+      <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6">
+        
+        <form [formGroup]="formFactura" (ngSubmit)="emitirFactura()" class="space-y-4 sm:space-y-6">
             <!-- Campo Monto -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
+              <label class="block text-sm font-medium text-gray-700 mb-4">
                 Monto Total
               </label>
               <input
@@ -24,7 +22,7 @@ import { FacturacionService } from '../../core/services/facturacion.service';
                 step="0.01"
                 placeholder="0.00"
                 formControlName="monto"
-                class="w-full text-3xl text-center py-4 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                class="w-full text-2xl sm:text-3xl text-center py-2 sm:py-4 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 [class.border-red-500]="formFactura.get('monto')?.invalid && formFactura.get('monto')?.touched"
               />
               @if (formFactura.get('monto')?.invalid && formFactura.get('monto')?.touched) {
@@ -34,7 +32,7 @@ import { FacturacionService } from '../../core/services/facturacion.service';
 
             <!-- Campo Fecha -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
+              <label class="block text-sm font-medium text-gray-700 mb-4">
                 Fecha de Facturación
               </label>
               <input
@@ -95,7 +93,6 @@ import { FacturacionService } from '../../core/services/facturacion.service';
           }
         </div>
       </div>
-    </div>
   `
 })
 export class FacturarNuevoComponent {

@@ -26,7 +26,7 @@ interface Factura {
   imports: [CurrencyPipe],
   template: `
     <!-- Simplified mobile-first design matching screenshot -->
-    <div class="space-y-6">
+    <div class="space-y-4 sm:space-y-6">
       <!-- Selector de fecha -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <label class="block text-sm font-medium text-gray-700 mb-4">
@@ -38,9 +38,9 @@ interface Factura {
             type="date"
             [value]="fechaSeleccionada()"
             (change)="cambiarFecha($event)"
-            class="w-full p-4 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-12"
+            class="w-full py-2 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-10"
           />
-          <svg class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
           </svg>
         </div>
