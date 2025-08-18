@@ -6,8 +6,8 @@ import { AuthService } from '../../core/services/auth.service';
 @Component({
   selector: 'app-login',
   template: `
-    <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div class="max-w-md w-full space-y-8">
+    <div class="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8 sm:px-6 lg:px-8">
+      <div class="max-w-md w-full">
         <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
           <div class="p-6 text-center">
             <h2 class="text-2xl font-semibold leading-none tracking-tight">Iniciar Sesión</h2>
@@ -24,8 +24,10 @@ import { AuthService } from '../../core/services/auth.service';
                 </label>
                 <input
                   type="email"
+                  id="email"
                   placeholder="tu@email.com"
                   formControlName="email"
+                  autocomplete="email"
                   class="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   [class.border-red-300]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
                 />
@@ -40,8 +42,10 @@ import { AuthService } from '../../core/services/auth.service';
                 </label>
                 <input
                   type="password"
+                  id="password"
                   placeholder="••••••••"
                   formControlName="password"
+                  autocomplete="current-password"
                   class="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   [class.border-red-300]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
                 />
