@@ -275,18 +275,25 @@ export class FacturarNuevoComponent {
 
   async imprimir(): Promise<void> {
     const factura = this.facturaEmitida();
+    console.log('🖨️ DEBUG - Factura completa:', factura);
+    console.log('🖨️ DEBUG - PDF URL:', factura?.pdf_url);
+    
     if (!factura?.pdf_url) {
       alert('PDF no disponible para imprimir');
       return;
     }
 
+    const pdfInfo = {
+      url: factura.pdf_url,
+      filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura)}.pdf`,
+      title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`,
+      text: `Imprimir Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`
+    };
+    
+    console.log('🖨️ DEBUG - PdfInfo objeto:', pdfInfo);
+
     try {
-      await this.pdfService.printPdf({
-        url: factura.pdf_url,
-        filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura)}.pdf`,
-        title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`,
-        text: `Imprimir Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`
-      });
+      await this.pdfService.printPdf(pdfInfo);
     } catch (error) {
       console.error('❌ Error imprimiendo:', error);
       // Fallback - abrir en nueva ventana

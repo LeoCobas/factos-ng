@@ -329,6 +329,8 @@ export class PdfService {
    */
   async printPdf(pdfInfo: PdfInfo): Promise<boolean> {
     console.log('🖨️ Iniciando impresión PDF:', pdfInfo.filename);
+    console.log('🖨️ DEBUG - PdfInfo recibido:', pdfInfo);
+    console.log('🖨️ DEBUG - URL:', pdfInfo.url);
     const caps = this.capabilities;
     
     try {
