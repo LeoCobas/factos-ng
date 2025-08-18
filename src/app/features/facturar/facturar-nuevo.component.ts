@@ -194,6 +194,10 @@ export class FacturarNuevoComponent {
       });
 
       if (resultado.success) {
+        console.log('✅ DEBUG - Resultado completo:', resultado);
+        console.log('✅ DEBUG - Factura object:', resultado.factura);
+        console.log('✅ DEBUG - PDF URL en factura:', resultado.factura?.pdf_url);
+        
         this.esExito.set(true);
         this.mensaje.set(`¡Factura emitida exitosamente! Número: ${resultado.factura.numero_factura}`);
         this.facturaEmitida.set(resultado.factura);

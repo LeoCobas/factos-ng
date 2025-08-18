@@ -237,6 +237,11 @@ export class FacturacionService {
 
       const responseData = await response.json();
       console.log('📥 Respuesta de TusFacturas:', responseData);
+      console.log('🔍 DEBUG - Campos PDF disponibles:');
+      console.log('  - pdf_url:', responseData.pdf_url);
+      console.log('  - comprobante_pdf_url:', responseData.comprobante_pdf_url);
+      console.log('  - pdf_ticket_url:', responseData.pdf_ticket_url);
+      console.log('  - comprobante_ticket_url:', responseData.comprobante_ticket_url);
       
       // Manejar errores
       if (!response.ok || responseData?.error === 'S') {
