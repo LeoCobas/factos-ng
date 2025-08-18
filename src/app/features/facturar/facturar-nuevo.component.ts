@@ -165,7 +165,7 @@ export class FacturarNuevoComponent {
   }
 
   async emitirFactura(): Promise<void> {
-    console.log('🆕 USANDO EL NUEVO COMPONENTE - facturar-nuevo.component.ts');
+    console.log('🆕 COMPONENTE ACTUALIZADO - facturar-nuevo.component.ts - BUILD: ' + Date.now());
     
     if (this.formFactura.invalid) {
       this.formFactura.markAllAsTouched();

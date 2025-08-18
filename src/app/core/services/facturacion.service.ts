@@ -56,8 +56,8 @@ export class FacturacionService {
    */
   async emitirFactura(facturaData: FacturaRequestData): Promise<any> {
     try {
-      console.log('🆕 USANDO SERVICIO UNIFICADO - facturacion.service.ts');
-      console.log('🚀 Iniciando emisión de factura...');
+      console.log('🚀 SERVICIO UNIFICADO LIMPIO - facturacion.service.ts - BUILD: ' + Date.now());
+      console.log('� Iniciando emisión de factura...');
       
       // Obtener configuración
       const { data: config, error: configError } = await supabase
