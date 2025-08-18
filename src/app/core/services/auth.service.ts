@@ -34,8 +34,8 @@ export class AuthService {
 
   private async initializeAuth() {
     try {
-      // Obtener sesión inicial
-      const { data: { session } } = await supabase.auth.getSession();
+      // Obtener sesión inicial con retry para manejar locks
+      const session = await this.getSessionWithRetry();
       
       this.authState.set({
         user: session?.user ?? null,
@@ -43,26 +43,56 @@ export class AuthService {
         loading: false
       });
 
-      // Escuchar cambios en la autenticación
+      // Escuchar cambios en la autenticación con manejo de errores
       supabase.auth.onAuthStateChange((event, session) => {
-        this.authState.set({
-          user: session?.user ?? null,
-          session,
-          loading: false
-        });
+        try {
+          this.authState.set({
+            user: session?.user ?? null,
+            session,
+            loading: false
+          });
 
-        if (event === 'SIGNED_OUT') {
-          this.router.navigate(['/login']);
+          if (event === 'SIGNED_OUT') {
+            this.router.navigate(['/login']);
+          }
+        } catch (error) {
+          console.warn('Error en onAuthStateChange:', error);
         }
       });
+
     } catch (error) {
-      console.error('Error initializing auth:', error);
+      console.warn('Error inicializando auth, continuando sin autenticación:', error);
       this.authState.set({
         user: null,
         session: null,
         loading: false
       });
     }
+  }
+
+  private async getSessionWithRetry(maxRetries = 2): Promise<Session | null> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.warn(`Supabase auth error attempt ${attempt}:`, error.message);
+          if (attempt < maxRetries) continue;
+          throw error;
+        }
+        return session;
+      } catch (error: any) {
+        console.warn(`Auth session retry ${attempt}/${maxRetries}:`, error?.message);
+        if (attempt < maxRetries) {
+          // Esperar un poco antes del retry
+          await new Promise(resolve => setTimeout(resolve, 50 * attempt));
+          continue;
+        }
+        // Si fallan todos los intentos, devolver null en lugar de lanzar error
+        console.warn('Todas las tentativas de obtener sesión fallaron, continuando sin autenticación');
+        return null;
+      }
+    }
+    return null;
   }
 
   async signIn(email: string, password: string): Promise<{ error: AuthError | null }> {
