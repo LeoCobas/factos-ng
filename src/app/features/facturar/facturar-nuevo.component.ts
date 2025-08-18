@@ -281,6 +281,13 @@ export class FacturarNuevoComponent {
     const factura = this.facturaEmitida();
     console.log('🖨️ DEBUG - Factura completa:', factura);
     console.log('🖨️ DEBUG - PDF URL:', factura?.pdf_url);
+    console.log('🖨️ DEBUG - Todas las propiedades de factura:', Object.keys(factura || {}));
+    console.log('🖨️ DEBUG - Valores de propiedades PDF-related:', {
+      pdf_url: factura?.pdf_url,
+      comprobante_pdf_url: factura?.comprobante_pdf_url,
+      pdf_ticket_url: factura?.pdf_ticket_url,
+      comprobante_ticket_url: factura?.comprobante_ticket_url
+    });
     
     if (!factura?.pdf_url) {
       alert('PDF no disponible para imprimir');
