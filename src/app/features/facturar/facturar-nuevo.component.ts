@@ -60,34 +60,51 @@ import { FacturacionService } from '../../core/services/facturacion.service';
             </button>
           </form>
 
-          <!-- Mensajes de estado -->
-          @if (mensaje()) {
-            <div class="mt-4 p-4 rounded-md"
-                 [class.bg-green-50]="esExito()"
-                 [class.text-green-800]="esExito()"
-                 [class.bg-red-50]="!esExito()"
-                 [class.text-red-800]="!esExito()">
-              {{ mensaje() }}
+          <!-- Card de Factura Emitida -->
+          @if (facturaEmitida()) {
+            <div class="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div class="text-center mb-4">
+                <h3 class="text-lg font-semibold text-green-900 mb-2">Factura emitida:</h3>
+                <div class="text-xl font-bold text-green-800">
+                  {{ obtenerTipoComprobante(facturaEmitida()!) }} {{ obtenerNumeroSinCeros(facturaEmitida()!.numero_factura) }} {{ formatearMonto(facturaEmitida()!.monto) }}
+                </div>
+              </div>
+              
+              <!-- Botones de acción -->
+              <div class="grid grid-cols-2 gap-2">
+                <button
+                  (click)="verPDF()"
+                  class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                >
+                  Ver
+                </button>
+                <button
+                  (click)="compartir()"
+                  class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                >
+                  Compartir
+                </button>
+                <button
+                  (click)="imprimir()"
+                  class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                >
+                  Imprimir
+                </button>
+                <button
+                  (click)="volver()"
+                  class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                >
+                  Volver
+                </button>
+              </div>
             </div>
           }
 
-          <!-- Detalles de factura exitosa -->
-          @if (facturaEmitida()) {
-            <div class="mt-6 p-4 bg-gray-50 rounded-md">
-              <h3 class="text-lg font-semibold mb-2">✅ Factura Emitida</h3>
-              <div class="space-y-1 text-sm">
-                <p><strong>Número:</strong> {{ facturaEmitida()?.numero_factura }}</p>
-                <p><strong>CAE:</strong> {{ facturaEmitida()?.cae }}</p>
-                <p><strong>Vencimiento CAE:</strong> {{ facturaEmitida()?.cae_vto }}</p>
-                <p><strong>Monto:</strong> \${{ facturaEmitida()?.monto }}</p>
-                @if (facturaEmitida()?.pdf_url) {
-                  <div class="mt-2">
-                    <a [href]="facturaEmitida()?.pdf_url" target="_blank" 
-                       class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                      Ver PDF
-                    </a>
-                  </div>
-                }
+          <!-- Mensaje de Error -->
+          @if (mensaje() && !esExito()) {
+            <div class="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div class="text-red-800 text-center">
+                {{ mensaje() }}
               </div>
             </div>
           }
@@ -187,5 +204,194 @@ export class FacturarNuevoComponent {
     } finally {
       this.isSubmitting.set(false);
     }
+  }
+
+  // Métodos para formatear datos de la factura
+  obtenerTipoComprobante(factura: any): string {
+    if (factura.tipo_comprobante === 'FACTURA B') {
+      return 'FC B';
+    }
+    if (factura.tipo_comprobante === 'FACTURA C') {
+      return 'FC C';
+    }
+    return factura.tipo_comprobante || 'FC B';
+  }
+
+  obtenerNumeroSinCeros(numeroCompleto: string): string {
+    if (numeroCompleto?.includes('-')) {
+      return numeroCompleto.split('-')[1];
+    }
+    return numeroCompleto?.replace(/^0+/, '') || '0';
+  }
+
+  formatearMonto(monto: number): string {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(monto);
+  }
+
+  // Métodos para los botones de acción
+  verPDF(): void {
+    const factura = this.facturaEmitida();
+    if (factura?.pdf_url) {
+      window.open(factura.pdf_url, '_blank');
+    } else {
+      alert('PDF no disponible');
+    }
+  }
+
+  compartir(): void {
+    const factura = this.facturaEmitida();
+    if (!factura) return;
+
+    const texto = `Factura ${this.obtenerTipoComprobante(factura)} ${this.obtenerNumeroSinCeros(factura.numero_factura)} - ${this.formatearMonto(factura.monto)}`;
+    
+    // Verificar si Web Share API está disponible
+    if (navigator.share) {
+      if (factura.pdf_url) {
+        // Intentar compartir la URL del PDF
+        navigator.share({
+          title: 'Factura Emitida',
+          text: texto,
+          url: factura.pdf_url
+        }).catch((error) => {
+          console.log('Error sharing:', error);
+          this.fallbackShare(texto, factura.pdf_url);
+        });
+      } else {
+        navigator.share({
+          title: 'Factura Emitida',
+          text: texto
+        }).catch((error) => {
+          console.log('Error sharing:', error);
+          this.fallbackShare(texto);
+        });
+      }
+    } else if (navigator.share) {
+      // Web Share API disponible pero sin canShare
+      navigator.share({
+        title: 'Factura Emitida',
+        text: texto,
+        url: factura.pdf_url || window.location.href
+      }).catch((error) => {
+        console.log('Error sharing:', error);
+        this.fallbackShare(texto, factura.pdf_url);
+      });
+    } else {
+      this.fallbackShare(texto, factura.pdf_url);
+    }
+  }
+
+  private fallbackShare(texto: string, url?: string): void {
+    // Fallback: copiar al portapapeles
+    const textoCompleto = url ? `${texto}\n${url}` : texto;
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(textoCompleto).then(() => {
+        alert('Información copiada al portapapeles');
+      }).catch(() => {
+        this.showShareInfo(textoCompleto);
+      });
+    } else {
+      this.showShareInfo(textoCompleto);
+    }
+  }
+
+  private showShareInfo(texto: string): void {
+    // Mostrar información en un modal o alert simple
+    alert('Información de la factura:\n' + texto);
+  }
+
+  imprimir(): void {
+    const factura = this.facturaEmitida();
+    if (!factura?.pdf_url) {
+      alert('PDF no disponible para imprimir');
+      return;
+    }
+
+    // Detectar si estamos en Android
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    
+    if (isAndroid) {
+      // En Android, usar Web Share API para compartir con aplicaciones de impresión
+      if (navigator.share) {
+        navigator.share({
+          title: 'Imprimir Factura',
+          text: `Factura ${this.obtenerTipoComprobante(factura)} ${this.obtenerNumeroSinCeros(factura.numero_factura)}`,
+          url: factura.pdf_url
+        }).then(() => {
+          console.log('PDF compartido para impresión');
+        }).catch((error) => {
+          console.log('Error al compartir para impresión:', error);
+          // Fallback: abrir PDF en nueva pestaña
+          this.abrirPDFParaImprimir(factura.pdf_url);
+        });
+      } else {
+        // Fallback: abrir PDF en nueva pestaña con instrucciones
+        this.abrirPDFParaImprimir(factura.pdf_url);
+      }
+    } else {
+      // En desktop, usar el método tradicional con iframe
+      this.imprimirEnDesktop(factura.pdf_url);
+    }
+  }
+
+  private abrirPDFParaImprimir(pdfUrl: string): void {
+    window.open(pdfUrl, '_blank');
+    // Mostrar instrucciones para Android
+    setTimeout(() => {
+      alert('PDF abierto. Usa el menú de 3 puntos en Chrome y selecciona "Imprimir" o "Compartir" para enviar a una impresora.');
+    }, 1000);
+  }
+
+  private imprimirEnDesktop(pdfUrl: string): void {
+    // Crear iframe oculto para imprimir PDF en desktop
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = pdfUrl;
+    document.body.appendChild(iframe);
+    
+    iframe.onload = () => {
+      try {
+        // Intentar imprimir directamente
+        iframe.contentWindow?.print();
+      } catch (error) {
+        console.log('No se pudo imprimir automáticamente:', error);
+        // Fallback: abrir en nueva ventana
+        window.open(pdfUrl, '_blank');
+      }
+      // Remover iframe después de un tiempo
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 1000);
+    };
+
+    iframe.onerror = () => {
+      // Si hay error cargando el iframe, abrir en nueva ventana
+      window.open(pdfUrl, '_blank');
+      if (document.body.contains(iframe)) {
+        document.body.removeChild(iframe);
+      }
+    };
+  }
+
+  volver(): void {
+    // Ocultar la card de éxito
+    this.facturaEmitida.set(null);
+    this.mensaje.set(null);
+    this.esExito.set(false);
+    
+    // Enfocar el campo monto para continuar facturando
+    setTimeout(() => {
+      const montoInput = document.querySelector('#monto') as HTMLInputElement;
+      if (montoInput) {
+        montoInput.focus();
+      }
+    }, 100);
   }
 }
