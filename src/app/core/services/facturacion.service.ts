@@ -258,6 +258,19 @@ export class FacturacionService {
         throw new Error(errMsg);
       }
 
+      // 🔍 DEBUGGING PDF FIELDS - Ver todos los campos relacionados con PDF
+      console.log('🔍 DEBUGGING PDF FIELDS:');
+      console.log('📊 comprobante_ticket_url:', responseData.comprobante_ticket_url);
+      console.log('📊 pdf_ticket_url:', responseData.pdf_ticket_url);
+      console.log('📊 comprobante_pdf_url:', responseData.comprobante_pdf_url);
+      console.log('📊 pdf_url:', responseData.pdf_url);
+      console.log('📊 All PDF related fields:', Object.keys(responseData).filter(key => 
+        key.toLowerCase().includes('pdf') || 
+        key.toLowerCase().includes('url') ||
+        key.toLowerCase().includes('comprobante')
+      ).map(key => ({ [key]: responseData[key] })));
+      console.log('📋 Original response data keys:', Object.keys(responseData));
+
       const numero = responseData.comprobante_nro || responseData.numero || '';
       const cae = (responseData.cae || '').toString().trim();
       const cae_vto = responseData.vencimiento_cae || responseData.cae_vto || '';
@@ -265,6 +278,11 @@ export class FacturacionService {
       const pdfA4 = responseData.comprobante_pdf_url || responseData.pdf_url;
       const tipo = responseData.comprobante_tipo || responseData.tipo;
       const afip_id = responseData.afip_id;
+
+      console.log('🎯 PDF MAPPING RESULTS:');
+      console.log('📄 pdfTicket:', pdfTicket);
+      console.log('📄 pdfA4:', pdfA4);
+      console.log('📄 Final pdf_url:', pdfTicket || pdfA4 || '');
 
       return {
         success: true,
