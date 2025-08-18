@@ -243,46 +243,78 @@ export class FacturarNuevoComponent {
     }
   }
 
-  compartir(): void {
+  async compartir(): Promise<void> {
     const factura = this.facturaEmitida();
     if (!factura) return;
 
     const texto = `Factura ${this.obtenerTipoComprobante(factura)} ${this.obtenerNumeroSinCeros(factura.numero_factura)} - ${this.formatearMonto(factura.monto)}`;
     
     // Verificar si Web Share API está disponible
-    if (navigator.share) {
-      if (factura.pdf_url) {
-        // Intentar compartir la URL del PDF
-        navigator.share({
-          title: 'Factura Emitida',
-          text: texto,
-          url: factura.pdf_url
-        }).catch((error) => {
-          console.log('Error sharing:', error);
-          this.fallbackShare(texto, factura.pdf_url);
+    if (navigator.share && factura.pdf_url) {
+      try {
+        // Descargar el PDF como blob
+        console.log('Descargando PDF para compartir...');
+        const response = await fetch(factura.pdf_url);
+        
+        if (!response.ok) {
+          throw new Error('No se pudo descargar el PDF');
+        }
+        
+        const pdfBlob = await response.blob();
+        const fileName = `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura)}.pdf`;
+        
+        // Crear File object desde el blob
+        const pdfFile = new File([pdfBlob], fileName, { 
+          type: 'application/pdf',
+          lastModified: Date.now()
         });
-      } else {
-        navigator.share({
-          title: 'Factura Emitida',
-          text: texto
-        }).catch((error) => {
-          console.log('Error sharing:', error);
-          this.fallbackShare(texto);
-        });
-      }
-    } else if (navigator.share) {
-      // Web Share API disponible pero sin canShare
-      navigator.share({
-        title: 'Factura Emitida',
-        text: texto,
-        url: factura.pdf_url || window.location.href
-      }).catch((error) => {
-        console.log('Error sharing:', error);
+        
+        // Verificar si podemos compartir archivos
+        if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+          // Compartir el archivo PDF
+          await navigator.share({
+            title: 'Factura Emitida',
+            text: texto,
+            files: [pdfFile]
+          });
+          console.log('PDF compartido exitosamente');
+        } else {
+          // Fallback: compartir solo la URL
+          await navigator.share({
+            title: 'Factura Emitida',
+            text: texto,
+            url: factura.pdf_url
+          });
+        }
+        
+      } catch (error) {
+        console.error('Error al compartir PDF:', error);
+        
+        // Fallback: descargar PDF automáticamente y compartir texto
+        this.descargarPDF();
         this.fallbackShare(texto, factura.pdf_url);
-      });
+      }
     } else {
       this.fallbackShare(texto, factura.pdf_url);
     }
+  }
+
+  private descargarPDF(): void {
+    const factura = this.facturaEmitida();
+    if (!factura?.pdf_url) return;
+    
+    const fileName = `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura)}.pdf`;
+    
+    // Crear enlace de descarga
+    const link = document.createElement('a');
+    link.href = factura.pdf_url;
+    link.download = fileName;
+    link.target = '_blank';
+    
+    // Trigger descarga
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   private fallbackShare(texto: string, url?: string): void {
@@ -316,22 +348,25 @@ export class FacturarNuevoComponent {
     const isAndroid = /Android/i.test(navigator.userAgent);
     
     if (isAndroid) {
-      // En Android, usar Web Share API para compartir con aplicaciones de impresión
-      if (navigator.share) {
-        navigator.share({
-          title: 'Imprimir Factura',
-          text: `Factura ${this.obtenerTipoComprobante(factura)} ${this.obtenerNumeroSinCeros(factura.numero_factura)}`,
-          url: factura.pdf_url
-        }).then(() => {
-          console.log('PDF compartido para impresión');
-        }).catch((error) => {
-          console.log('Error al compartir para impresión:', error);
-          // Fallback: abrir PDF en nueva pestaña
-          this.abrirPDFParaImprimir(factura.pdf_url);
-        });
-      } else {
-        // Fallback: abrir PDF en nueva pestaña con instrucciones
-        this.abrirPDFParaImprimir(factura.pdf_url);
+      // En Android, mostrar instrucciones específicas para imprimir
+      const confirmPrint = confirm(
+        'Para imprimir en Android:\n\n' +
+        '1. Se abrirá el PDF\n' +
+        '2. Toca los 3 puntos (⋮) en Chrome\n' +
+        '3. Selecciona "Imprimir"\n' +
+        '4. Elige tu impresora o "Guardar como PDF"\n\n' +
+        '¿Continuar?'
+      );
+      
+      if (confirmPrint) {
+        // Abrir PDF con parámetros específicos para impresión
+        const printUrl = factura.pdf_url + '#toolbar=1&navpanes=0&scrollbar=0';
+        window.open(printUrl, '_blank');
+        
+        // Mostrar reminder después de abrir
+        setTimeout(() => {
+          alert('PDF abierto. Ahora usa el menú ⋮ → Imprimir');
+        }, 2000);
       }
     } else {
       // En desktop, usar el método tradicional con iframe
