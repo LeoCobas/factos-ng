@@ -4,9 +4,11 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
+    "build": "ng build --configuration production",
+    "build:pwa": "ng build --configuration production && npx workbox generateSW",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "netlify:build": "ng build --configuration production"
   },
   "prettier": {
     "printWidth": 100,
@@ -29,6 +31,7 @@
     "@angular/forms": "^20.1.0",
     "@angular/platform-browser": "^20.1.0",
     "@angular/router": "^20.1.0",
+    "@angular/service-worker": "^20.1.0",
     "@supabase/supabase-js": "^2.55.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

@@ -2,6 +2,7 @@ import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FacturacionService } from '../../core/services/facturacion.service';
+import { PdfService } from '../../core/services/pdf.service';
 
 @Component({
   selector: 'app-facturar-nuevo',
@@ -71,7 +72,7 @@ import { FacturacionService } from '../../core/services/facturacion.service';
               </div>
               
               <!-- Botones de acción -->
-              <div class="grid grid-cols-2 gap-2">
+              <div class="grid grid-cols-2 gap-2 mb-3">
                 <button
                   (click)="verPDF()"
                   class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm"
@@ -85,18 +86,26 @@ import { FacturacionService } from '../../core/services/facturacion.service';
                   Compartir
                 </button>
                 <button
+                  (click)="descargar()"
+                  class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                >
+                  Descargar
+                </button>
+                <button
                   (click)="imprimir()"
                   class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm"
                 >
                   Imprimir
                 </button>
-                <button
-                  (click)="volver()"
-                  class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-                >
-                  Volver
-                </button>
               </div>
+              
+              <!-- Botón Volver -->
+              <button
+                (click)="volver()"
+                class="w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+              >
+                Volver
+              </button>
             </div>
           }
 
@@ -121,7 +130,8 @@ export class FacturarNuevoComponent {
 
   constructor(
     private fb: FormBuilder,
-    private facturacionService: FacturacionService
+    private facturacionService: FacturacionService,
+    private pdfService: PdfService
   ) {
     // Inicializar formulario
     this.formFactura = this.fb.group({
@@ -237,147 +247,67 @@ export class FacturarNuevoComponent {
   verPDF(): void {
     const factura = this.facturaEmitida();
     if (factura?.pdf_url) {
-      window.open(factura.pdf_url, '_blank');
+      this.pdfService.openPdf(factura.pdf_url);
     } else {
       alert('PDF no disponible');
     }
   }
 
-  compartir(): void {
+  async compartir(): Promise<void> {
     const factura = this.facturaEmitida();
-    if (!factura) return;
+    if (!factura?.pdf_url) {
+      alert('PDF no disponible para compartir');
+      return;
+    }
 
-    const texto = `Factura ${this.obtenerTipoComprobante(factura)} ${this.obtenerNumeroSinCeros(factura.numero_factura)} - ${this.formatearMonto(factura.monto)}`;
-    
-    // Verificar si Web Share API está disponible
-    if (navigator.share) {
-      if (factura.pdf_url) {
-        // Intentar compartir la URL del PDF
-        navigator.share({
-          title: 'Factura Emitida',
-          text: texto,
-          url: factura.pdf_url
-        }).catch((error) => {
-          console.log('Error sharing:', error);
-          this.fallbackShare(texto, factura.pdf_url);
-        });
-      } else {
-        navigator.share({
-          title: 'Factura Emitida',
-          text: texto
-        }).catch((error) => {
-          console.log('Error sharing:', error);
-          this.fallbackShare(texto);
-        });
-      }
-    } else if (navigator.share) {
-      // Web Share API disponible pero sin canShare
-      navigator.share({
-        title: 'Factura Emitida',
-        text: texto,
-        url: factura.pdf_url || window.location.href
-      }).catch((error) => {
-        console.log('Error sharing:', error);
-        this.fallbackShare(texto, factura.pdf_url);
+    try {
+      await this.pdfService.sharePdf({
+        url: factura.pdf_url,
+        filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura)}.pdf`,
+        title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`,
+        text: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)} - ${this.formatearMonto(factura.monto)}`
       });
-    } else {
-      this.fallbackShare(texto, factura.pdf_url);
+    } catch (error) {
+      console.error('❌ Error compartiendo:', error);
+      alert('Error al compartir el PDF');
     }
   }
 
-  private fallbackShare(texto: string, url?: string): void {
-    // Fallback: copiar al portapapeles
-    const textoCompleto = url ? `${texto}\n${url}` : texto;
-    
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(textoCompleto).then(() => {
-        alert('Información copiada al portapapeles');
-      }).catch(() => {
-        this.showShareInfo(textoCompleto);
-      });
-    } else {
-      this.showShareInfo(textoCompleto);
-    }
-  }
-
-  private showShareInfo(texto: string): void {
-    // Mostrar información en un modal o alert simple
-    alert('Información de la factura:\n' + texto);
-  }
-
-  imprimir(): void {
+  async imprimir(): Promise<void> {
     const factura = this.facturaEmitida();
     if (!factura?.pdf_url) {
       alert('PDF no disponible para imprimir');
       return;
     }
 
-    // Detectar si estamos en Android
-    const isAndroid = /Android/i.test(navigator.userAgent);
-    
-    if (isAndroid) {
-      // En Android, usar Web Share API para compartir con aplicaciones de impresión
-      if (navigator.share) {
-        navigator.share({
-          title: 'Imprimir Factura',
-          text: `Factura ${this.obtenerTipoComprobante(factura)} ${this.obtenerNumeroSinCeros(factura.numero_factura)}`,
-          url: factura.pdf_url
-        }).then(() => {
-          console.log('PDF compartido para impresión');
-        }).catch((error) => {
-          console.log('Error al compartir para impresión:', error);
-          // Fallback: abrir PDF en nueva pestaña
-          this.abrirPDFParaImprimir(factura.pdf_url);
-        });
-      } else {
-        // Fallback: abrir PDF en nueva pestaña con instrucciones
-        this.abrirPDFParaImprimir(factura.pdf_url);
-      }
-    } else {
-      // En desktop, usar el método tradicional con iframe
-      this.imprimirEnDesktop(factura.pdf_url);
+    try {
+      await this.pdfService.printPdf(factura.pdf_url);
+    } catch (error) {
+      console.error('❌ Error imprimiendo:', error);
+      // Fallback - abrir en nueva ventana
+      window.open(factura.pdf_url, '_blank');
     }
   }
 
-  private abrirPDFParaImprimir(pdfUrl: string): void {
-    window.open(pdfUrl, '_blank');
-    // Mostrar instrucciones para Android
-    setTimeout(() => {
-      alert('PDF abierto. Usa el menú de 3 puntos en Chrome y selecciona "Imprimir" o "Compartir" para enviar a una impresora.');
-    }, 1000);
-  }
+  async descargar(): Promise<void> {
+    const factura = this.facturaEmitida();
+    if (!factura?.pdf_url) {
+      alert('PDF no disponible');
+      return;
+    }
 
-  private imprimirEnDesktop(pdfUrl: string): void {
-    // Crear iframe oculto para imprimir PDF en desktop
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = pdfUrl;
-    document.body.appendChild(iframe);
-    
-    iframe.onload = () => {
-      try {
-        // Intentar imprimir directamente
-        iframe.contentWindow?.print();
-      } catch (error) {
-        console.log('No se pudo imprimir automáticamente:', error);
-        // Fallback: abrir en nueva ventana
-        window.open(pdfUrl, '_blank');
-      }
-      // Remover iframe después de un tiempo
-      setTimeout(() => {
-        if (document.body.contains(iframe)) {
-          document.body.removeChild(iframe);
-        }
-      }, 1000);
-    };
-
-    iframe.onerror = () => {
-      // Si hay error cargando el iframe, abrir en nueva ventana
-      window.open(pdfUrl, '_blank');
-      if (document.body.contains(iframe)) {
-        document.body.removeChild(iframe);
-      }
-    };
+    try {
+      await this.pdfService.downloadPdf({
+        url: factura.pdf_url,
+        filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura)}.pdf`,
+        title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`,
+        text: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`
+      });
+    } catch (error) {
+      console.error('❌ Error descargando:', error);
+      // Fallback - abrir URL original
+      window.open(factura.pdf_url, '_blank');
+    }
   }
 
   volver(): void {
