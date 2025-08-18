@@ -281,7 +281,12 @@ export class FacturarNuevoComponent {
     }
 
     try {
-      await this.pdfService.printPdf(factura.pdf_url);
+      await this.pdfService.printPdf({
+        url: factura.pdf_url,
+        filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura)}.pdf`,
+        title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`,
+        text: `Imprimir Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`
+      });
     } catch (error) {
       console.error('❌ Error imprimiendo:', error);
       // Fallback - abrir en nueva ventana
