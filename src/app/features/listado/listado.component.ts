@@ -4,6 +4,7 @@ import { es } from 'date-fns/locale';
 import { CurrencyPipe, registerLocaleData } from '@angular/common';
 import localeEs from '@angular/common/locales/es-AR';
 import { supabase } from '../../core/services/supabase.service';
+import { PdfService } from '../../core/services/pdf.service';
 
 interface Factura {
   id: string;
@@ -65,31 +66,98 @@ interface Factura {
             <p class="text-gray-500">No hay facturas para esta fecha</p>
           </div>
         } @else {
-          <div class="space-y-1">
+          <div class="space-y-2">
             @for (factura of facturasFiltradas(); track factura.id) {
-              <div [class]="obtenerClaseFilaFactura(factura) + ' p-2'"
-                   (click)="verFactura(factura)">
-                <div class="flex items-center justify-between gap-3">
-                  <!-- Tipo de comprobante -->
-                  <div class="text-xs font-medium text-gray-700 min-w-0 flex-shrink-0 text-left">
-                    {{ obtenerTipoComprobante(factura) }}
-                  </div>
-                  <!-- Número de factura -->
-                  <div class="font-mono text-sm min-w-0 flex-shrink-0 text-right">
-                    {{ obtenerNumeroSinCeros(factura.numero_factura) }}
-                  </div>
-                  <!-- Estado -->
-                  <div class="min-w-0 flex-shrink-0 text-center">
-                    <span class="px-2 py-1 rounded text-xs font-medium"
-                          [class]="obtenerClaseEstado(factura.estado)">
-                      {{ obtenerTextoEstado(factura.estado) }}
-                    </span>
-                  </div>
-                  <!-- Monto -->
-                  <div class="text-right font-semibold text-sm min-w-0" [class]="obtenerClaseMonto(factura).replace('col-span-3', '')">
-                    {{ obtenerMontoMostrar(factura) | currency:'ARS':'symbol':'1.2-2':'es-AR' }}
+              <div class="border border-gray-200 rounded-lg overflow-hidden transition-all duration-200"
+                   [class]="facturaExpandida() === factura.id ? 'shadow-md border-blue-300' : 'shadow-sm'">
+                
+                <!-- Tarjeta principal (clickeable) -->
+                <div [class]="obtenerClaseFilaFactura(factura) + ' p-3 cursor-pointer hover:bg-gray-50'"
+                     (click)="toggleExpansion(factura.id)">
+                  <div class="flex items-center justify-between gap-3">
+                    <!-- Tipo de comprobante -->
+                    <div class="text-xs font-medium text-gray-700 min-w-0 flex-shrink-0 text-left">
+                      {{ obtenerTipoComprobante(factura) }}
+                    </div>
+                    <!-- Número de factura -->
+                    <div class="font-mono text-sm min-w-0 flex-shrink-0 text-right">
+                      {{ obtenerNumeroSinCeros(factura.numero_factura) }}
+                    </div>
+                    <!-- Estado -->
+                    <div class="min-w-0 flex-shrink-0 text-center">
+                      <span class="px-2 py-1 rounded text-xs font-medium"
+                            [class]="obtenerClaseEstado(factura.estado)">
+                        {{ obtenerTextoEstado(factura.estado) }}
+                      </span>
+                    </div>
+                    <!-- Monto -->
+                    <div class="text-right font-semibold text-sm min-w-0" [class]="obtenerClaseMonto(factura).replace('col-span-3', '')">
+                      {{ obtenerMontoMostrar(factura) | currency:'ARS':'symbol':'1.2-2':'es-AR' }}
+                    </div>
+                    <!-- Icono de expansión -->
+                    <div class="ml-2 text-gray-400">
+                      <svg class="w-4 h-4 transition-transform duration-200"
+                           [class]="facturaExpandida() === factura.id ? 'rotate-180' : ''"
+                           fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                    </div>
                   </div>
                 </div>
+
+                <!-- Panel expandido con botones de acción -->
+                @if (facturaExpandida() === factura.id) {
+                  <div class="border-t border-gray-200 bg-gray-50 p-4 animate-fadeIn">
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                      <button
+                        (click)="verPDF(factura)"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                        Ver
+                      </button>
+                      <button
+                        (click)="compartir(factura)"
+                        class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"></path>
+                        </svg>
+                        Compartir
+                      </button>
+                      <button
+                        (click)="descargar(factura)"
+                        class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Descargar
+                      </button>
+                      <button
+                        (click)="imprimir(factura)"
+                        class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                        </svg>
+                        Imprimir
+                      </button>
+                    </div>
+                    
+                    <!-- Información adicional -->
+                    <div class="text-xs text-gray-600 space-y-1">
+                      @if (factura.cae) {
+                        <div>CAE: {{ factura.cae }}</div>
+                      }
+                      @if (factura.concepto) {
+                        <div>Concepto: {{ factura.concepto }}</div>
+                      }
+                      @if (factura.punto_venta) {
+                        <div>Punto de venta: {{ factura.punto_venta }}</div>
+                      }
+                    </div>
+                  </div>
+                }
               </div>
             }
           </div>
@@ -111,19 +179,117 @@ interface Factura {
       }
     </div>
   `,
+  styles: [`
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .animate-fadeIn {
+      animation: fadeIn 0.2s ease-out;
+    }
+  `]
 })
 export class ListadoComponent {
   // Signals para estado
   fechaSeleccionada = signal(new Date().toISOString().split('T')[0]); // Fecha actual por defecto
   facturas = signal<Factura[]>([]);
   cargando = signal(false);
+  facturaExpandida = signal<string | null>(null); // ID de factura expandida
 
-  constructor() {
+  constructor(private pdfService: PdfService) {
     // Registrar locale argentino
     registerLocaleData(localeEs, 'es-AR');
     
     // Cargar facturas iniciales
     this.cargarFacturasIniciales();
+  }
+
+  // Función para alternar la expansión de una tarjeta
+  toggleExpansion(facturaId: string) {
+    if (this.facturaExpandida() === facturaId) {
+      this.facturaExpandida.set(null);
+    } else {
+      this.facturaExpandida.set(facturaId);
+    }
+  }
+
+  // Métodos de acción para PDF (adaptados de facturar-nuevo)
+  async verPDF(factura: any) {
+    if (!factura.pdf_url) {
+      console.error('No hay URL de PDF disponible');
+      return;
+    }
+
+    try {
+      // Abrir en nueva pestaña
+      window.open(factura.pdf_url, '_blank');
+    } catch (error) {
+      console.error('Error al abrir PDF:', error);
+    }
+  }
+
+  async compartir(factura: any) {
+    if (!factura.pdf_url) {
+      console.error('No hay URL de PDF disponible para compartir');
+      return;
+    }
+
+    try {
+      const pdfInfo = {
+        url: factura.pdf_url,
+        filename: `factura-${factura.numero_factura}.pdf`,
+        title: `Factura ${factura.numero_factura}`,
+        text: `Factura ${factura.numero_factura} - ${factura.monto}`
+      };
+      await this.pdfService.sharePdf(pdfInfo);
+    } catch (error) {
+      console.error('Error al compartir:', error);
+    }
+  }
+
+  async descargar(factura: any) {
+    if (!factura.pdf_url) {
+      console.error('No hay URL de PDF disponible para descargar');
+      return;
+    }
+
+    try {
+      const pdfInfo = {
+        url: factura.pdf_url,
+        filename: `factura-${factura.numero_factura}.pdf`,
+        title: `Factura ${factura.numero_factura}`,
+        text: `Factura ${factura.numero_factura} - ${factura.monto}`
+      };
+      await this.pdfService.downloadPdf(pdfInfo);
+    } catch (error) {
+      console.error('Error al descargar:', error);
+    }
+  }
+
+  async imprimir(factura: any) {
+    if (!factura.pdf_url) {
+      console.error('No hay URL de PDF disponible para imprimir');
+      return;
+    }
+
+    try {
+      const pdfInfo = {
+        url: factura.pdf_url,
+        filename: `factura-${factura.numero_factura}.pdf`,
+        title: `Factura ${factura.numero_factura}`,
+        text: `Factura ${factura.numero_factura} - ${factura.monto}`
+      };
+      await this.pdfService.printPdf(pdfInfo);
+    } catch (error) {
+      console.error('Error al imprimir:', error);
+    }
   }
 
   // Computed para nombre de fecha formateado
@@ -304,10 +470,5 @@ export class ListadoComponent {
 
   obtenerTextoEstado(estado: string): string {
     return estado === 'emitida' ? 'Emitida' : 'Anulada';
-  }
-
-  verFactura(factura: Factura) {
-    console.log('Ver factura:', factura);
-    // Aquí implementar lógica para mostrar PDF o detalles
   }
 }
