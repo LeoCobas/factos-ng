@@ -73,7 +73,7 @@ interface Factura {
                 
                 <!-- Tarjeta principal (clickeable) -->
                 <div [class]="obtenerClaseFilaFactura(factura) + ' p-3 cursor-pointer hover:bg-gray-50'"
-                     (click)="testClick(factura.id)"
+                     (click)="toggleExpansion(factura.id, $event)"
                      role="button"
                      tabindex="0">
                   <div class="flex items-center justify-between gap-3">
@@ -112,7 +112,7 @@ interface Factura {
                   <div class="border-t border-gray-200 bg-gray-50 p-4 animate-fadeIn">
                     <div class="grid grid-cols-2 gap-2 mb-3">
                       <button
-                        (click)="verPDF(factura)"
+                        (click)="verPDF(factura, $event)"
                         class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -121,7 +121,7 @@ interface Factura {
                         Ver
                       </button>
                       <button
-                        (click)="compartir(factura)"
+                        (click)="compartir(factura, $event)"
                         class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"></path>
@@ -129,7 +129,7 @@ interface Factura {
                         Compartir
                       </button>
                       <button
-                        (click)="descargar(factura)"
+                        (click)="descargar(factura, $event)"
                         class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -137,7 +137,7 @@ interface Factura {
                         Descargar
                       </button>
                       <button
-                        (click)="imprimir(factura)"
+                        (click)="imprimir(factura, $event)"
                         class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
@@ -245,7 +245,12 @@ export class ListadoComponent {
   }
 
   // Métodos de acción para PDF (adaptados de facturar-nuevo)
-  async verPDF(factura: any) {
+  async verPDF(factura: any, event?: Event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
     if (!factura.pdf_url) {
       console.error('No hay URL de PDF disponible');
       return;
@@ -259,7 +264,12 @@ export class ListadoComponent {
     }
   }
 
-  async compartir(factura: any) {
+  async compartir(factura: any, event?: Event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
     if (!factura.pdf_url) {
       console.error('No hay URL de PDF disponible para compartir');
       return;
@@ -278,7 +288,12 @@ export class ListadoComponent {
     }
   }
 
-  async descargar(factura: any) {
+  async descargar(factura: any, event?: Event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
     if (!factura.pdf_url) {
       console.error('No hay URL de PDF disponible para descargar');
       return;
@@ -297,7 +312,12 @@ export class ListadoComponent {
     }
   }
 
-  async imprimir(factura: any) {
+  async imprimir(factura: any, event?: Event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
     if (!factura.pdf_url) {
       console.error('No hay URL de PDF disponible para imprimir');
       return;
