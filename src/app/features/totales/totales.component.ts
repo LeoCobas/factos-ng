@@ -23,7 +23,7 @@ interface FacturaData {
 @Component({
   selector: 'app-totales',
   template: `
-    <div class="space-y-6">
+  <div class="space-y-3">
       <!-- Loading state -->
       @if (cargando()) {
         <div class="text-center py-8">
@@ -32,7 +32,7 @@ interface FacturaData {
         </div>
       } @else {
         <!-- Totales por período -->
-        <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+  <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
           @for (periodo of periodos(); track periodo.nombre) {
             <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4"
                  [class]="'border-l-4 border-l-' + periodo.color + '-500'">
@@ -58,30 +58,7 @@ interface FacturaData {
           }
         </div>
 
-        <!-- Gráfico simple (representación textual) -->
-        <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-          <h3 class="text-lg font-semibold text-gray-900 mb-4">Comparación de Períodos</h3>
-          
-          <div class="space-y-4">
-            @for (periodo of periodos(); track periodo.nombre) {
-              <div class="flex items-center">
-                <div class="w-20 text-sm text-gray-600">{{ periodo.nombre }}</div>
-                <div class="flex-1 mx-4">
-                  <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      class="h-2 rounded-full"
-                      [class]="'bg-' + periodo.color + '-500'"
-                      [style.width.%]="getBarWidth(periodo.total)"
-                    ></div>
-                  </div>
-                </div>
-                <div class="w-24 text-sm text-right font-medium">
-                  {{ periodo.total | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
-                </div>
-              </div>
-            }
-          </div>
-        </div>
+        
 
         <!-- Resumen anual -->
         <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 p-4">
@@ -107,7 +84,7 @@ interface FacturaData {
         </div>
 
         <!-- Métricas adicionales -->
-        <div class="grid gap-6 md:grid-cols-2">
+  <div class="grid gap-3 md:grid-cols-2">
           <!-- Día más productivo -->
           <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">Día Más Productivo</h3>

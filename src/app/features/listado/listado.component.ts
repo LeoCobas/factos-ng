@@ -98,7 +98,7 @@ interface Factura {
 
       <!-- Totales del día -->
       @if (facturasFiltradas().length > 0) {
-        <div class="bg-blue-50 rounded-lg border border-blue-200 p-4">
+  <div class="bg-blue-50 rounded-lg border border-blue-200 p-2">
           <div class="flex justify-between items-center">
             <span class="text-sm font-medium text-blue-800">
               Total del día ({{ facturasFiltradas().length }} facturas)
@@ -114,7 +114,7 @@ interface Factura {
 })
 export class ListadoComponent {
   // Signals para estado
-  fechaSeleccionada = signal('2025-08-16'); // Fecha con la nota de crédito real NC B 00000007
+  fechaSeleccionada = signal(new Date().toISOString().split('T')[0]); // Fecha actual por defecto
   facturas = signal<Factura[]>([]);
   cargando = signal(false);
 
@@ -287,7 +287,7 @@ export class ListadoComponent {
   }
 
   obtenerClaseFilaFactura(factura: Factura): string {
-    const baseClass = 'px-3 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer';
+  const baseClass = 'px-2 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer';
     if (this.esNotaCredito(factura)) {
       return baseClass + ' bg-red-50 border-red-200 hover:bg-red-100';
     }
