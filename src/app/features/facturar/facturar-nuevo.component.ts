@@ -15,7 +15,7 @@ import { PdfService } from '../../core/services/pdf.service';
         <form [formGroup]="formFactura" (ngSubmit)="emitirFactura()" class="space-y-4 sm:space-y-6">
             <!-- Campo Monto -->
             <div>
-              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-4">
+              <label class="block text-sm font-medium text-foreground mb-4">
                 Monto Total
               </label>
               <input
@@ -33,7 +33,7 @@ import { PdfService } from '../../core/services/pdf.service';
 
             <!-- Campo Fecha -->
             <div>
-              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-4">
+              <label class="block text-sm font-medium text-foreground mb-4">
                 Fecha de Facturación
               </label>
               <input
@@ -51,7 +51,7 @@ import { PdfService } from '../../core/services/pdf.service';
             <button
               type="submit"
               [disabled]="isSubmitting() || formFactura.invalid"
-              class="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="w-full bg-primary text-primary-foreground py-3 px-4 rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               @if (isSubmitting()) {
                 <span>Procesando...</span>

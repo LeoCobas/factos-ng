@@ -29,8 +29,8 @@
       try {
         var saved = localStorage.getItem('theme'); // 'light' | 'dark' | 'auto' | null
         var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        // If no saved preference or auto, follow system. If explicitly light/dark, use that.
-        var isDark = saved === 'dark' || (saved === 'auto' && prefersDark) || (!saved && prefersDark);
+        // If saved is explicitly dark, or if auto/null and system prefers dark
+        var isDark = saved === 'dark' || ((saved === 'auto' || saved === null) && prefersDark);
         var root = document.documentElement;
         if (isDark) root.classList.add('dark'); else root.classList.remove('dark');
       } catch (e) { /* no-op */ }

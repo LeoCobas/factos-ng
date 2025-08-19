@@ -30,7 +30,7 @@ interface Factura {
     <div class="space-y-4 sm:space-y-6">
       <!-- Selector de fecha -->
       <div class="card-surface p-4">
-        <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-4">
+        <label class="form-label mb-4">
           Seleccionar fecha
         </label>
         
@@ -41,7 +41,7 @@ interface Factura {
             (change)="cambiarFecha($event)"
             class="form-input w-full py-2 px-3 pl-10"
           />
-          <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-400 dark:text-zinc-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
           </svg>
         </div>
@@ -49,40 +49,40 @@ interface Factura {
 
       <!-- Lista de facturas -->
       <div class="card-surface p-4">
-        <h3 class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-4">
+        <h3 class="form-label mb-4">
           {{ nombreFechaSeleccionada() }}
         </h3>
 
         @if (cargando()) {
           <div class="text-center py-8">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p class="text-zinc-500 dark:text-zinc-400 mt-4">Cargando facturas...</p>
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <p class="text-muted-foreground mt-4">Cargando facturas...</p>
           </div>
         } @else if (facturasFiltradas().length === 0) {
           <div class="text-center py-8">
-            <svg class="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-12 h-12 text-muted-foreground mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
-            <p class="text-zinc-500 dark:text-zinc-400">No hay facturas para esta fecha</p>
+            <p class="text-muted-foreground">No hay facturas para esta fecha</p>
           </div>
         } @else {
           <div class="space-y-2">
             @for (factura of facturasFiltradas(); track factura.id) {
-              <div class="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden transition-all duration-200"
-                   [class]="facturaExpandida() === factura.id ? 'shadow-md border-blue-300 dark:border-blue-600' : 'shadow-sm'">
+              <div class="border border-border rounded-lg overflow-hidden transition-all duration-200"
+                   [class]="facturaExpandida() === factura.id ? 'shadow-md border-primary' : 'shadow-sm'">
                 
                 <!-- Tarjeta principal (clickeable) -->
-                <div [class]="obtenerClaseFilaFactura(factura) + ' p-3 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800'"
+                <div [class]="obtenerClaseFilaFactura(factura) + ' p-3 cursor-pointer hover:bg-muted'"
                      (click)="toggleExpansion(factura.id, $event)"
                      role="button"
                      tabindex="0">
                   <div class="flex items-center justify-between gap-3">
                     <!-- Tipo de comprobante -->
-                    <div class="text-xs font-medium text-zinc-700 dark:text-zinc-300 min-w-0 flex-shrink-0 text-left">
+                    <div class="text-xs font-medium text-foreground min-w-0 flex-shrink-0 text-left">
                       {{ obtenerTipoComprobante(factura) }}
                     </div>
                     <!-- Número de factura -->
-                    <div class="font-mono text-sm min-w-0 flex-shrink-0 text-right text-zinc-900 dark:text-zinc-100">
+                    <div class="font-mono text-sm min-w-0 flex-shrink-0 text-right text-foreground">
                       {{ obtenerNumeroSinCeros(factura.numero_factura) }}
                     </div>
                     <!-- Estado -->
@@ -97,7 +97,7 @@ interface Factura {
                       {{ obtenerMontoMostrar(factura) | currency:'ARS':'symbol':'1.2-2':'es-AR' }}
                     </div>
                     <!-- Icono de expansión -->
-                    <div class="ml-2 text-zinc-400 dark:text-zinc-500">
+                    <div class="ml-2 text-muted-foreground">
                       <svg class="w-4 h-4 transition-transform duration-200"
                            [class]="facturaExpandida() === factura.id ? 'rotate-180' : ''"
                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,7 +109,7 @@ interface Factura {
 
                 <!-- Panel expandido con botones de acción -->
                 @if (facturaExpandida() === factura.id) {
-                  <div class="border-t border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 p-4 animate-fadeIn">
+                  <div class="border-t border-border bg-muted p-4 animate-fadeIn">
                     <div class="grid grid-cols-2 gap-2 mb-3">
                       <button
                         (click)="verPDF(factura, $event)"
@@ -147,7 +147,7 @@ interface Factura {
                     </div>
                     
                     <!-- Información adicional -->
-                    <div class="text-xs text-zinc-600 dark:text-zinc-400 space-y-1">
+                    <div class="text-xs text-muted-foreground space-y-1">
                       @if (factura.cae) {
                         <div>CAE: {{ factura.cae }}</div>
                       }
@@ -490,26 +490,25 @@ export class ListadoComponent {
 
   obtenerClaseEstado(estado: string): string {
     if (estado === 'emitida') {
-      return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300';
+      return 'bg-green-100 text-green-700';
     } else {
-      return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300';
+      return 'bg-red-100 text-red-700';
     }
   }
 
   obtenerClaseFilaFactura(factura: Factura): string {
-    const baseClass = 'px-2 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer';
     if (this.esNotaCredito(factura)) {
-      return baseClass + ' bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700 hover:bg-red-100 dark:hover:bg-red-900/30';
+      return 'bg-red-50 border-red-200';
     }
-    return baseClass;
+    return 'bg-card';
   }
 
   obtenerClaseMonto(factura: Factura): string {
     const baseClass = 'col-span-3 text-right font-semibold text-sm';
     if (this.esNotaCredito(factura)) {
-      return baseClass + ' text-red-600 dark:text-red-400';
+      return baseClass + ' text-red-600';
     }
-    return baseClass;
+    return baseClass + ' text-foreground';
   }
 
   obtenerTextoEstado(estado: string): string {

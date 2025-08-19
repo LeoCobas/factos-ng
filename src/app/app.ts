@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { ThemeService } from './core/services/theme.service';
 
 @Component({
   selector: 'app-root',
@@ -11,4 +12,11 @@ import { RouterOutlet } from '@angular/router';
 })
 export class App {
   title = 'FACTOS - Angular';
+  
+  // Force ThemeService initialization
+  private themeService = inject(ThemeService);
+
+  constructor() {
+    // Theme service is now initialized
+  }
 }
