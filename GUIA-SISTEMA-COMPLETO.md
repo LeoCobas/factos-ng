@@ -44,10 +44,6 @@ Este proyecto Angular 20 es la nueva versión de FACTOS, especializada en la **f
   - **Validaciones robustas**: Monto, fecha, estructura de comprobante
   - **Storage automático**: PDFs en Supabase Storage con estructura organizada
 
-- **TusFacturasService**: Servicio legacy (deprecado)
-  - Mantenido solo para compatibilidad
-  - Reemplazado por FacturacionService
-
 - **SupabaseService**: Integración con base de datos en tiempo real
   - Gestión de sesiones
   - CRUD de facturas y configuración
@@ -57,6 +53,8 @@ Este proyecto Angular 20 es la nueva versión de FACTOS, especializada en la **f
   - Login/logout con signals
   - Estados reactivos
   - Guards de protección de rutas
+
+- **PdfService**: Acciones sobre PDFs (ver, compartir, descargar, imprimir)
 
 ## 🏗️ Arquitectura Actualizada
 
