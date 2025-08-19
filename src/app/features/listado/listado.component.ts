@@ -490,16 +490,16 @@ export class ListadoComponent {
 
   obtenerClaseEstado(estado: string): string {
     if (estado === 'emitida') {
-      return 'bg-green-100 text-green-700';
+      return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300';
     } else {
-      return 'bg-red-100 text-red-700';
+      return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300';
     }
   }
 
   obtenerClaseFilaFactura(factura: Factura): string {
-  const baseClass = 'px-2 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer';
+    const baseClass = 'px-2 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer';
     if (this.esNotaCredito(factura)) {
-      return baseClass + ' bg-red-50 border-red-200 hover:bg-red-100';
+      return baseClass + ' bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700 hover:bg-red-100 dark:hover:bg-red-900/30';
     }
     return baseClass;
   }
@@ -507,7 +507,7 @@ export class ListadoComponent {
   obtenerClaseMonto(factura: Factura): string {
     const baseClass = 'col-span-3 text-right font-semibold text-sm';
     if (this.esNotaCredito(factura)) {
-      return baseClass + ' text-red-600';
+      return baseClass + ' text-red-600 dark:text-red-400';
     }
     return baseClass;
   }
