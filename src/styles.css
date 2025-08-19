@@ -49,3 +49,8 @@ body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
 }
+
+/* Base typography and background using Tailwind's palette for a subtle dark theme */
+html, body { min-height: 100%; }
+/* Optional: if you prefer Tailwind utilities instead of CSS vars everywhere */
+/* body { @apply bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100; } */

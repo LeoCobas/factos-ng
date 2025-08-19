@@ -66,12 +66,9 @@ src/
 │   │   │   ├── auth.service.ts
 │   │   │   ├── facturacion.service.ts    # 🆕 Servicio principal
 │   │   │   ├── supabase.service.ts
-│   │   │   ├── clientes.service.ts
-│   │   │   └── tusfacturas.service.ts    # ⚠️ Deprecado
+│   │   │   └── pdf.service.ts            # Acciones sobre PDFs
 │   │   ├── types/
-│   │   │   ├── facturacion.types.ts      # 🆕 Tipos para facturación
-│   │   │   ├── database.types.ts
-│   │   │   └── tusfacturas.types.ts      # Legacy
+│   │   │   └── database.types.ts         # Tipos generados de Supabase
 │   │   └── guards/
 │   │       └── auth.guard.ts
 │   ├── features/             # Módulos por funcionalidad

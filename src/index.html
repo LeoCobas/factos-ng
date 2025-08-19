@@ -6,6 +6,7 @@
   <meta name="description" content="Sistema de facturación electrónica con TusFacturas API">
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="manifest" href="manifest.webmanifest">
   
@@ -21,6 +22,19 @@
   
   <!-- iOS -->
   <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+
+  <!-- Apply saved/system theme before styles to avoid flash -->
+  <script>
+    (function() {
+      try {
+        var saved = localStorage.getItem('theme'); // 'light' | 'dark' | 'auto' | null
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var isDark = saved === 'dark' || (saved !== 'light' && prefersDark);
+        var root = document.documentElement;
+        if (isDark) root.classList.add('dark'); else root.classList.remove('dark');
+      } catch (e) { /* no-op */ }
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>

@@ -1,6 +1,7 @@
 import { Component, signal, inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { supabase } from '../../core/services/supabase.service';
+import { ThemeService, ThemeMode } from '../../core/services/theme.service';
 
 interface ConfigForm {
   concepto: string;
@@ -35,6 +36,20 @@ interface ConfiguracionRow {
   selector: 'app-configuracion',
   template: `
     <div class="space-y-6">
+      <!-- Preferencia de tema -->
+      <div class="flex items-center justify-end gap-3">
+        <label for="theme-select" class="text-sm text-gray-600 dark:text-gray-300">Tema</label>
+        <select
+          id="theme-select"
+          [value]="themeService.theme()"
+          (change)="onThemeChange($event)"
+          class="px-3 py-2 rounded-md border border-gray-300 bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
+        >
+          <option value="auto">Auto</option>
+          <option value="light">Claro</option>
+          <option value="dark">Oscuro</option>
+        </select>
+      </div>
       @if (cargando()) {
         <div class="flex items-center justify-center py-12">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -299,6 +314,7 @@ interface ConfiguracionRow {
 })
 export class ConfiguracionComponent implements OnInit {
   private fb = inject(FormBuilder);
+  readonly themeService = inject(ThemeService);
 
   // Estados
   cargando = signal(false);
@@ -435,5 +451,10 @@ export class ConfiguracionComponent implements OnInit {
   private mostrarMensaje(texto: string, tipo: 'success' | 'error'): void {
     this.mensaje.set({ texto, tipo });
     setTimeout(() => this.mensaje.set(null), 5000);
+  }
+
+  onThemeChange(event: Event) {
+    const value = (event.target as HTMLSelectElement).value as ThemeMode;
+    this.themeService.setTheme(value);
   }
 }

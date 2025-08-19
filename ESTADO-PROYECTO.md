@@ -11,12 +11,11 @@
 - [x] **TypeScript strict** con tipado según documentación TusFacturas
 - [x] **Estructura organizada**: core, features, shared, layouts
 
-### 🔧 Servicios Implementados
+### �️ Servicios Implementados
 - [x] **FacturacionService** - Servicio principal de facturación completa
 - [x] **AuthService** - Autenticación con signals y guards
 - [x] **SupabaseService** - Conexión a base de datos y storage
-- [x] **ClientesService** - Gestión de clientes (legacy)
-- [x] **TusFacturasService** - Mantenido para compatibilidad (deprecado)
+- [x] **PdfService** - Ver/compartir/descargar/imprimir PDFs
 
 ### 📱 Componentes Completados
 - [x] **FacturarComponent** - Mobile-first, cards dinámicas, auto-focus
@@ -126,11 +125,11 @@ ng generate service nombre     # Generar servicio
 - Control de flujo nativo (`@if`, `@for`, `@switch`)
 - Lazy loading habilitado
 
-### 📚 Documentación Completa
+### � Documentación Completa
 - **README.md**: Instalación y uso rápido ✅
 - **GUIA-SISTEMA-COMPLETO.md**: Documentación técnica detallada ✅  
-- **Código comentado**: Todos los servicios documentados ✅
-- **Tipos TypeScript**: Según documentación oficial APIs ✅
+- **Código comentado**: Servicios documentados ✅
+- **Tipos TypeScript**: `database.types.ts` (Supabase) ✅
 
 ---
 

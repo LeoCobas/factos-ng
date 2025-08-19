@@ -83,13 +83,12 @@ ng serve --host 0.0.0.0
 src/app/
 ├── core/
 │   ├── services/
-│   │   ├── facturacion.service.ts    # 🆕 Servicio principal
+│   │   ├── facturacion.service.ts    # ✅ Servicio principal
 │   │   ├── auth.service.ts
-│   │   ├── supabase.service.ts  
-│   │   └── tusfacturas.service.ts    # ⚠️ Deprecado
+│   │   ├── supabase.service.ts
+│   │   └── pdf.service.ts
 │   ├── types/
-│   │   ├── facturacion.types.ts      # 🆕 Tipos TusFacturas
-│   │   └── database.types.ts
+│   │   └── database.types.ts         # ✅ Tipos generados de Supabase
 │   └── guards/auth.guard.ts
 ├── features/
 │   ├── facturar/        # 🔄 Mobile-first, cards dinámicas
