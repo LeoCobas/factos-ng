@@ -38,12 +38,12 @@ interface ConfiguracionRow {
     <div class="space-y-6">
       <!-- Preferencia de tema -->
       <div class="flex items-center justify-end gap-3">
-        <label for="theme-select" class="text-sm text-gray-600 dark:text-gray-300">Tema</label>
+        <label for="theme-select" class="text-sm text-zinc-600 dark:text-zinc-300 font-medium">Tema</label>
         <select
           id="theme-select"
           [value]="themeService.theme()"
           (change)="onThemeChange($event)"
-          class="px-3 py-2 rounded-md border border-gray-300 bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
+          class="px-3 py-2 rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 transition-colors duration-200 focus:ring-2 focus:ring-blue-500"
         >
           <option value="auto">Auto</option>
           <option value="light">Claro</option>
@@ -52,40 +52,40 @@ interface ConfiguracionRow {
       </div>
       @if (cargando()) {
         <div class="flex items-center justify-center py-12">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p class="text-gray-500 ml-4">Cargando configuración...</p>
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+          <p class="text-zinc-500 dark:text-zinc-400 ml-4">Cargando configuración...</p>
         </div>
       } @else {
         <form [formGroup]="configForm" (ngSubmit)="onSubmit()" class="space-y-6">
           
           <!-- Configuración de Facturación -->
-          <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
-            <div class="px-6 py-4 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Configuración de Facturación</h3>
+          <div class="card-surface">
+            <div class="card-header">
+              <h3 class="card-title">Configuración de Facturación</h3>
             </div>
             <div class="p-6 space-y-4">
               
               <!-- Concepto a facturar -->
               <div class="space-y-2">
-                <label class="block text-sm font-medium text-gray-700">Concepto a facturar</label>
+                <label class="form-label">Concepto a facturar</label>
                 <input
                   type="text"
                   formControlName="concepto"
                   placeholder="Honorarios Profesionales"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="form-input"
                   [class.border-red-500]="configForm.get('concepto')?.invalid && configForm.get('concepto')?.touched"
                 >
                 @if (configForm.get('concepto')?.invalid && configForm.get('concepto')?.touched) {
-                  <p class="text-sm text-red-500">El concepto es requerido</p>
+                  <p class="form-error">El concepto es requerido</p>
                 }
               </div>
 
               <!-- IVA -->
               <div class="space-y-2">
-                <label class="block text-sm font-medium text-gray-700">IVA</label>
+                <label class="form-label">IVA</label>
                 <select 
                   formControlName="iva_porcentaje"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="form-select"
                 >
                   <option value="" disabled>Seleccionar IVA</option>
                   <option value="21.00">21%</option>
@@ -95,16 +95,16 @@ interface ConfiguracionRow {
 
               <!-- Actividad -->
               <div class="space-y-2">
-                <label class="block text-sm font-medium text-gray-700">Actividad</label>
+                <label class="form-label">Actividad</label>
                 <select 
                   formControlName="actividad"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="form-select"
                 >
                   <option value="" disabled>Seleccionar actividad</option>
                   <option value="bienes">Bienes (-5 días)</option>
                   <option value="servicios">Servicios (-10 días)</option>
                 </select>
-                <p class="text-xs text-gray-500">
+                <p class="form-help">
                   Determina cuántos días hacia atrás se pueden emitir facturas
                 </p>
               </div>
@@ -113,57 +113,57 @@ interface ConfiguracionRow {
           </div>
 
           <!-- Datos del Negocio -->
-          <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
-            <div class="px-6 py-4 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Datos del Negocio</h3>
+          <div class="card-surface">
+            <div class="card-header">
+              <h3 class="card-title">Datos del Negocio</h3>
             </div>
             <div class="p-6 space-y-4">
               
               <!-- Punto de Venta -->
               <div class="space-y-2">
-                <label class="block text-sm font-medium text-gray-700">Punto de Venta</label>
+                <label class="form-label">Punto de Venta</label>
                 <input
                   type="number"
                   formControlName="punto_venta"
                   min="1"
                   max="99"
                   placeholder="4"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="form-input"
                   [class.border-red-500]="configForm.get('punto_venta')?.invalid && configForm.get('punto_venta')?.touched"
                 >
                 @if (configForm.get('punto_venta')?.invalid && configForm.get('punto_venta')?.touched) {
-                  <p class="text-sm text-red-500">El punto de venta es requerido</p>
+                  <p class="form-error">El punto de venta es requerido</p>
                 }
               </div>
 
               <!-- CUIT -->
               <div class="space-y-2">
-                <label class="block text-sm font-medium text-gray-700">CUIT</label>
+                <label class="form-label">CUIT</label>
                 <input
                   type="text"
                   formControlName="cuit"
                   maxlength="11"
                   placeholder="27332731667"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="form-input"
                   [class.border-red-500]="configForm.get('cuit')?.invalid && configForm.get('cuit')?.touched"
                 >
                 @if (configForm.get('cuit')?.invalid && configForm.get('cuit')?.touched) {
-                  <p class="text-sm text-red-500">El CUIT debe tener exactamente 11 dígitos</p>
+                  <p class="form-error">El CUIT debe tener exactamente 11 dígitos</p>
                 }
               </div>
 
               <!-- Razón Social -->
               <div class="space-y-2">
-                <label class="block text-sm font-medium text-gray-700">Razón Social</label>
+                <label class="form-label">Razón Social</label>
                 <input
                   type="text"
                   formControlName="razon_social"
                   placeholder="PAULA GUADALUPE PIZARRO SALGUEI"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="form-input"
                   [class.border-red-500]="configForm.get('razon_social')?.invalid && configForm.get('razon_social')?.touched"
                 >
                 @if (configForm.get('razon_social')?.invalid && configForm.get('razon_social')?.touched) {
-                  <p class="text-sm text-red-500">La razón social es requerida</p>
+                  <p class="form-error">La razón social es requerida</p>
                 }
               </div>
 
@@ -171,18 +171,18 @@ interface ConfiguracionRow {
           </div>
 
           <!-- Datos API TusFacturas.app -->
-          <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
-            <div class="px-6 py-4 border-b border-gray-200">
-              <h3 class="text-lg font-semibold text-gray-900">Datos API TusFacturas.app</h3>
+          <div class="card-surface">
+            <div class="card-header">
+              <h3 class="card-title">Datos API TusFacturas.app</h3>
             </div>
             <div class="p-6 space-y-4">
               
               <!-- Tipo de Comprobante -->
               <div class="space-y-2">
-                <label class="block text-sm font-medium text-gray-700">Tipo de Comprobante</label>
+                <label class="form-label">Tipo de Comprobante</label>
                 <select 
                   formControlName="tipo_comprobante_default"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="form-select"
                 >
                   <option value="" disabled>Seleccionar tipo</option>
                   <option value="FACTURA B">Factura B / Nota de Crédito B (Responsable Inscripto)</option>
@@ -192,19 +192,19 @@ interface ConfiguracionRow {
 
               <!-- API Token -->
               <div class="space-y-2">
-                <label class="block text-sm font-medium text-gray-700">API Token</label>
+                <label class="form-label">API Token</label>
                 <div class="relative">
                   <input
                     [type]="mostrarApiToken() ? 'text' : 'password'"
                     formControlName="api_token"
                     placeholder="Token alfanumérico"
-                    class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    class="form-input pr-10"
                     [class.border-red-500]="configForm.get('api_token')?.invalid && configForm.get('api_token')?.touched"
                   >
                   <button
                     type="button"
                     (click)="mostrarApiToken.set(!mostrarApiToken())"
-                    class="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors duration-200"
                   >
                     <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       @if (mostrarApiToken()) {
@@ -217,25 +217,25 @@ interface ConfiguracionRow {
                   </button>
                 </div>
                 @if (configForm.get('api_token')?.invalid && configForm.get('api_token')?.touched) {
-                  <p class="text-sm text-red-500">El API Token es requerido</p>
+                  <p class="form-error">El API Token es requerido</p>
                 }
               </div>
 
               <!-- API Key -->
               <div class="space-y-2">
-                <label class="block text-sm font-medium text-gray-700">API Key</label>
+                <label class="form-label">API Key</label>
                 <div class="relative">
                   <input
                     [type]="mostrarApiKey() ? 'text' : 'password'"
                     formControlName="api_key"
                     placeholder="Clave numérica"
-                    class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    class="form-input pr-10"
                     [class.border-red-500]="configForm.get('api_key')?.invalid && configForm.get('api_key')?.touched"
                   >
                   <button
                     type="button"
                     (click)="mostrarApiKey.set(!mostrarApiKey())"
-                    class="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors duration-200"
                   >
                     <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       @if (mostrarApiKey()) {
@@ -248,25 +248,25 @@ interface ConfiguracionRow {
                   </button>
                 </div>
                 @if (configForm.get('api_key')?.invalid && configForm.get('api_key')?.touched) {
-                  <p class="text-sm text-red-500">La API Key es requerida</p>
+                  <p class="form-error">La API Key es requerida</p>
                 }
               </div>
 
               <!-- User Token -->
               <div class="space-y-2">
-                <label class="block text-sm font-medium text-gray-700">User Token</label>
+                <label class="form-label">User Token</label>
                 <div class="relative">
                   <input
                     [type]="mostrarUserToken() ? 'text' : 'password'"
                     formControlName="user_token"
                     placeholder="Token alfanumérico del usuario"
-                    class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    class="form-input pr-10"
                     [class.border-red-500]="configForm.get('user_token')?.invalid && configForm.get('user_token')?.touched"
                   >
                   <button
                     type="button"
                     (click)="mostrarUserToken.set(!mostrarUserToken())"
-                    class="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors duration-200"
                   >
                     <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       @if (mostrarUserToken()) {
@@ -279,7 +279,7 @@ interface ConfiguracionRow {
                   </button>
                 </div>
                 @if (configForm.get('user_token')?.invalid && configForm.get('user_token')?.touched) {
-                  <p class="text-sm text-red-500">El User Token es requerido</p>
+                  <p class="form-error">El User Token es requerido</p>
                 }
               </div>
 
@@ -289,7 +289,7 @@ interface ConfiguracionRow {
           <!-- Mensaje de estado -->
           @if (mensaje()) {
             <div class="p-4 rounded-lg border" 
-                 [class]="mensaje()?.tipo === 'success' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'">
+                 [class]="mensaje()?.tipo === 'success' ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-700'">
               {{ mensaje()?.texto }}
             </div>
           }
@@ -298,7 +298,7 @@ interface ConfiguracionRow {
           <button 
             type="submit"
             [disabled]="configForm.invalid || guardando()"
-            class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            class="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12"></path>

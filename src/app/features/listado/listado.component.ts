@@ -29,8 +29,8 @@ interface Factura {
     <!-- Simplified mobile-first design matching screenshot -->
     <div class="space-y-4 sm:space-y-6">
       <!-- Selector de fecha -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <label class="block text-sm font-medium text-gray-700 mb-4">
+      <div class="card-surface p-4">
+        <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-4">
           Seleccionar fecha
         </label>
         
@@ -39,50 +39,50 @@ interface Factura {
             type="date"
             [value]="fechaSeleccionada()"
             (change)="cambiarFecha($event)"
-            class="w-full py-2 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-10"
+            class="form-input w-full py-2 px-3 pl-10"
           />
-          <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-400 dark:text-zinc-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
           </svg>
         </div>
       </div>
 
       <!-- Lista de facturas -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <h3 class="block text-sm font-medium text-gray-700 mb-4">
+      <div class="card-surface p-4">
+        <h3 class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-4">
           {{ nombreFechaSeleccionada() }}
         </h3>
 
         @if (cargando()) {
           <div class="text-center py-8">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p class="text-gray-500 mt-4">Cargando facturas...</p>
+            <p class="text-zinc-500 dark:text-zinc-400 mt-4">Cargando facturas...</p>
           </div>
         } @else if (facturasFiltradas().length === 0) {
           <div class="text-center py-8">
-            <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
-            <p class="text-gray-500">No hay facturas para esta fecha</p>
+            <p class="text-zinc-500 dark:text-zinc-400">No hay facturas para esta fecha</p>
           </div>
         } @else {
           <div class="space-y-2">
             @for (factura of facturasFiltradas(); track factura.id) {
-              <div class="border border-gray-200 rounded-lg overflow-hidden transition-all duration-200"
-                   [class]="facturaExpandida() === factura.id ? 'shadow-md border-blue-300' : 'shadow-sm'">
+              <div class="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden transition-all duration-200"
+                   [class]="facturaExpandida() === factura.id ? 'shadow-md border-blue-300 dark:border-blue-600' : 'shadow-sm'">
                 
                 <!-- Tarjeta principal (clickeable) -->
-                <div [class]="obtenerClaseFilaFactura(factura) + ' p-3 cursor-pointer hover:bg-gray-50'"
+                <div [class]="obtenerClaseFilaFactura(factura) + ' p-3 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800'"
                      (click)="toggleExpansion(factura.id, $event)"
                      role="button"
                      tabindex="0">
                   <div class="flex items-center justify-between gap-3">
                     <!-- Tipo de comprobante -->
-                    <div class="text-xs font-medium text-gray-700 min-w-0 flex-shrink-0 text-left">
+                    <div class="text-xs font-medium text-zinc-700 dark:text-zinc-300 min-w-0 flex-shrink-0 text-left">
                       {{ obtenerTipoComprobante(factura) }}
                     </div>
                     <!-- Número de factura -->
-                    <div class="font-mono text-sm min-w-0 flex-shrink-0 text-right">
+                    <div class="font-mono text-sm min-w-0 flex-shrink-0 text-right text-zinc-900 dark:text-zinc-100">
                       {{ obtenerNumeroSinCeros(factura.numero_factura) }}
                     </div>
                     <!-- Estado -->
@@ -97,7 +97,7 @@ interface Factura {
                       {{ obtenerMontoMostrar(factura) | currency:'ARS':'symbol':'1.2-2':'es-AR' }}
                     </div>
                     <!-- Icono de expansión -->
-                    <div class="ml-2 text-gray-400">
+                    <div class="ml-2 text-zinc-400 dark:text-zinc-500">
                       <svg class="w-4 h-4 transition-transform duration-200"
                            [class]="facturaExpandida() === factura.id ? 'rotate-180' : ''"
                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,7 +109,7 @@ interface Factura {
 
                 <!-- Panel expandido con botones de acción -->
                 @if (facturaExpandida() === factura.id) {
-                  <div class="border-t border-gray-200 bg-gray-50 p-4 animate-fadeIn">
+                  <div class="border-t border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 p-4 animate-fadeIn">
                     <div class="grid grid-cols-2 gap-2 mb-3">
                       <button
                         (click)="verPDF(factura, $event)"
@@ -147,7 +147,7 @@ interface Factura {
                     </div>
                     
                     <!-- Información adicional -->
-                    <div class="text-xs text-gray-600 space-y-1">
+                    <div class="text-xs text-zinc-600 dark:text-zinc-400 space-y-1">
                       @if (factura.cae) {
                         <div>CAE: {{ factura.cae }}</div>
                       }

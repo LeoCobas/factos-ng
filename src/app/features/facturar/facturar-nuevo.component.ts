@@ -10,12 +10,12 @@ import { PdfService } from '../../core/services/pdf.service';
   imports: [CommonModule, ReactiveFormsModule],
   template: `
     <div class="max-w-md mx-auto">
-      <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6">
+      <div class="card-surface p-6">
         
         <form [formGroup]="formFactura" (ngSubmit)="emitirFactura()" class="space-y-4 sm:space-y-6">
             <!-- Campo Monto -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-4">
+              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-4">
                 Monto Total
               </label>
               <input
@@ -23,7 +23,7 @@ import { PdfService } from '../../core/services/pdf.service';
                 step="0.01"
                 placeholder="0.00"
                 formControlName="monto"
-                class="w-full text-2xl sm:text-3xl text-center py-2 sm:py-4 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                class="form-input w-full text-2xl sm:text-3xl text-center py-2 sm:py-4 px-3"
                 [class.border-red-500]="formFactura.get('monto')?.invalid && formFactura.get('monto')?.touched"
               />
               @if (formFactura.get('monto')?.invalid && formFactura.get('monto')?.touched) {
@@ -33,13 +33,13 @@ import { PdfService } from '../../core/services/pdf.service';
 
             <!-- Campo Fecha -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-4">
+              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-4">
                 Fecha de Facturación
               </label>
               <input
                 type="date"
                 formControlName="fecha"
-                class="w-full py-2 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                class="form-input w-full py-2 px-3"
                 [class.border-red-500]="formFactura.get('fecha')?.invalid && formFactura.get('fecha')?.touched"
               />
               @if (formFactura.get('fecha')?.invalid && formFactura.get('fecha')?.touched) {
@@ -63,10 +63,10 @@ import { PdfService } from '../../core/services/pdf.service';
 
           <!-- Card de Factura Emitida -->
           @if (facturaEmitida()) {
-            <div class="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div class="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
               <div class="text-center mb-4">
-                <h3 class="text-lg font-semibold text-green-900 mb-2">Factura emitida:</h3>
-                <div class="text-xl font-bold text-green-800">
+                <h3 class="text-lg font-semibold text-green-900 dark:text-green-100 mb-2">Factura emitida:</h3>
+                <div class="text-xl font-bold text-green-800 dark:text-green-200">
                   {{ obtenerTipoComprobante(facturaEmitida()!) }} {{ obtenerNumeroSinCeros(facturaEmitida()!.numero_factura) }} {{ formatearMonto(facturaEmitida()!.monto) }}
                 </div>
               </div>
