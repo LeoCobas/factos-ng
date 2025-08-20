@@ -9,19 +9,19 @@
   --card-foreground: 30 41 59;       /* Slate-700 */
   --popover: 255 255 255;
   --popover-foreground: 30 41 59;
-  --primary: 37 99 235;              /* Azul moderno y profesional */
-  --primary-foreground: 248 250 252; /* Blanco cremoso */
+  --primary: 29 78 216;              /* Azul del logo - más oscuro y visible */
+  --primary-foreground: 255 255 255; /* Blanco puro para contraste */
   --secondary: 241 245 249;          /* Slate-100 suave */
   --secondary-foreground: 30 41 59;
   --muted: 248 250 252;              /* Slate-50 muy suave */
-  --muted-foreground: 100 116 139;   /* Slate-500 */
+  --muted-foreground: 71 85 105;     /* Slate-600 - más oscuro para visibilidad */
   --accent: 241 245 249;
   --accent-foreground: 30 41 59;
-  --destructive: 239 68 68;          /* Rojo elegante */
-  --destructive-foreground: 248 250 252;
+  --destructive: 220 38 38;          /* Rojo más oscuro */
+  --destructive-foreground: 255 255 255;
   --border: 226 232 240;             /* Slate-200 sutil */
-  --input: 255 255 255;
-  --ring: 37 99 235;
+  --input: 250 250 250;              /* Gris muy claro para inputs */
+  --ring: 29 78 216;
   --radius: 0.5rem;
 }
 
@@ -74,11 +74,28 @@ body {
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
 }
 
+/* Clases base para garantizar que Tailwind las reconozca */
+.card-surface {
+  background-color: rgb(var(--card));
+  color: rgb(var(--card-foreground));
+  border: 1px solid rgb(var(--border));
+  border-radius: calc(var(--radius));
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
+.form-label {
+  color: rgb(var(--foreground));
+  font-weight: 500;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
 .form-input {
   width: 100%;
   padding: 0.5rem 0.75rem;
   border-radius: 0.375rem;
-  background-color: rgb(var(--background));
+  background-color: rgb(var(--input));
   color: rgb(var(--foreground));
   border: 1px solid rgb(var(--border));
   transition: all 0.2s ease;
@@ -88,6 +105,96 @@ body {
   outline: none;
   border-color: rgb(var(--primary));
   box-shadow: 0 0 0 3px rgb(var(--primary) / 0.1);
+}
+
+/* Estado de error para inputs */
+.form-input.error {
+  border-color: rgb(var(--destructive));
+}
+
+.form-input.error:focus {
+  border-color: rgb(var(--destructive));
+  box-shadow: 0 0 0 3px rgb(var(--destructive) / 0.1);
+}
+
+/* Estilos específicos para inputs de fecha */
+input[type="date"] {
+  background-color: rgb(var(--background));
+  color: rgb(var(--foreground));
+  border: 1px solid rgb(var(--border));
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  transition: all 0.2s ease;
+}
+
+input[type="date"]:focus {
+  outline: none;
+  border-color: rgb(var(--primary));
+  box-shadow: 0 0 0 3px rgb(var(--primary) / 0.1);
+}
+
+/* Hacer visible el botón del calendario en inputs de fecha */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  background-color: rgb(var(--primary));
+  border-radius: 3px;
+  padding: 4px;
+  cursor: pointer;
+  filter: brightness(0) invert(1);
+  width: 16px;
+  height: 16px;
+}
+
+/* Clases de botón principales para asegurar visibilidad */
+.btn-primary {
+  background-color: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: rgb(var(--primary) / 0.9);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: rgb(var(--muted));
+  color: rgb(var(--muted-foreground));
+}
+
+/* Mejorar la clickeabilidad de los inputs de fecha */
+input[type="date"] {
+  cursor: pointer;
+  position: relative;
+}
+
+/* Hacer que todo el input de fecha sea clickeable */
+input[type="date"]::-webkit-datetime-edit {
+  cursor: pointer;
+}
+
+/* Extender el área clickeable del calendario */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+}
+
+/* Agregar un icono visible para el calendario */
+input[type="date"] {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236b7280'%3e%3cpath fill-rule='evenodd' d='M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z' clip-rule='evenodd'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2.5rem;
 }
 
 .form-label {

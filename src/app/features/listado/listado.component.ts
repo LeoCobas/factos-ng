@@ -1,8 +1,7 @@
 import { Component, signal, computed, inject } from '@angular/core';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { CurrencyPipe, registerLocaleData } from '@angular/common';
-import localeEs from '@angular/common/locales/es-AR';
+import { CurrencyPipe } from '@angular/common';
 import { supabase } from '../../core/services/supabase.service';
 import { PdfService } from '../../core/services/pdf.service';
 
@@ -39,11 +38,8 @@ interface Factura {
             type="date"
             [value]="fechaSeleccionada()"
             (change)="cambiarFecha($event)"
-            class="form-input w-full py-2 px-3 pl-10"
+            class="form-input w-full py-2 px-3"
           />
-          <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-          </svg>
         </div>
       </div>
 
@@ -207,9 +203,6 @@ export class ListadoComponent {
 
   constructor(private pdfService: PdfService) {
     console.log('🏗️ Inicializando ListadoComponent');
-    
-    // Registrar locale argentino
-    registerLocaleData(localeEs, 'es-AR');
     
     // Cargar facturas iniciales
     this.cargarFacturasIniciales();

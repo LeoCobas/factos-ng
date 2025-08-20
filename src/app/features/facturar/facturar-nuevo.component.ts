@@ -51,7 +51,7 @@ import { PdfService } from '../../core/services/pdf.service';
             <button
               type="submit"
               [disabled]="isSubmitting() || formFactura.invalid"
-              class="w-full bg-primary text-primary-foreground py-3 px-4 rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="btn-primary w-full py-3 px-4 rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               @if (isSubmitting()) {
                 <span>Procesando...</span>
@@ -63,10 +63,10 @@ import { PdfService } from '../../core/services/pdf.service';
 
           <!-- Card de Factura Emitida -->
           @if (facturaEmitida()) {
-            <div class="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+            <div class="mt-4 p-4 bg-muted border border-border rounded-lg">
               <div class="text-center mb-4">
-                <h3 class="text-lg font-semibold text-green-900 dark:text-green-100 mb-2">Factura emitida:</h3>
-                <div class="text-xl font-bold text-green-800 dark:text-green-200">
+                <h3 class="text-lg font-semibold text-foreground mb-2">Factura emitida:</h3>
+                <div class="text-xl font-bold text-primary">
                   {{ obtenerTipoComprobante(facturaEmitida()!) }} {{ obtenerNumeroSinCeros(facturaEmitida()!.numero_factura) }} {{ formatearMonto(facturaEmitida()!.monto) }}
                 </div>
               </div>
@@ -75,25 +75,25 @@ import { PdfService } from '../../core/services/pdf.service';
               <div class="grid grid-cols-2 gap-2 mb-3">
                 <button
                   (click)="verPDF()"
-                  class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                  class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
                 >
                   Ver
                 </button>
                 <button
                   (click)="compartir()"
-                  class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                  class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
                 >
                   Compartir
                 </button>
                 <button
                   (click)="descargar()"
-                  class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                  class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
                 >
                   Descargar
                 </button>
                 <button
                   (click)="imprimir()"
-                  class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                  class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
                 >
                   Imprimir
                 </button>
@@ -102,7 +102,7 @@ import { PdfService } from '../../core/services/pdf.service';
               <!-- Botón Volver -->
               <button
                 (click)="volver()"
-                class="w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                class="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 font-medium py-2 px-3 rounded-lg transition-colors text-sm"
               >
                 Volver
               </button>
@@ -111,8 +111,8 @@ import { PdfService } from '../../core/services/pdf.service';
 
           <!-- Mensaje de Error -->
           @if (mensaje() && !esExito()) {
-            <div class="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div class="text-red-800 text-center">
+            <div class="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <div class="text-destructive text-center">
                 {{ mensaje() }}
               </div>
             </div>

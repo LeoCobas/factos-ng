@@ -38,18 +38,18 @@ interface FacturaData {
                  [class]="'border-l-4 border-l-' + periodo.color + '-500'">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-sm font-medium" [class]="'text-' + periodo.color + '-600 dark:text-' + periodo.color + '-400'">
+                  <p class="text-sm font-medium text-primary">
                     {{ periodo.nombre }}
                   </p>
-                  <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                  <p class="text-xs text-muted-foreground mt-1">
                     {{ periodo.fechaTexto }}
                   </p>
                 </div>
                 <div class="text-right">
-                  <p class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                  <p class="text-2xl font-bold text-foreground">
                     {{ periodo.total | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
                   </p>
-                  <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                  <p class="text-xs text-muted-foreground">
                     {{ periodo.cantidad }} comprobante{{ periodo.cantidad !== 1 ? 's' : '' }}
                   </p>
                 </div>
@@ -61,23 +61,23 @@ interface FacturaData {
         
 
         <!-- Resumen anual -->
-        <div class="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-4">
+        <div class="bg-muted rounded-lg border border-border p-4">
           <div class="text-center">
-            <h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">
+            <h3 class="text-xl font-bold text-foreground mb-2">
               Resumen del Año {{ getAnoActual() }}
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
               <div class="text-center">
-                <p class="text-3xl font-bold text-blue-600 dark:text-blue-400">{{ totalAnual() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}</p>
-                <p class="text-sm text-zinc-600 dark:text-zinc-400">Total facturado</p>
+                <p class="text-3xl font-bold text-primary">{{ totalAnual() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}</p>
+                <p class="text-sm text-muted-foreground">Total facturado</p>
               </div>
               <div class="text-center">
-                <p class="text-3xl font-bold text-green-600 dark:text-green-400">{{ comprobantesAnuales() }}</p>
-                <p class="text-sm text-zinc-600 dark:text-zinc-400">Comprobantes emitidos</p>
+                <p class="text-3xl font-bold text-primary">{{ comprobantesAnuales() }}</p>
+                <p class="text-sm text-muted-foreground">Comprobantes emitidos</p>
               </div>
               <div class="text-center">
-                <p class="text-3xl font-bold text-purple-600 dark:text-purple-400">{{ promedioMensual() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}</p>
-                <p class="text-sm text-zinc-600 dark:text-zinc-400">Promedio mensual</p>
+                <p class="text-3xl font-bold text-primary">{{ promedioMensual() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}</p>
+                <p class="text-sm text-muted-foreground">Promedio mensual</p>
               </div>
             </div>
           </div>
@@ -87,29 +87,29 @@ interface FacturaData {
   <div class="grid gap-3 md:grid-cols-2">
           <!-- Día más productivo -->
           <div class="card-surface p-4">
-            <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Día Más Productivo</h3>
+            <h3 class="text-lg font-semibold text-foreground mb-4">Día Más Productivo</h3>
             @if (mejorDia()) {
               <div class="text-center">
-                <p class="text-2xl font-bold text-green-600 dark:text-green-400">
+                <p class="text-2xl font-bold text-primary">
                   {{ mejorDia()?.total | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
                 </p>
-                <p class="text-sm text-zinc-600 dark:text-zinc-400">{{ mejorDia()?.fecha }}</p>
-                <p class="text-xs text-zinc-500 dark:text-zinc-500">{{ mejorDia()?.cantidad }} comprobante(s)</p>
+                <p class="text-sm text-muted-foreground">{{ mejorDia()?.fecha }}</p>
+                <p class="text-xs text-muted-foreground">{{ mejorDia()?.cantidad }} comprobante(s)</p>
               </div>
             } @else {
-              <p class="text-zinc-500 dark:text-zinc-400 text-center">No hay datos suficientes</p>
+              <p class="text-muted-foreground text-center">No hay datos suficientes</p>
             }
           </div>
 
           <!-- Ticket promedio -->
           <div class="card-surface p-4">
-            <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Ticket Promedio</h3>
+            <h3 class="text-lg font-semibold text-foreground mb-4">Ticket Promedio</h3>
             <div class="text-center">
-              <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              <p class="text-2xl font-bold text-primary">
                 {{ ticketPromedio() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
               </p>
-              <p class="text-sm text-zinc-600 dark:text-zinc-400">Por comprobante</p>
-              <p class="text-xs text-zinc-500 dark:text-zinc-500">Basado en {{ comprobantesAnuales() }} comprobante(s)</p>
+              <p class="text-sm text-muted-foreground">Por comprobante</p>
+              <p class="text-xs text-muted-foreground">Basado en {{ comprobantesAnuales() }} comprobante(s)</p>
             </div>
           </div>
         </div>
