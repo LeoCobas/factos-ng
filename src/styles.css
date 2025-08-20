@@ -25,27 +25,27 @@
   --radius: 0.5rem;
 }
 
-/* Variables CSS elegantes para tema oscuro */
+/* Variables CSS para tema oscuro profesional - Zinc-970 y Zinc-920 */
 .dark-theme {
-  --background: 15 23 42;            /* Slate-800 profundo */
-  --foreground: 248 250 252;         /* Slate-50 suave */
-  --card: 30 41 59;                  /* Slate-700 elegante */
-  --card-foreground: 248 250 252;    /* Slate-50 */
-  --popover: 30 41 59;
-  --popover-foreground: 248 250 252;
-  --primary: 59 130 246;             /* Azul brillante pero elegante */
-  --primary-foreground: 15 23 42;    /* Slate-800 para contraste */
-  --secondary: 51 65 85;             /* Slate-600 */
-  --secondary-foreground: 248 250 252;
-  --muted: 51 65 85;                 /* Slate-600 */
-  --muted-foreground: 148 163 184;   /* Slate-400 */
-  --accent: 51 65 85;
-  --accent-foreground: 248 250 252;
-  --destructive: 248 113 113;        /* Rojo suave para oscuro */
-  --destructive-foreground: 248 250 252;
-  --border: 51 65 85;                /* Slate-600 */
-  --input: 30 41 59;
-  --ring: 59 130 246;
+  --background: 5 5 7;               /* zinc-970 (más oscuro que zinc-950) */
+  --foreground: 244 244 245;         /* zinc-100 texto claro */
+  --card: 15 15 18;                  /* zinc-920 (entre zinc-900 y zinc-950) */
+  --card-foreground: 244 244 245;    /* zinc-100 texto claro */
+  --popover: 15 15 18;               /* zinc-920 */
+  --popover-foreground: 244 244 245; /* zinc-100 */
+  --primary: 59 130 246;             /* blue-500 mantener azul */
+  --primary-foreground: 255 255 255; /* blanco para contraste */
+  --secondary: 24 24 27;             /* zinc-900 */
+  --secondary-foreground: 244 244 245; /* zinc-100 */
+  --muted: 24 24 27;                 /* zinc-900 para fondos sutiles */
+  --muted-foreground: 161 161 170;   /* zinc-400 texto secundario */
+  --accent: 24 24 27;                /* zinc-900 */
+  --accent-foreground: 244 244 245;  /* zinc-100 */
+  --destructive: 239 68 68;          /* red-500 visible pero no rosa */
+  --destructive-foreground: 255 255 255; /* blanco */
+  --border: 24 24 27;                /* zinc-900 bordes sutiles */
+  --input: 15 15 18;                 /* zinc-920 igual que cards */
+  --ring: 59 130 246;                /* blue-500 */
 }
 
 /* Estilos base */
@@ -93,6 +93,41 @@ body {
   color: rgb(var(--foreground));
   margin: 0;
   line-height: 1.75rem;
+}
+
+/* Cards específicas para diferentes tipos de documentos */
+.card-nota-credito {
+  /* Tema claro: fondo rosa suave */
+  background-color: rgb(252 231 243); /* pink-50 */
+  color: rgb(82 82 91); /* zinc-600 */
+  border: 1px solid rgb(244 163 195); /* pink-300 */
+  border-radius: calc(var(--radius));
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
+/* Tema oscuro: fondo bordó con texto claro */
+.dark-theme .card-nota-credito {
+  background-color: rgb(97 30 38); /* #611e26 - bordó elegante */
+  color: rgb(244 244 245); /* zinc-100 texto claro */
+  border: 1px solid rgb(127 40 50); /* Borde más claro que el fondo para definición */
+}
+
+.card-factura {
+  background-color: rgb(var(--card));
+  color: rgb(var(--card-foreground));
+  border: 1px solid rgb(var(--border));
+  border-radius: calc(var(--radius));
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
+/* Clase específica para montos negativos (notas de crédito) */
+.monto-negativo {
+  color: rgb(230 215 215); /* Rosado claro como solicitaste */
+}
+
+/* En tema claro, usar un color más visible */
+.light-theme .monto-negativo {
+  color: rgb(190 18 60); /* rose-700 para tema claro */
 }
 
 .form-label {

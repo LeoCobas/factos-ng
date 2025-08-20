@@ -491,15 +491,15 @@ export class ListadoComponent {
 
   obtenerClaseFilaFactura(factura: Factura): string {
     if (this.esNotaCredito(factura)) {
-      return 'bg-red-50 border-red-200';
+      return 'card-nota-credito';
     }
-    return 'bg-card';
+    return 'card-factura';
   }
 
   obtenerClaseMonto(factura: Factura): string {
     const baseClass = 'col-span-3 text-right font-semibold text-sm';
     if (this.esNotaCredito(factura)) {
-      return baseClass + ' text-red-600';
+      return baseClass + ' monto-negativo';
     }
     return baseClass + ' text-foreground';
   }
