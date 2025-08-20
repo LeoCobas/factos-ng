@@ -1,4 +1,5 @@
 import { Component, signal, computed, inject } from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CurrencyPipe } from '@angular/common';
@@ -292,7 +293,8 @@ export class ListadoComponent {
 
   constructor(
     private pdfService: PdfService,
-    private facturacionService: FacturacionService
+    private facturacionService: FacturacionService,
+    private sanitizer: DomSanitizer
   ) {
     console.log('🏗️ Inicializando ListadoComponent');
     
@@ -466,13 +468,15 @@ export class ListadoComponent {
   });
 
   // Computed para la URL segura del PDF en el visor
-  pdfViewingUrl = computed(() => {
+  pdfViewingUrl = computed((): SafeResourceUrl | null => {
     const info = this.pdfViewingInfo();
     if (!info?.url) return null;
     
     // Usar proxy para evitar CORS
     const proxyUrl = `https://tejrdiwlgdzxsrqrqsbj.supabase.co/functions/v1/pdf-proxy?url=${encodeURIComponent(info.url)}`;
-    return proxyUrl;
+    
+    // Sanitizar la URL para que Angular la acepte en el iframe
+    return this.sanitizer.bypassSecurityTrustResourceUrl(proxyUrl);
   });
 
   async cargarFacturasIniciales() {
