@@ -4,6 +4,7 @@ import { es } from 'date-fns/locale';
 import { CurrencyPipe } from '@angular/common';
 import { supabase } from '../../core/services/supabase.service';
 import { PdfService } from '../../core/services/pdf.service';
+import { FacturacionService } from '../../core/services/facturacion.service';
 
 interface Factura {
   id: string;
@@ -106,16 +107,62 @@ interface Factura {
                 <!-- Panel expandido con botones de acción -->
                 @if (facturaExpandida() === factura.id) {
                   <div class="border-t border-border bg-muted p-4 animate-fadeIn">
+                    
+                    <!-- Fila superior: Anular - Descargar (solo icono) - Ver -->
+                    @if (!esNotaCredito(factura) && factura.estado === 'emitida') {
+                      <!-- Para facturas que se pueden anular: 3 botones -->
+                      <div class="grid grid-cols-3 gap-2 mb-2">
+                        <button
+                          (click)="anularFactura(factura, $event)"
+                          class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"></path>
+                          </svg>
+                          Anular
+                        </button>
+                        <button
+                          (click)="descargar(factura, $event)"
+                          class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center"
+                          title="Descargar PDF">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                          </svg>
+                        </button>
+                        <button
+                          (click)="verPDF(factura, $event)"
+                          class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                          </svg>
+                          Ver
+                        </button>
+                      </div>
+                    } @else {
+                      <!-- Para notas de crédito o facturas anuladas: solo Descargar y Ver -->
+                      <div class="grid grid-cols-2 gap-2 mb-2">
+                        <button
+                          (click)="descargar(factura, $event)"
+                          class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center"
+                          title="Descargar PDF">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                          </svg>
+                        </button>
+                        <button
+                          (click)="verPDF(factura, $event)"
+                          class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 616 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                          </svg>
+                          Ver
+                        </button>
+                      </div>
+                    }
+
+                    <!-- Fila inferior: Compartir - Imprimir -->
                     <div class="grid grid-cols-2 gap-2 mb-3">
-                      <button
-                        (click)="verPDF(factura, $event)"
-                        class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                        </svg>
-                        Ver
-                      </button>
                       <button
                         (click)="compartir(factura, $event)"
                         class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
@@ -123,14 +170,6 @@ interface Factura {
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"></path>
                         </svg>
                         Compartir
-                      </button>
-                      <button
-                        (click)="descargar(factura, $event)"
-                        class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        Descargar
                       </button>
                       <button
                         (click)="imprimir(factura, $event)"
@@ -201,7 +240,10 @@ export class ListadoComponent {
   cargando = signal(false);
   facturaExpandida = signal<string | null>(null); // ID de factura expandida
 
-  constructor(private pdfService: PdfService) {
+  constructor(
+    private pdfService: PdfService,
+    private facturacionService: FacturacionService
+  ) {
     console.log('🏗️ Inicializando ListadoComponent');
     
     // Cargar facturas iniciales
@@ -506,5 +548,62 @@ export class ListadoComponent {
 
   obtenerTextoEstado(estado: string): string {
     return estado === 'emitida' ? 'Emitida' : 'Anulada';
+  }
+
+  async anularFactura(factura: Factura, event?: Event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    // Confirmar anulación
+    const confirmar = confirm(
+      `¿Está seguro que desea anular la factura ${factura.numero_factura} por ${factura.monto.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}?\n\n` +
+      'Esto generará una Nota de Crédito automáticamente.'
+    );
+
+    if (!confirmar) {
+      return;
+    }
+
+    try {
+      console.log('🚀 Iniciando anulación de factura:', factura.numero_factura);
+
+      // Mostrar loading
+      this.cargando.set(true);
+
+      // Crear nota de crédito
+      const resultado = await this.facturacionService.crearNotaCredito(
+        factura.id,
+        factura.numero_factura,
+        factura.monto
+      );
+
+      if (!resultado.success) {
+        throw new Error(resultado.error || 'Error al crear la nota de crédito');
+      }
+
+      console.log('✅ Nota de crédito creada exitosamente:', resultado.data);
+
+      // Mostrar mensaje de éxito
+      alert(
+        `✅ Factura anulada exitosamente!\n\n` +
+        `Nota de Crédito: ${resultado.data?.numero}\n` +
+        `CAE: ${resultado.data?.cae || 'Pendiente'}\n` +
+        `PDF generado: ${resultado.data?.pdf_url ? 'Sí' : 'No'}`
+      );
+
+      // Recargar facturas para mostrar la nueva nota de crédito
+      await this.cargarFacturasIniciales();
+
+      // Contraer la factura expandida
+      this.facturaExpandida.set(null);
+
+    } catch (error) {
+      console.error('Error al anular factura:', error);
+      alert(`❌ Error al anular la factura:\n\n${error instanceof Error ? error.message : 'Error desconocido'}`);
+    } finally {
+      this.cargando.set(false);
+    }
   }
 }

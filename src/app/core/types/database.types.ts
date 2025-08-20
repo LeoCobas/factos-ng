@@ -141,6 +141,53 @@ export interface Database {
           updated_at?: string;
         };
       };
+      notas_credito: {
+        Row: {
+          id: string;
+          factura_id: string;
+          numero_nota: string;
+          fecha: string;
+          monto: number;
+          pdf_url: string | null;
+          pdf_expires_at: string | null;
+          afip_id: string | null;
+          created_at: string;
+          updated_at: string;
+          cae: string | null;
+          cae_vto: string | null;
+          tipo_comprobante: string;
+        };
+        Insert: {
+          id?: string;
+          factura_id: string;
+          numero_nota: string;
+          fecha: string;
+          monto: number;
+          pdf_url?: string | null;
+          pdf_expires_at?: string | null;
+          afip_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          cae?: string | null;
+          cae_vto?: string | null;
+          tipo_comprobante: string;
+        };
+        Update: {
+          id?: string;
+          factura_id?: string;
+          numero_nota?: string;
+          fecha?: string;
+          monto?: number;
+          pdf_url?: string | null;
+          pdf_expires_at?: string | null;
+          afip_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          cae?: string | null;
+          cae_vto?: string | null;
+          tipo_comprobante?: string;
+        };
+      };
     };
   };
 }

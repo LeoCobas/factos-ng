@@ -304,4 +304,174 @@ export class FacturacionService {
       };
     }
   }
+
+  /**
+   * Crea una nota de crédito para anular una factura
+   */
+  async crearNotaCredito(facturaId: string, numeroFactura: string, monto: number): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      console.log('🚀 Iniciando creación de nota de crédito para factura:', numeroFactura);
+
+      // Obtener configuración
+      const { data: config, error: configError } = await supabase
+        .from('configuracion')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (configError || !config) {
+        throw new Error('No se pudo obtener la configuración');
+      }
+
+      // Validar configuración
+      if (!config.api_token || !config.api_key || !config.user_token) {
+        throw new Error('Configuración incompleta para TusFacturas');
+      }
+
+      // Obtener datos de la factura original
+      const { data: facturaOriginal, error: facturaError } = await supabase
+        .from('facturas')
+        .select('tipo_comprobante, numero_factura')
+        .eq('id', facturaId)
+        .single();
+
+      if (facturaError || !facturaOriginal) {
+        throw new Error('No se pudo obtener la factura original');
+      }
+
+      // Determinar tipo de nota de crédito basado en la factura original
+      const tipoNotaCredito = facturaOriginal.tipo_comprobante === 'FACTURA C' ? 'NOTA DE CREDITO C' : 'NOTA DE CREDITO B';
+      const isNotaCreditoC = tipoNotaCredito === 'NOTA DE CREDITO C';
+
+      // Calcular montos según tipo
+      const ivaPercentage = config.iva_porcentaje || 21;
+      const montoSinIva = isNotaCreditoC
+        ? monto
+        : (monto / (1 + ivaPercentage / 100));
+
+      // Estructura para nota de crédito según la API de TusFacturas
+      const requestData = {
+        apitoken: config.api_token,
+        cliente: {
+          documento_tipo: 'OTRO',
+          condicion_iva: 'CF',
+          condicion_iva_operacion: 'CF',
+          domicilio: 'Sin especificar',
+          condicion_pago: '201',
+          documento_nro: '0',
+          razon_social: 'Consumidor Final',
+          provincia: '2',
+          email: '',
+          envia_por_mail: 'N',
+          rg5329: 'N'
+        },
+        apikey: config.api_key,
+        comprobante: {
+          rubro: config.concepto || 'Servicios profesionales',
+          percepciones_iva: 0,
+          tipo: tipoNotaCredito,
+          numero: undefined,
+          bonificacion: 0,
+          operacion: 'V',
+          comprobantes_asociados: [{
+            tipo: facturaOriginal.tipo_comprobante === 'FACTURA C' ? 11 : 6, // 6=Factura B, 11=Factura C
+            punto_venta: config.punto_venta || 4,
+            numero: parseInt(numeroFactura.split('-').pop() || '1'),
+            cuit_emisor: config.cuit || '0'
+          }],
+          detalle: [
+            {
+              cantidad: 1,
+              afecta_stock: 'N',
+              actualiza_precio: 'N',
+              bonificacion_porcentaje: 0,
+              producto: {
+                descripcion: `Anulación de factura ${numeroFactura}`,
+                codigo: 'ANULACION',
+                precio_unitario: montoSinIva.toFixed(2),
+                unidad: 1,
+                cod_unidad_medida: 7,
+                iva: isNotaCreditoC ? 0 : ivaPercentage
+              }
+            }
+          ],
+          fecha: new Date().toISOString().split('T')[0].split('-').reverse().join('/'),
+          punto_venta: config.punto_venta || 4
+        },
+        usertoken: config.user_token
+      };
+
+      console.log('📤 Enviando nota de crédito a TusFacturas...');
+
+      // Llamar a TusFacturas usando tf-proxy unificado
+      const response = await fetch(`${this.supabaseUrl}/functions/v1/tf-proxy?path=nota-credito`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error en TusFacturas: ${response.status} - ${errorText}`);
+      }
+
+      const responseData = await response.json();
+      console.log('✅ Respuesta de TusFacturas:', responseData);
+
+      if (!responseData.ok) {
+        throw new Error(responseData.msg || 'Error al crear nota de crédito en TusFacturas');
+      }
+
+      // Extraer datos de la respuesta
+      const numero = responseData.numero;
+      const cae = responseData.cae;
+      const cae_vto = responseData.cae_vto;
+      const pdf_url = responseData.pdf_url_ticket || responseData.pdf_url_a4 || '';
+
+      // Guardar en Supabase
+      const { data: notaCredito, error: insertError } = await supabase
+        .from('notas_credito')
+        .insert({
+          factura_id: facturaId,
+          numero_nota: numero,
+          fecha: new Date().toISOString().split('T')[0],
+          monto: monto,
+          pdf_url: pdf_url,
+          cae: cae,
+          cae_vto: cae_vto,
+          tipo_comprobante: tipoNotaCredito
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Error al guardar nota de crédito:', insertError);
+        throw new Error('Error al guardar la nota de crédito en la base de datos');
+      }
+
+      console.log('✅ Nota de crédito creada exitosamente:', notaCredito);
+
+      return {
+        success: true,
+        data: {
+          numero,
+          cae,
+          cae_vto,
+          pdf_url,
+          notaCredito
+        }
+      };
+
+    } catch (error) {
+      console.error('Error al crear nota de crédito:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      };
+    }
+  }
 }
