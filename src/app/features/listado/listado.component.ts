@@ -115,18 +115,12 @@ interface Factura {
                         <button
                           (click)="anularFactura(factura, $event)"
                           class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"></path>
-                          </svg>
                           Anular
                         </button>
                         <button
                           (click)="descargar(factura, $event)"
-                          class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center"
-                          title="Descargar PDF">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                          </svg>
+                          class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center">
+                          Descargar
                         </button>
                         <button
                           (click)="verPDF(factura, $event)"
@@ -143,11 +137,8 @@ interface Factura {
                       <div class="grid grid-cols-2 gap-2 mb-2">
                         <button
                           (click)="descargar(factura, $event)"
-                          class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center"
-                          title="Descargar PDF">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                          </svg>
+                          class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center">
+                          Descargar
                         </button>
                         <button
                           (click)="verPDF(factura, $event)"
@@ -579,29 +570,83 @@ export class ListadoComponent {
         factura.monto
       );
 
-      if (!resultado.success) {
-        throw new Error(resultado.error || 'Error al crear la nota de crédito');
+      // Manejar el resultado
+      if (resultado.success) {
+        console.log('✅ Nota de crédito creada exitosamente:', resultado.data);
+
+        // Mostrar mensaje de éxito
+        alert(
+          `✅ Factura anulada exitosamente!\n\n` +
+          `Nota de Crédito: ${resultado.data?.numero}\n` +
+          `CAE: ${resultado.data?.cae || 'Pendiente'}\n` +
+          `PDF generado: ${resultado.data?.pdf_url ? 'Sí' : 'No'}`
+        );
+
+        // Recargar facturas para mostrar la nueva nota de crédito
+        await this.cargarFacturasIniciales();
+
+        // Contraer la factura expandida
+        this.facturaExpandida.set(null);
+
+      } else {
+        // Error - manejar según el tipo
+        const errorMessage = resultado.error || 'Error desconocido';
+        
+        // Si es un error de mantenimiento, ofrecer reintentar
+        if (resultado.shouldRetry) {
+          const shouldRetry = confirm(
+            `⚠️ TusFacturas está en mantenimiento\n\n` +
+            `El sistema de facturación de AFIP está temporalmente fuera de servicio.\n` +
+            `${errorMessage}\n\n` +
+            `¿Quieres intentar nuevamente en unos segundos?`
+          );
+          
+          if (shouldRetry) {
+            // Esperar 3 segundos y reintentar
+            setTimeout(() => {
+              this.anularFactura(factura, event);
+            }, 3000);
+            return;
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
-
-      console.log('✅ Nota de crédito creada exitosamente:', resultado.data);
-
-      // Mostrar mensaje de éxito
-      alert(
-        `✅ Factura anulada exitosamente!\n\n` +
-        `Nota de Crédito: ${resultado.data?.numero}\n` +
-        `CAE: ${resultado.data?.cae || 'Pendiente'}\n` +
-        `PDF generado: ${resultado.data?.pdf_url ? 'Sí' : 'No'}`
-      );
-
-      // Recargar facturas para mostrar la nueva nota de crédito
-      await this.cargarFacturasIniciales();
-
-      // Contraer la factura expandida
-      this.facturaExpandida.set(null);
 
     } catch (error) {
       console.error('Error al anular factura:', error);
-      alert(`❌ Error al anular la factura:\n\n${error instanceof Error ? error.message : 'Error desconocido'}`);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      
+      // Manejo específico para diferentes tipos de errores
+      if (errorMessage.includes('mantenimiento')) {
+        alert(
+          `⚠️ TusFacturas está en mantenimiento\n\n` +
+          `El sistema de facturación de AFIP está temporalmente fuera de servicio.\n` +
+          `Por favor, intenta nuevamente en unos minutos.\n\n` +
+          `Error: ${errorMessage}`
+        );
+      } else if (errorMessage.includes('red') || errorMessage.includes('network') || errorMessage.includes('fetch')) {
+        alert(
+          `🌐 Error de conexión\n\n` +
+          `No se pudo conectar con el servidor de facturación.\n` +
+          `Verifica tu conexión a internet e intenta nuevamente.\n\n` +
+          `Error: ${errorMessage}`
+        );
+      } else if (errorMessage.includes('autenticación') || errorMessage.includes('credentials') || errorMessage.includes('token')) {
+        alert(
+          `🔐 Error de autenticación\n\n` +
+          `Las credenciales de TusFacturas parecen estar incorrectas.\n` +
+          `Revisa la configuración en el panel de administración.\n\n` +
+          `Error: ${errorMessage}`
+        );
+      } else {
+        alert(
+          `❌ Error al anular la factura\n\n` +
+          `${errorMessage}\n\n` +
+          `Si el problema persiste, contacta al soporte técnico.`
+        );
+      }
     } finally {
       this.cargando.set(false);
     }

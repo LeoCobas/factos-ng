@@ -308,7 +308,7 @@ export class FacturacionService {
   /**
    * Crea una nota de crédito para anular una factura
    */
-  async crearNotaCredito(facturaId: string, numeroFactura: string, monto: number): Promise<{ success: boolean; data?: any; error?: string }> {
+  async crearNotaCredito(facturaId: string, numeroFactura: string, monto: number): Promise<{ success: boolean; data?: any; error?: string; shouldRetry?: boolean }> {
     try {
       console.log('🚀 Iniciando creación de nota de crédito para factura:', numeroFactura);
 
@@ -374,12 +374,12 @@ export class FacturacionService {
           numero: undefined,
           bonificacion: 0,
           operacion: 'V',
-          comprobantes_asociados: [{
+          comprobante_asociado: {
             tipo: facturaOriginal.tipo_comprobante === 'FACTURA C' ? 11 : 6, // 6=Factura B, 11=Factura C
             punto_venta: config.punto_venta || 4,
             numero: parseInt(numeroFactura.split('-').pop() || '1'),
             cuit_emisor: config.cuit || '0'
-          }],
+          },
           detalle: [
             {
               cantidad: 1,
@@ -403,6 +403,7 @@ export class FacturacionService {
       };
 
       console.log('📤 Enviando nota de crédito a TusFacturas...');
+      console.log('📋 Datos enviados:', JSON.stringify(requestData, null, 2));
 
       // Llamar a TusFacturas usando tf-proxy unificado
       const response = await fetch(`${this.supabaseUrl}/functions/v1/tf-proxy?path=nota-credito`, {
@@ -420,10 +421,31 @@ export class FacturacionService {
       }
 
       const responseData = await response.json();
-      console.log('✅ Respuesta de TusFacturas:', responseData);
+      console.log('✅ Respuesta completa de TusFacturas:', JSON.stringify(responseData, null, 2));
 
-      if (!responseData.ok) {
-        throw new Error(responseData.msg || 'Error al crear nota de crédito en TusFacturas');
+      // TusFacturas devuelve error: 'S' cuando hay errores, 'N' cuando es exitoso
+      if (responseData.error === 'S') {
+        const errorDetails = responseData.errores && responseData.errores.length > 0 
+          ? responseData.errores 
+          : ['Error desconocido en TusFacturas'];
+        
+        console.error('❌ Errores de TusFacturas:', errorDetails);
+        
+        if (responseData.mantenimiento === 1) {
+          // Error de mantenimiento - se puede reintentar
+          throw Object.assign(
+            new Error(`TusFacturas está en mantenimiento temporalmente. ${errorDetails.join(', ')}. Intenta nuevamente en unos minutos.`),
+            { shouldRetry: true }
+          );
+        } else {
+          throw new Error(`Error en TusFacturas: ${errorDetails.join(', ')}`);
+        }
+      }
+
+      // Verificar si hay respuesta exitosa (error: 'N' significa sin errores)
+      if (responseData.error !== 'N') {
+        console.error('❌ Respuesta inesperada de TusFacturas, error field:', responseData.error);
+        throw new Error('Respuesta inesperada de TusFacturas');
       }
 
       // Extraer datos de la respuesta
@@ -468,9 +490,13 @@ export class FacturacionService {
 
     } catch (error) {
       console.error('Error al crear nota de crédito:', error);
+      
+      const isRetryable = (error as any)?.shouldRetry === true;
+      
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Error desconocido'
+        error: error instanceof Error ? error.message : 'Error desconocido',
+        shouldRetry: isRetryable
       };
     }
   }
