@@ -11,26 +11,17 @@ import { CommonModule } from '@angular/common';
       <div class="max-w-md w-full">
         <div class="card-surface">
           <div class="p-6 text-center">
-            <!-- Logo -->
             <div class="flex justify-center mb-4">
-              <img 
-                src="/logo.png" 
-                alt="Factos Logo" 
-                class="h-12 w-auto"
-              />
+              <img src="/logo.png" alt="Factos Logo" class="h-12 w-auto" />
             </div>
             <h2 class="text-2xl font-semibold leading-none tracking-tight text-foreground">Iniciar Sesión</h2>
-            <p class="text-sm text-muted-foreground mt-2">
-              Ingresa a tu cuenta de FACTOS
-            </p>
+            <p class="text-sm text-muted-foreground mt-2">Ingresa a tu cuenta de FACTOS</p>
           </div>
           
           <div class="p-6 pt-0">
-            <form (ngSubmit)="onSubmit()" class="space-y-4">
+            <div class="space-y-4">
               <div>
-                <label for="email" class="form-label">
-                  Email
-                </label>
+                <label for="email" class="form-label">Email</label>
                 <input
                   type="email"
                   id="email"
@@ -39,14 +30,13 @@ import { CommonModule } from '@angular/common';
                   autocomplete="email"
                   [value]="emailValue()"
                   (input)="onEmailInput($event)"
+                  (focus)="syncFromDOM()"
                   class="form-input flex h-10 w-full px-3 py-2 text-sm"
                 />
               </div>
               
               <div>
-                <label for="password" class="form-label">
-                  Contraseña
-                </label>
+                <label for="password" class="form-label">Contraseña</label>
                 <input
                   type="password"
                   id="password"
@@ -55,6 +45,7 @@ import { CommonModule } from '@angular/common';
                   autocomplete="current-password"
                   [value]="passwordValue()"
                   (input)="onPasswordInput($event)"
+                  (focus)="syncFromDOM()"
                   class="form-input flex h-10 w-full px-3 py-2 text-sm"
                 />
               </div>
@@ -76,7 +67,7 @@ import { CommonModule } from '@angular/common';
                 }
                 {{ loading() ? 'Iniciando sesión...' : 'Iniciar Sesión' }}
               </button>
-            </form>
+            </div>
           </div>
         </div>
       </div>
@@ -94,7 +85,6 @@ export class LoginComponent {
   isFormValid = computed(() => {
     const email = this.emailValue();
     const password = this.passwordValue();
-    // Una validación de email simple pero efectiva
     const emailValid = email.length > 3 && email.includes('@') && email.includes('.');
     return emailValid && password.length > 0;
   });
@@ -104,45 +94,41 @@ export class LoginComponent {
     private authService: AuthService
   ) {}
 
+  syncFromDOM() {
+    const emailInput = document.getElementById('email') as HTMLInputElement;
+    const passwordInput = document.getElementById('password') as HTMLInputElement;
+    
+    if (emailInput?.value && !this.emailValue()) {
+      this.emailValue.set(emailInput.value);
+    }
+    if (passwordInput?.value && !this.passwordValue()) {
+      this.passwordValue.set(passwordInput.value);
+    }
+  }
+
   onEmailInput(event: Event) {
     const value = (event.target as HTMLInputElement).value;
-    console.log('Email input:', value);
     this.emailValue.set(value);
   }
 
   onPasswordInput(event: Event) {
     const value = (event.target as HTMLInputElement).value;
-    console.log('Password input:', value);
     this.passwordValue.set(value);
   }
 
   async onSubmit() {
-    // Capturar valores directamente del DOM en caso de autocompletado
-    const emailInput = document.getElementById('email') as HTMLInputElement;
-    const passwordInput = document.getElementById('password') as HTMLInputElement;
-    
-    let email = this.emailValue();
-    let password = this.passwordValue();
-    
-    // Si los valores están vacíos en los signals pero existen en el DOM, usarlos
-    if (!email && emailInput?.value) {
-      email = emailInput.value;
-      this.emailValue.set(email);
-    }
-    if (!password && passwordInput?.value) {
-      password = passwordInput.value;
-      this.passwordValue.set(password);
-    }
-    
-    console.log('Form submitted - Email:', email, 'Password:', password);
-    
-    if (!email || !password) {
-      console.log('Form invalid, not submitting');
+    // Sincronizar una última vez para capturar autocompletado
+    this.syncFromDOM();
+
+    if (!this.isFormValid()) {
       return;
     }
 
     this.loading.set(true);
     this.error.set(null);
+
+    const email = this.emailValue();
+    const password = this.passwordValue();
 
     try {
       const { error } = await this.authService.signIn(email, password);
@@ -150,7 +136,6 @@ export class LoginComponent {
       if (error) {
         this.error.set(error.message || 'Error al iniciar sesión');
       }
-      // Si no hay error, el AuthService ya redirige automáticamente
     } catch (err) {
       this.error.set('Error inesperado. Inténtalo de nuevo.');
     } finally {
