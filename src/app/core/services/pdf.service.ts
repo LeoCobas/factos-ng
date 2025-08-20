@@ -382,8 +382,8 @@ export class PdfService {
   private async printAndroid(pdfInfo: PdfInfo): Promise<boolean> {
     console.log('📱 Impresión Android');
     
-    // Descargar PDF directamente (sin proxy)
-    const pdfBlob = await this.downloadPdfBlobDirect(pdfInfo.url);
+    // Descargar PDF usando proxy para evitar CORS
+    const pdfBlob = await this.downloadPdfBlob(pdfInfo.url);
     const blobUrl = URL.createObjectURL(pdfBlob);
     
     // Mostrar instrucciones y abrir PDF
@@ -422,8 +422,8 @@ export class PdfService {
   private async printDesktop(pdfInfo: PdfInfo): Promise<boolean> {
     console.log('🖥️ Impresión desktop');
     
-    // Descargar PDF directamente (sin proxy)
-    const pdfBlob = await this.downloadPdfBlobDirect(pdfInfo.url);
+    // Descargar PDF usando proxy para evitar CORS
+    const pdfBlob = await this.downloadPdfBlob(pdfInfo.url);
     const blobUrl = URL.createObjectURL(pdfBlob);
     
     // Crear iframe oculto para impresión
