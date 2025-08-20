@@ -206,6 +206,61 @@ interface Factura {
         </div>
       }
     </div>
+
+    <!-- Modal visor PDF -->
+    @if (pdfViewing()) {
+      <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" 
+           (click)="cerrarVisorPdf()">
+        <div class="bg-card rounded-lg w-full max-w-4xl h-full max-h-[90vh] flex flex-col shadow-2xl"
+             (click)="$event.stopPropagation()">
+          <!-- Header del modal -->
+          <div class="flex justify-between items-center p-4 border-b border-border">
+            <h3 class="text-lg font-semibold text-foreground">{{ pdfViewingInfo()?.title || 'Documento PDF' }}</h3>
+            <button (click)="cerrarVisorPdf()" 
+                    class="text-muted-foreground hover:text-foreground transition-colors">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Visor PDF -->
+          <div class="flex-1 overflow-hidden bg-gray-100">
+            @if (pdfViewingUrl()) {
+              <iframe [src]="pdfViewingUrl()" 
+                      class="w-full h-full border-0"
+                      title="Visor PDF">
+              </iframe>
+            } @else {
+              <div class="flex items-center justify-center h-full">
+                <div class="text-center">
+                  <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+                  <p class="text-muted-foreground">Cargando PDF...</p>
+                </div>
+              </div>
+            }
+          </div>
+          
+          <!-- Footer con acciones -->
+          <div class="flex justify-end gap-2 p-4 border-t border-border bg-muted">
+            <button (click)="descargarPdfViewing()" 
+                    class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              Descargar
+            </button>
+            <button (click)="imprimirPdfViewing()" 
+                    class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+              </svg>
+              Imprimir
+            </button>
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: [`
     @keyframes fadeIn {
@@ -230,6 +285,10 @@ export class ListadoComponent {
   facturas = signal<Factura[]>([]);
   cargando = signal(false);
   facturaExpandida = signal<string | null>(null); // ID de factura expandida
+
+  // Signals para el visor PDF
+  pdfViewing = signal<Factura | null>(null);
+  pdfViewingInfo = signal<{title: string; url: string; filename: string} | null>(null);
 
   constructor(
     private pdfService: PdfService,
@@ -283,10 +342,17 @@ export class ListadoComponent {
     }
 
     try {
-      // Abrir en nueva pestaña
-      window.open(factura.pdf_url, '_blank');
+      // Establecer la factura para el visor modal
+      this.pdfViewing.set(factura);
+      this.pdfViewingInfo.set({
+        title: `${this.obtenerTipoComprobante(factura)} ${this.obtenerNumeroSinCeros(factura.numero_factura)}`,
+        url: factura.pdf_url,
+        filename: `${this.obtenerTipoComprobante(factura).toLowerCase().replace(' ', '-')}-${factura.numero_factura}.pdf`
+      });
     } catch (error) {
       console.error('Error al abrir PDF:', error);
+      // Fallback: abrir en nueva ventana
+      window.open(factura.pdf_url, '_blank');
     }
   }
 
@@ -397,6 +463,16 @@ export class ListadoComponent {
         const esNotaCredito = f.tipo_comprobante.includes('NC') || f.tipo_comprobante.includes('NOTA DE CREDITO');
         return total + (esNotaCredito ? -f.monto : f.monto);
       }, 0);
+  });
+
+  // Computed para la URL segura del PDF en el visor
+  pdfViewingUrl = computed(() => {
+    const info = this.pdfViewingInfo();
+    if (!info?.url) return null;
+    
+    // Usar proxy para evitar CORS
+    const proxyUrl = `https://tejrdiwlgdzxsrqrqsbj.supabase.co/functions/v1/pdf-proxy?url=${encodeURIComponent(info.url)}`;
+    return proxyUrl;
   });
 
   async cargarFacturasIniciales() {
@@ -662,6 +738,26 @@ export class ListadoComponent {
       }
     } finally {
       this.cargando.set(false);
+    }
+  }
+
+  // Métodos del visor PDF modal
+  cerrarVisorPdf() {
+    this.pdfViewing.set(null);
+    this.pdfViewingInfo.set(null);
+  }
+
+  async descargarPdfViewing() {
+    const factura = this.pdfViewing();
+    if (factura) {
+      await this.descargar(factura);
+    }
+  }
+
+  async imprimirPdfViewing() {
+    const factura = this.pdfViewing();
+    if (factura) {
+      await this.imprimir(factura);
     }
   }
 }
