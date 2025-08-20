@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal, computed, effect } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 
 @Component({
@@ -8,10 +8,10 @@ import { Router, RouterOutlet } from '@angular/router';
       <!-- Header with logo and config -->
       <div class="bg-card border-b border-border shadow-sm p-3 sm:p-4">
         <div class="flex items-center justify-between mb-4 sm:mb-6">
-          <!-- Nuevo logo PNG -->
+          <!-- Logo que cambia según el tema -->
           <div class="flex items-center">
             <img 
-              src="/logo.png" 
+              [src]="logoSrc()" 
               alt="Factos Logo" 
               class="h-10 sm:h-12 w-auto"
               style="max-height: 40px; sm:max-height: 48px;"
@@ -86,7 +86,38 @@ import { Router, RouterOutlet } from '@angular/router';
   imports: [RouterOutlet]
 })
 export class MainLayoutComponent {
-  constructor(private router: Router) {}
+  // Signal para detectar el tema actual
+  isDarkTheme = signal(false);
+
+  // Computed para el logo según el tema
+  logoSrc = computed(() => {
+    return this.isDarkTheme() ? '/logob.png' : '/logo.png';
+  });
+
+  constructor(private router: Router) {
+    // Detectar tema inicial
+    this.updateTheme();
+
+    // Observar cambios en el tema
+    effect(() => {
+      const observer = new MutationObserver(() => {
+        this.updateTheme();
+      });
+
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class']
+      });
+
+      // Cleanup en destroy
+      return () => observer.disconnect();
+    });
+  }
+
+  private updateTheme() {
+    const isDark = document.documentElement.classList.contains('dark-theme');
+    this.isDarkTheme.set(isDark);
+  }
 
   navigate(path: string) {
     this.router.navigate([path]);

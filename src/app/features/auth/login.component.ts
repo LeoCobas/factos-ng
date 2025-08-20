@@ -1,4 +1,4 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal, computed, effect } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { CommonModule } from '@angular/common';
@@ -12,7 +12,7 @@ import { CommonModule } from '@angular/common';
         <div class="card-surface">
           <div class="p-6 text-center">
             <div class="flex justify-center mb-4">
-              <img src="/logo.png" alt="Factos Logo" class="h-12 w-auto" />
+              <img [src]="logoSrc()" alt="Factos Logo" class="h-12 w-auto" />
             </div>
             <h2 class="text-2xl font-semibold leading-none tracking-tight text-foreground">Iniciar Sesión</h2>
             <p class="text-sm text-muted-foreground mt-2">Ingresa a tu cuenta de FACTOS</p>
@@ -82,6 +82,14 @@ export class LoginComponent {
   emailValue = signal('');
   passwordValue = signal('');
   
+  // Signal para detectar el tema actual
+  isDarkTheme = signal(false);
+
+  // Computed para el logo según el tema
+  logoSrc = computed(() => {
+    return this.isDarkTheme() ? '/logob.png' : '/logo.png';
+  });
+  
   isFormValid = computed(() => {
     const email = this.emailValue();
     const password = this.passwordValue();
@@ -92,7 +100,30 @@ export class LoginComponent {
   constructor(
     private router: Router,
     private authService: AuthService
-  ) {}
+  ) {
+    // Detectar tema inicial
+    this.updateTheme();
+
+    // Observar cambios en el tema
+    effect(() => {
+      const observer = new MutationObserver(() => {
+        this.updateTheme();
+      });
+
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class']
+      });
+
+      // Cleanup en destroy
+      return () => observer.disconnect();
+    });
+  }
+
+  private updateTheme() {
+    const isDark = document.documentElement.classList.contains('dark-theme');
+    this.isDarkTheme.set(isDark);
+  }
 
   syncFromDOM() {
     const emailInput = document.getElementById('email') as HTMLInputElement;
