@@ -347,59 +347,70 @@ export class FacturacionService {
       // Calcular montos según tipo
       const ivaPercentage = config.iva_porcentaje || 21;
       const montoSinIva = isNotaCreditoC
-        ? monto
-        : (monto / (1 + ivaPercentage / 100));
+        ? monto  // Para Nota C, el monto ya está sin IVA
+        : Number((monto / (1 + ivaPercentage / 100)).toFixed(2)); // Para Nota B, calcular monto sin IVA
 
-      // Estructura para nota de crédito según la API de TusFacturas
+      // Calcular fecha de vencimiento (30 días después de la fecha actual)
+      const fechaActual = new Date();
+      const fechaVencimiento = new Date(fechaActual);
+      fechaVencimiento.setDate(fechaVencimiento.getDate() + 30);
+
+      // Formatear fechas en formato dd/mm/yyyy
+      const formatearFecha = (fecha: Date) => {
+        const dd = String(fecha.getDate()).padStart(2, '0');
+        const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+        const yyyy = fecha.getFullYear();
+        return `${dd}/${mm}/${yyyy}`;
+      };
+
+      // Estructura para nota de crédito según la documentación oficial de TusFacturas
       const requestData = {
+        usertoken: config.user_token,
+        apikey: config.api_key,
         apitoken: config.api_token,
         cliente: {
           documento_tipo: 'OTRO',
-          condicion_iva: 'CF',
-          condicion_iva_operacion: 'CF',
-          domicilio: 'Sin especificar',
-          condicion_pago: '201',
           documento_nro: '0',
           razon_social: 'Consumidor Final',
-          provincia: '2',
           email: '',
+          domicilio: 'Sin especificar',
+          provincia: '2',
           envia_por_mail: 'N',
-          rg5329: 'N'
+          condicion_pago: '211', // Contado según documentación
+          condicion_iva: 'CF',
+          condicion_iva_operacion: 'CF'
         },
-        apikey: config.api_key,
         comprobante: {
-          rubro: config.concepto || 'Servicios profesionales',
-          percepciones_iva: 0,
+          fecha: formatearFecha(fechaActual),
+          vencimiento: formatearFecha(fechaVencimiento),
           tipo: tipoNotaCredito,
-          numero: undefined,
-          bonificacion: 0,
           operacion: 'V',
-          comprobante_asociado: {
-            tipo: facturaOriginal.tipo_comprobante === 'FACTURA C' ? 11 : 6, // 6=Factura B, 11=Factura C
-            punto_venta: config.punto_venta || 4,
-            numero: parseInt(numeroFactura.split('-').pop() || '1'),
-            cuit_emisor: config.cuit || '0'
-          },
+          punto_venta: String(config.punto_venta || 4).padStart(4, '0'),
+          rubro: config.concepto || 'Servicios profesionales',
           detalle: [
             {
-              cantidad: 1,
-              afecta_stock: 'N',
-              actualiza_precio: 'N',
-              bonificacion_porcentaje: 0,
+              cantidad: '1',
               producto: {
                 descripcion: `Anulación de factura ${numeroFactura}`,
+                unidad_bulto: '1',
                 codigo: 'ANULACION',
-                precio_unitario: montoSinIva.toFixed(2),
-                unidad: 1,
-                cod_unidad_medida: 7,
-                iva: isNotaCreditoC ? 0 : ivaPercentage
+                precio_unitario_sin_iva: String(montoSinIva),
+                alicuota: isNotaCreditoC ? '0' : String(ivaPercentage)
               }
             }
           ],
-          fecha: new Date().toISOString().split('T')[0].split('-').reverse().join('/'),
-          punto_venta: config.punto_venta || 4
-        },
-        usertoken: config.user_token
+          bonificacion: '0.00',
+          total: String(monto),
+          comprobantes_asociados: [
+            {
+              tipo_comprobante: facturaOriginal.tipo_comprobante,
+              punto_venta: String(config.punto_venta || 4),
+              numero: parseInt(numeroFactura.split('-').pop() || '1'),
+              comprobante_fecha: formatearFecha(fechaActual), // Fecha de la factura original
+              cuit: config.cuit || '0'
+            }
+          ]
+        }
       };
 
       console.log('📤 Enviando nota de crédito a TusFacturas...');
