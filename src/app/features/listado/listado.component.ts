@@ -290,6 +290,7 @@ export class ListadoComponent {
   // Signals para el visor PDF
   pdfViewing = signal<Factura | null>(null);
   pdfViewingInfo = signal<{title: string; url: string; filename: string} | null>(null);
+  pdfViewingBlobUrl = signal<string | null>(null);
 
   constructor(
     private pdfService: PdfService,
@@ -344,18 +345,76 @@ export class ListadoComponent {
     }
 
     try {
-      // Establecer la factura para el visor modal
+      console.log('📄 Abriendo PDF en modal:', factura.numero_factura);
+      
+      // Establecer la información básica del modal primero
       this.pdfViewing.set(factura);
       this.pdfViewingInfo.set({
         title: `${this.obtenerTipoComprobante(factura)} ${this.obtenerNumeroSinCeros(factura.numero_factura)}`,
         url: factura.pdf_url,
         filename: `${this.obtenerTipoComprobante(factura).toLowerCase().replace(' ', '-')}-${factura.numero_factura}.pdf`
       });
+      
+      // Limpiar blob URL anterior si existe
+      const oldBlobUrl = this.pdfViewingBlobUrl();
+      if (oldBlobUrl) {
+        URL.revokeObjectURL(oldBlobUrl);
+        this.pdfViewingBlobUrl.set(null);
+      }
+      
+      // Descargar PDF usando el método que funciona (igual que impresión)
+      console.log('📥 Descargando PDF para visor...');
+      const pdfBlob = await this.downloadPdfBlob(factura.pdf_url);
+      
+      // Crear blob URL local
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      this.pdfViewingBlobUrl.set(blobUrl);
+      
+      console.log('✅ PDF cargado en modal');
+      
     } catch (error) {
-      console.error('Error al abrir PDF:', error);
+      console.error('❌ Error al cargar PDF en modal:', error);
+      // Limpiar el modal en caso de error
+      this.cerrarVisorPdf();
       // Fallback: abrir en nueva ventana
       window.open(factura.pdf_url, '_blank');
     }
+  }
+
+  // Helper method para descargar PDF usando el proxy (igual que en PDF service)
+  private async downloadPdfBlob(pdfUrl: string): Promise<Blob> {
+    console.log('📥 Descargando PDF via proxy:', pdfUrl);
+    
+    // Obtener session token para autenticación
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('No hay sesión activa');
+    }
+
+    // Usar pdf-proxy para evitar CORS
+    const proxyUrl = `https://tejrdiwlgdzxsrqrqsbj.supabase.co/functions/v1/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
+    
+    const response = await fetch(proxyUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error descargando PDF: ${response.status} ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+    console.log('✅ PDF descargado:', blob.size, 'bytes', blob.type);
+
+    // Asegurar que el tipo MIME sea correcto
+    if (blob.type !== 'application/pdf') {
+      return new Blob([blob], { type: 'application/pdf' });
+    }
+
+    return blob;
   }
 
   async compartir(factura: any, event?: Event) {
@@ -469,14 +528,11 @@ export class ListadoComponent {
 
   // Computed para la URL segura del PDF en el visor
   pdfViewingUrl = computed((): SafeResourceUrl | null => {
-    const info = this.pdfViewingInfo();
-    if (!info?.url) return null;
+    const blobUrl = this.pdfViewingBlobUrl();
+    if (!blobUrl) return null;
     
-    // Usar proxy para evitar CORS
-    const proxyUrl = `https://tejrdiwlgdzxsrqrqsbj.supabase.co/functions/v1/pdf-proxy?url=${encodeURIComponent(info.url)}`;
-    
-    // Sanitizar la URL para que Angular la acepte en el iframe
-    return this.sanitizer.bypassSecurityTrustResourceUrl(proxyUrl);
+    // Sanitizar la blob URL para que Angular la acepte en el iframe
+    return this.sanitizer.bypassSecurityTrustResourceUrl(blobUrl);
   });
 
   async cargarFacturasIniciales() {
@@ -747,8 +803,16 @@ export class ListadoComponent {
 
   // Métodos del visor PDF modal
   cerrarVisorPdf() {
+    // Limpiar blob URL para liberar memoria
+    const blobUrl = this.pdfViewingBlobUrl();
+    if (blobUrl) {
+      URL.revokeObjectURL(blobUrl);
+    }
+    
+    // Limpiar signals
     this.pdfViewing.set(null);
     this.pdfViewingInfo.set(null);
+    this.pdfViewingBlobUrl.set(null);
   }
 
   async descargarPdfViewing() {
