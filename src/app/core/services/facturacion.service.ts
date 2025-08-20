@@ -460,10 +460,19 @@ export class FacturacionService {
       }
 
       // Extraer datos de la respuesta
-      const numero = responseData.numero;
+      const numero = responseData.comprobante_nro || responseData.numero;
       const cae = responseData.cae;
-      const cae_vto = responseData.cae_vto;
-      const pdf_url = responseData.pdf_url_ticket || responseData.pdf_url_a4 || '';
+      const cae_vto = responseData.vencimiento_cae;
+      const pdf_url = responseData.comprobante_pdf_url || responseData.pdf_url_ticket || responseData.pdf_url_a4 || '';
+
+      console.log('📋 Datos extraídos de la respuesta:', { numero, cae, cae_vto, pdf_url });
+
+      // Validar que tenemos los datos mínimos necesarios
+      if (!numero) {
+        console.error('❌ No se pudo obtener el número de la nota de crédito de la respuesta');
+        console.error('📄 Respuesta completa:', responseData);
+        throw new Error('No se pudo obtener el número de la nota de crédito de TusFacturas');
+      }
 
       // Guardar en Supabase
       const { data: notaCredito, error: insertError } = await supabase
