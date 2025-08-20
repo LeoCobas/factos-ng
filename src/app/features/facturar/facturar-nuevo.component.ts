@@ -1,4 +1,5 @@
 import { Component, signal } from '@angular/core';
+import { supabase } from '../../core/services/supabase.service';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FacturacionService } from '../../core/services/facturacion.service';
@@ -40,6 +41,8 @@ import { PdfService } from '../../core/services/pdf.service';
                 type="date"
                 formControlName="fecha"
                 class="form-input w-full py-2 px-3"
+                [min]="minFecha()"
+                [max]="maxFecha()"
                 [class.border-red-500]="formFactura.get('fecha')?.invalid && formFactura.get('fecha')?.touched"
               />
               @if (formFactura.get('fecha')?.invalid && formFactura.get('fecha')?.touched) {
@@ -128,6 +131,14 @@ export class FacturarNuevoComponent {
   esExito = signal(false);
   facturaEmitida = signal<any>(null);
 
+  // Signals para actividad y límites de fecha
+  actividad = signal<'bienes' | 'servicios' | null>(null);
+  _minFecha = signal<string>('');
+  _maxFecha = signal<string>('');
+
+  minFecha() { return this._minFecha(); }
+  maxFecha() { return this._maxFecha(); }
+
   constructor(
     private fb: FormBuilder,
     private facturacionService: FacturacionService,
@@ -138,6 +149,51 @@ export class FacturarNuevoComponent {
       monto: ['', [Validators.required, Validators.min(0.01)]],
       fecha: [this.obtenerFechaHoy(), Validators.required]
     });
+
+    // Obtener configuración y setear límites de fecha
+    this.cargarConfiguracionYLimites();
+  }
+
+  private async cargarConfiguracionYLimites() {
+    // Obtener configuración más reciente
+    const { data: config, error } = await supabase
+      .from('configuracion')
+      .select('actividad')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    let actividad: 'bienes' | 'servicios' = 'bienes';
+    if (!error && config && (config.actividad === 'bienes' || config.actividad === 'servicios')) {
+      actividad = config.actividad;
+    }
+    this.actividad.set(actividad);
+
+    // Calcular límites
+    const hoy = new Date();
+    const max = this.formatDateInput(hoy);
+    let minDate = new Date(hoy);
+    minDate.setDate(hoy.getDate() - (actividad === 'bienes' ? 5 : 10));
+    const min = this.formatDateInput(minDate);
+    this._maxFecha.set(max);
+    this._minFecha.set(min);
+
+    // Si la fecha actual del form está fuera de rango, ajustarla
+    const fechaActual = this.formFactura.get('fecha')?.value;
+    if (fechaActual) {
+      if (fechaActual > max) {
+        this.formFactura.get('fecha')?.setValue(max);
+      } else if (fechaActual < min) {
+        this.formFactura.get('fecha')?.setValue(min);
+      }
+    }
+  }
+
+  private formatDateInput(date: Date): string {
+    const año = date.getFullYear();
+    const mes = String(date.getMonth() + 1).padStart(2, '0');
+    const dia = String(date.getDate()).padStart(2, '0');
+    return `${año}-${mes}-${dia}`;
   }
 
   private obtenerFechaHoy(): string {
