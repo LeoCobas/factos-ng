@@ -374,21 +374,14 @@ export class ListadoComponent {
     return this.facturas()
       .filter(f => f.fecha === fechaStr)
       .sort((a, b) => {
-        // 1. Priorizar notas de crédito (arriba)
-        const aEsNC = this.esNotaCredito(a);
-        const bEsNC = this.esNotaCredito(b);
-        
-        if (aEsNC && !bEsNC) return -1; // a (NC) va arriba
-        if (!aEsNC && bEsNC) return 1;  // b (NC) va arriba
-        
-        // 2. Si ambos son del mismo tipo, ordenar por created_at (más recientes primero)
+        // Ordenar por created_at descendente (más recientes primero)
         if (a.created_at && b.created_at) {
           const fechaA = new Date(a.created_at).getTime();
           const fechaB = new Date(b.created_at).getTime();
           return fechaB - fechaA;
         }
         
-        // 3. Fallback: ordenar por número de factura descendente
+        // Fallback: ordenar por número de factura descendente
         const numA = this.extraerNumeroFactura(a.numero_factura);
         const numB = this.extraerNumeroFactura(b.numero_factura);
         return numB - numA;
