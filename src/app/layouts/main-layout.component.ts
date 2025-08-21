@@ -34,21 +34,21 @@ import { Router, RouterOutlet } from '@angular/router';
         <div class="flex bg-muted rounded-lg p-1 shadow-sm border border-border">
           <button 
             (click)="navigate('/facturar')"
-            class="flex-1 flex items-center justify-center space-x-1 sm:space-x-2 py-2 sm:py-3 px-1 sm:px-4 rounded-md font-medium transition-all duration-200 text-sm sm:text-base"
-            [class]="isActive('/facturar') ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/50'"
+            class="flex-1 flex items-center justify-center space-x-0.5 sm:space-x-2 py-1.5 sm:py-2.5 px-0.5 sm:px-3 rounded-md font-medium transition-all duration-200 text-xs sm:text-base min-w-0"
+            [class]="isActive('/facturar') ? 'nav-btn-active' : 'text-muted-foreground hover:text-foreground hover:bg-background/50'"
           >
             <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/>
               <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/>
               <path d="M12 17.5v-11"/>
             </svg>
-            <span class="hidden sm:inline">Facturar</span>
+            <span class="truncate">Facturar</span>
           </button>
           
           <button 
             (click)="navigate('/listado')"
-            class="flex-1 flex items-center justify-center space-x-1 sm:space-x-2 py-2 sm:py-3 px-1 sm:px-4 rounded-md font-medium transition-all duration-200 text-sm sm:text-base"
-            [class]="isActive('/listado') ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/50'"
+            class="flex-1 flex items-center justify-center space-x-0.5 sm:space-x-2 py-1.5 sm:py-2.5 px-0.5 sm:px-3 rounded-md font-medium transition-all duration-200 text-xs sm:text-base min-w-0"
+            [class]="isActive('/listado') ? 'nav-btn-active' : 'text-muted-foreground hover:text-foreground hover:bg-background/50'"
           >
             <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 12h.01"/>
@@ -58,13 +58,13 @@ import { Router, RouterOutlet } from '@angular/router';
               <path d="M8 18h13"/>
               <path d="M8 6h13"/>
             </svg>
-            <span class="hidden sm:inline">Listado</span>
+            <span class="truncate">Listado</span>
           </button>
           
           <button 
             (click)="navigate('/totales')"
-            class="flex-1 flex items-center justify-center space-x-1 sm:space-x-2 py-2 sm:py-3 px-1 sm:px-4 rounded-md font-medium transition-all duration-200 text-sm sm:text-base"
-            [class]="isActive('/totales') ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/50'"
+            class="flex-1 flex items-center justify-center space-x-0.5 sm:space-x-2 py-1.5 sm:py-2.5 px-0.5 sm:px-3 rounded-md font-medium transition-all duration-200 text-xs sm:text-base min-w-0"
+            [class]="isActive('/totales') ? 'nav-btn-active' : 'text-muted-foreground hover:text-foreground hover:bg-background/50'"
           >
             <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 3v16a2 2 0 0 0 2 2h16"/>
@@ -72,7 +72,7 @@ import { Router, RouterOutlet } from '@angular/router';
               <path d="M13 17V5"/>
               <path d="M8 17v-3"/>
             </svg>
-            <span class="hidden sm:inline">Totales</span>
+            <span class="truncate">Totales</span>
           </button>
         </div>
       </div>

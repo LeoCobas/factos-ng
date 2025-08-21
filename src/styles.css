@@ -109,9 +109,16 @@ body {
 .card-surface {
   background-color: rgb(var(--card));
   color: rgb(var(--card-foreground));
-  border: 1px solid rgb(var(--border));
+  border: 2px solid #b0b8c1; /* gris más visible en modo claro */
   border-radius: 0.5rem;
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  box-shadow: 0 2px 8px 0 rgb(30 41 59 / 0.04), 0 1.5px 4px -1px rgb(30 41 59 / 0.06);
+.nav-btn-active {
+  background: #e8f0fe !important; /* azul muy claro */
+  color: #2563eb !important;
+  box-shadow: 0 2px 8px 0 rgb(30 41 59 / 0.06);
+  border-bottom: 3px solid #2563eb;
+  z-index: 1;
+}
 }
 
 /* Clases base para garantizar que Tailwind las reconozca */
@@ -290,6 +297,59 @@ input[type="date"] {
   font-weight: 500;
   color: rgb(var(--foreground));
   margin-bottom: 0.5rem;
+}
+
+/* Colores elegantes para textos destacados */
+.text-primary {
+  color: rgb(var(--primary)) !important;
+}
+
+.text-success {
+  color: #22c55e !important; /* green-500 */
+}
+.dark-theme .text-success {
+  color: #3ba97d !important; /* verde más sobrio */
+}
+.text-info {
+  color: #3b4a5a !important;
+}
+.dark-theme .text-info {
+  color: #ffffffad !important; /* azul-grisáceo sobrio */
+}
+
+/* Títulos de periodo destacados */
+
+.period-title {
+  font-size: 1.125rem; /* text-lg */
+  font-weight: 700;
+  color: #3b4a5a;
+  letter-spacing: 0.01em;
+}
+.dark-theme .period-title {
+  color: #12598c;
+}
+
+/* Montos destacados */
+
+.period-amount {
+  font-size: 2rem; /* text-2xl */
+  font-weight: 800;
+  color: #3ba97d;
+  letter-spacing: -0.01em;
+}
+.dark-theme .period-amount {
+  color: #578d66; /* azul-gris sobrio para montos en dark */
+}
+/* Degradado gris para el resumen anual en modo oscuro */
+.dark-theme .bg-muted.rounded-lg.border.border-border.p-4 {
+  background: linear-gradient(135deg, #18181b 0%, #23232a 100%) !important;
+  border-color: #23232a !important;
+}
+
+/* Subtítulos y fechas */
+.period-sub {
+  font-size: 0.95rem;
+  color: rgb(var(--muted-foreground));
 }
 
 /* Ocultar spinners del input de monto en la página de facturación */
