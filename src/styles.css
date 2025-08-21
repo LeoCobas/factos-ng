@@ -109,25 +109,36 @@ body {
 .card-surface {
   background-color: rgb(var(--card));
   color: rgb(var(--card-foreground));
-  border: 2px solid #b0b8c1; /* gris más visible en modo claro */
+  border: 1px solid rgb(var(--border)); /* volver al borde original */
   border-radius: 0.5rem;
   box-shadow: 0 2px 8px 0 rgb(30 41 59 / 0.04), 0 1.5px 4px -1px rgb(30 41 59 / 0.06);
-.nav-btn-active {
-  background: #e8f0fe !important; /* azul muy claro */
-  color: #2563eb !important;
-  box-shadow: 0 2px 8px 0 rgb(30 41 59 / 0.06);
-  border-bottom: 3px solid #2563eb;
-  z-index: 1;
-}
 }
 
-/* Clases base para garantizar que Tailwind las reconozca */
-.card-surface {
-  background-color: rgb(var(--card));
-  color: rgb(var(--card-foreground));
-  border: 1px solid rgb(var(--border));
-  border-radius: calc(var(--radius));
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+/* Botón activo de navegación con estilos mejorados */
+.nav-btn-active {
+  background-color: #dbeafe !important; /* azul claro intenso */
+  color: #1d4ed8 !important; /* azul oscuro para máximo contraste */
+  border: 2px solid #3b82f6 !important; /* borde azul sólido */
+  border-radius: 0.5rem !important;
+  font-weight: 600 !important; /* destacar el texto */
+  transform: translateY(-1px) !important; /* efecto "pressed" elevado */
+  box-shadow: 
+    0 4px 12px 0 rgb(59 130 246 / 0.15),
+    0 2px 6px -1px rgb(59 130 246 / 0.1),
+    inset 0 1px 0 rgb(255 255 255 / 0.2) !important; /* sombra especial con efectos de profundidad e inset */
+  z-index: 1 !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Estilos específicos para modo oscuro del botón activo */
+.dark-theme .nav-btn-active {
+  background-color: #27272a !important; /* zinc-800 - más sutil */
+  color: #e4e4e7 !important; /* zinc-200 - texto claro pero no exagerado */
+  border: 2px solid #52525b !important; /* zinc-600 - borde visible pero discreto */
+  box-shadow: 
+    0 4px 12px 0 rgb(0 0 0 / 0.25),
+    0 2px 6px -1px rgb(0 0 0 / 0.15),
+    inset 0 1px 0 rgb(255 255 255 / 0.05) !important; /* sombra sutil para modo oscuro */
 }
 
 .card-header {
