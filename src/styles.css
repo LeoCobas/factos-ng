@@ -130,6 +130,17 @@ body {
   transition: all 0.2s ease !important;
 }
 
+/* Botones de navegación: texto más grande y peso destacado */
+.nav-btn {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding-top: 0.45em;
+  padding-bottom: 0.45em;
+  padding-left: 0.9em;
+  padding-right: 0.9em;
+}
+
 /* Estilos específicos para modo oscuro del botón activo */
 .dark-theme .nav-btn-active {
   background-color: #27272a !important; /* zinc-800 - más sutil */
