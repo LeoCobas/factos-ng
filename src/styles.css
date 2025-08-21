@@ -178,6 +178,76 @@ body {
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
 }
 
+/* Card de factura emitida con fondo azul elegante */
+.card-factura-emitida {
+  /* Tema claro: fondo azul suave y elegante */
+  background-color: rgb(239 246 255); /* blue-50 */
+  color: rgb(30 64 175); /* blue-800 */
+  border: 1px solid rgb(147 197 253); /* blue-300 */
+  border-radius: calc(var(--radius));
+  box-shadow: 0 1px 3px 0 rgb(59 130 246 / 0.1), 0 1px 2px -1px rgb(59 130 246 / 0.05);
+}
+
+/* Tema oscuro: fondo azul oscuro elegante */
+.dark-theme .card-factura-emitida {
+  background-color: rgb(30 58 138); /* blue-900 con más opacidad */
+  color: rgb(191 219 254); /* blue-200 texto claro */
+  border: 1px solid rgb(59 130 246); /* blue-500 borde */
+}
+
+/* Estilos para las clases de Tailwind que ya están en uso */
+.bg-blue-50 {
+  background-color: rgb(239 246 255) !important; /* blue-50 */
+}
+
+.border-blue-200 {
+  border-color: rgb(191 219 254) !important; /* blue-200 */
+}
+
+.text-blue-800 {
+  color: rgb(30 64 175) !important; /* blue-800 */
+}
+
+.text-blue-900 {
+  color: rgb(30 58 138) !important; /* blue-900 */
+}
+
+/* Tema oscuro para las clases de Tailwind */
+.dark-theme .bg-blue-50 {
+  background-color: rgb(30 58 138) !important; /* blue-900 en modo oscuro */
+}
+
+.dark-theme .border-blue-200 {
+  border-color: rgb(59 130 246) !important; /* blue-500 en modo oscuro */
+}
+
+.dark-theme .text-blue-800 {
+  color: rgb(191 219 254) !important; /* blue-200 en modo oscuro */
+}
+
+.dark-theme .text-blue-900 {
+  color: rgb(147 197 253) !important; /* blue-300 en modo oscuro */
+}
+
+/* Estilos específicos para el contenido de la card de factura emitida */
+.card-factura-emitida h3 {
+  color: rgb(30 64 175) !important; /* blue-800 para el título */
+}
+
+.card-factura-emitida .text-primary {
+  color: rgb(29 78 216) !important; /* blue-700 más oscuro para el número */
+  font-weight: 700;
+}
+
+/* En modo oscuro */
+.dark-theme .card-factura-emitida h3 {
+  color: rgb(191 219 254) !important; /* blue-200 para el título */
+}
+
+.dark-theme .card-factura-emitida .text-primary {
+  color: rgb(147 197 253) !important; /* blue-300 para el número */
+}
+
 /* Clase específica para montos negativos (notas de crédito) */
 .monto-negativo {
   color: rgb(230 215 215); /* Rosado claro como solicitaste */

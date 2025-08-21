@@ -66,9 +66,9 @@ import { PdfService } from '../../core/services/pdf.service';
 
           <!-- Card de Factura Emitida -->
           @if (facturaEmitida()) {
-            <div class="mt-4 p-4 bg-muted border border-border rounded-lg">
+            <div class="mt-4 p-4 card-factura-emitida">
               <div class="text-center mb-4">
-                <h3 class="text-lg font-semibold text-foreground mb-2">Factura emitida:</h3>
+                <h3 class="text-lg font-semibold mb-2">Factura emitida:</h3>
                 <div class="text-xl font-bold text-primary">
                   {{ obtenerTipoComprobante(facturaEmitida()!) }} {{ obtenerNumeroSinCeros(facturaEmitida()!.numero_factura) }} {{ formatearMonto(facturaEmitida()!.monto) }}
                 </div>
