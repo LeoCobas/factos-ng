@@ -297,12 +297,8 @@ export class ListadoComponent {
     private facturacionService: FacturacionService,
     private sanitizer: DomSanitizer
   ) {
-    console.log('🏗️ Inicializando ListadoComponent');
-    
-    // Cargar facturas iniciales
-    this.cargarFacturasIniciales();
-    
-    console.log('📊 Estado inicial facturaExpandida:', this.facturaExpandida());
+  // Cargar facturas iniciales
+  this.cargarFacturasIniciales();
   }
 
   // Función para alternar la expansión de una tarjeta
@@ -311,25 +307,16 @@ export class ListadoComponent {
       event.preventDefault();
       event.stopPropagation();
     }
-    
-    console.log('🔄 Toggle expansion llamado para factura:', facturaId);
-    console.log('📋 Estado actual facturaExpandida:', this.facturaExpandida());
-    
     if (this.facturaExpandida() === facturaId) {
-      console.log('➡️ Contrayendo factura');
       this.facturaExpandida.set(null);
     } else {
-      console.log('➡️ Expandiendo factura');
       this.facturaExpandida.set(facturaId);
     }
-    
-    console.log('📋 Nuevo estado facturaExpandida:', this.facturaExpandida());
   }
 
   // Método de prueba simple
   testClick(facturaId: string) {
-    console.log('🧪 TEST CLICK para factura:', facturaId);
-    alert('Click funcionando para factura: ' + facturaId);
+  alert('Click funcionando para factura: ' + facturaId);
   }
 
   // Métodos de acción para PDF (adaptados de facturar-nuevo)
@@ -338,15 +325,11 @@ export class ListadoComponent {
       event.preventDefault();
       event.stopPropagation();
     }
-    
     if (!factura.pdf_url) {
       console.error('No hay URL de PDF disponible');
       return;
     }
-
     try {
-      console.log('📄 Abriendo PDF en modal:', factura.numero_factura);
-      
       // Establecer la información básica del modal primero
       this.pdfViewing.set(factura);
       this.pdfViewingInfo.set({
@@ -354,24 +337,17 @@ export class ListadoComponent {
         url: factura.pdf_url,
         filename: `${this.obtenerTipoComprobante(factura).toLowerCase().replace(' ', '-')}-${factura.numero_factura}.pdf`
       });
-      
       // Limpiar blob URL anterior si existe
       const oldBlobUrl = this.pdfViewingBlobUrl();
       if (oldBlobUrl) {
         URL.revokeObjectURL(oldBlobUrl);
         this.pdfViewingBlobUrl.set(null);
       }
-      
       // Descargar PDF usando el método que funciona (igual que impresión)
-      console.log('📥 Descargando PDF para visor...');
       const pdfBlob = await this.downloadPdfBlob(factura.pdf_url);
-      
       // Crear blob URL local
       const blobUrl = URL.createObjectURL(pdfBlob);
       this.pdfViewingBlobUrl.set(blobUrl);
-      
-      console.log('✅ PDF cargado en modal');
-      
     } catch (error) {
       console.error('❌ Error al cargar PDF en modal:', error);
       // Limpiar el modal en caso de error
@@ -383,8 +359,6 @@ export class ListadoComponent {
 
   // Helper method para descargar PDF usando el proxy (igual que en PDF service)
   private async downloadPdfBlob(pdfUrl: string): Promise<Blob> {
-    console.log('📥 Descargando PDF via proxy:', pdfUrl);
-    
     // Obtener session token para autenticación
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -393,7 +367,6 @@ export class ListadoComponent {
 
     // Usar pdf-proxy para evitar CORS
     const proxyUrl = `https://tejrdiwlgdzxsrqrqsbj.supabase.co/functions/v1/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
-    
     const response = await fetch(proxyUrl, {
       method: 'GET',
       headers: {
@@ -401,19 +374,14 @@ export class ListadoComponent {
         'Content-Type': 'application/json',
       },
     });
-
     if (!response.ok) {
       throw new Error(`Error descargando PDF: ${response.status} ${response.statusText}`);
     }
-
     const blob = await response.blob();
-    console.log('✅ PDF descargado:', blob.size, 'bytes', blob.type);
-
     // Asegurar que el tipo MIME sea correcto
     if (blob.type !== 'application/pdf') {
       return new Blob([blob], { type: 'application/pdf' });
     }
-
     return blob;
   }
 
@@ -707,22 +675,16 @@ export class ListadoComponent {
     }
 
     try {
-      console.log('🚀 Iniciando anulación de factura:', factura.numero_factura);
-
       // Mostrar loading
       this.cargando.set(true);
-
       // Crear nota de crédito
       const resultado = await this.facturacionService.crearNotaCredito(
         factura.id,
         factura.numero_factura,
         factura.monto
       );
-
       // Manejar el resultado
       if (resultado.success) {
-        console.log('✅ Nota de crédito creada exitosamente:', resultado.data);
-
         // Mostrar mensaje de éxito
         alert(
           `✅ Factura anulada exitosamente!\n\n` +

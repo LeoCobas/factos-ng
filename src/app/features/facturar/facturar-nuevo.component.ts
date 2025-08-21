@@ -221,8 +221,6 @@ export class FacturarNuevoComponent {
   }
 
   async emitirFactura(): Promise<void> {
-    console.log('🆕 COMPONENTE ACTUALIZADO - facturar-nuevo.component.ts - BUILD: ' + Date.now());
-    
     if (this.formFactura.invalid) {
       this.formFactura.markAllAsTouched();
       return;
@@ -234,30 +232,16 @@ export class FacturarNuevoComponent {
 
     try {
       const { monto, fecha } = this.formFactura.value;
-      
       // Convertir fecha a formato DD/MM/YYYY que espera la API
       const fechaFormateada = this.convertirFechaADDMMYYYY(fecha);
-      
-      console.log('� Fecha original del input:', fecha);
-      console.log('📅 Fecha convertida para API:', fechaFormateada);
-      console.log('📅 Fecha actual Argentina:', new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' }));
-      
-      console.log('�📋 Datos del formulario:', { monto: parseFloat(monto), fecha: fechaFormateada });
-
       const resultado = await this.facturacionService.emitirFactura({
         monto: parseFloat(monto),
         fecha: fechaFormateada
       });
-
       if (resultado.success) {
-        console.log('✅ DEBUG - Resultado completo:', resultado);
-        console.log('✅ DEBUG - Factura object:', resultado.factura);
-        console.log('✅ DEBUG - PDF URL en factura:', resultado.factura?.pdf_url);
-        
         this.esExito.set(true);
         this.mensaje.set(`¡Factura emitida exitosamente! Número: ${resultado.factura.numero_factura}`);
         this.facturaEmitida.set(resultado.factura);
-        
         // Limpiar formulario
         this.formFactura.reset({
           monto: '',
@@ -266,7 +250,6 @@ export class FacturarNuevoComponent {
       } else {
         throw new Error('Error al emitir factura');
       }
-
     } catch (error) {
       console.error('❌ Error al emitir factura:', error);
       this.esExito.set(false);
@@ -335,30 +318,16 @@ export class FacturarNuevoComponent {
 
   async imprimir(): Promise<void> {
     const factura = this.facturaEmitida();
-    console.log('🖨️ DEBUG - Factura completa:', factura);
-    console.log('🖨️ DEBUG - PDF URL:', factura?.pdf_url);
-    console.log('🖨️ DEBUG - Todas las propiedades de factura:', Object.keys(factura || {}));
-    console.log('🖨️ DEBUG - Valores de propiedades PDF-related:', {
-      pdf_url: factura?.pdf_url,
-      comprobante_pdf_url: factura?.comprobante_pdf_url,
-      pdf_ticket_url: factura?.pdf_ticket_url,
-      comprobante_ticket_url: factura?.comprobante_ticket_url
-    });
-    
     if (!factura?.pdf_url) {
       alert('PDF no disponible para imprimir');
       return;
     }
-
     const pdfInfo = {
       url: factura.pdf_url,
       filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura)}.pdf`,
       title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`,
       text: `Imprimir Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`
     };
-    
-    console.log('🖨️ DEBUG - PdfInfo objeto:', pdfInfo);
-
     try {
       await this.pdfService.printPdf(pdfInfo);
     } catch (error) {

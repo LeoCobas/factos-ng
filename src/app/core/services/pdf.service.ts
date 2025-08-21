@@ -39,8 +39,6 @@ export class PdfService {
    * Descarga PDF directamente sin proxy (para cuando no hay problemas CORS)
    */
   private async downloadPdfBlobDirect(pdfUrl: string): Promise<Blob> {
-    console.log('📥 Descargando PDF directamente:', pdfUrl);
-    
     const response = await fetch(pdfUrl, {
       method: 'GET',
       mode: 'cors',
@@ -51,8 +49,6 @@ export class PdfService {
     }
     
     const blob = await response.blob();
-    console.log('✅ PDF descargado directamente:', blob.size, 'bytes', blob.type);
-    
     // Asegurar que el tipo MIME sea correcto
     if (blob.type !== 'application/pdf') {
       return new Blob([blob], { type: 'application/pdf' });
@@ -65,8 +61,6 @@ export class PdfService {
    * Descargar PDF usando proxy para evitar CORS
    */
   private async downloadPdfBlob(pdfUrl: string): Promise<Blob> {
-    console.log('📥 Descargando PDF via proxy:', pdfUrl);
-    
     // Obtener session token para autenticación
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -75,26 +69,20 @@ export class PdfService {
 
     // Usar pdf-proxy para evitar CORS
     const proxyUrl = `https://tejrdiwlgdzxsrqrqsbj.supabase.co/functions/v1/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
-    
     const response = await fetch(proxyUrl, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${session.access_token}`,
       }
     });
-    
     if (!response.ok) {
       throw new Error(`Error del proxy: ${response.status} ${response.statusText}`);
     }
-    
     const blob = await response.blob();
-    console.log('✅ PDF descargado:', blob.size, 'bytes', blob.type);
-    
     // Asegurar que el tipo MIME sea correcto
     if (blob.type !== 'application/pdf') {
       return new Blob([blob], { type: 'application/pdf' });
     }
-    
     return blob;
   }
 
@@ -102,7 +90,6 @@ export class PdfService {
    * Compartir PDF usando Web Share API nativa
    */
   async sharePdf(pdfInfo: PdfInfo): Promise<boolean> {
-    console.log('📤 Iniciando compartir PDF:', pdfInfo.filename);
     const caps = this.capabilities;
     
     try {
@@ -119,52 +106,39 @@ export class PdfService {
       if (caps.webShare && caps.canShare) {
         try {
           const canShareFiles = navigator.canShare({ files: [file] });
-          console.log('📱 Puede compartir archivos:', canShareFiles);
-          
           if (canShareFiles) {
-            console.log('📤 Compartiendo archivo PDF via Web Share API');
             await navigator.share({
               title: pdfInfo.title,
               text: pdfInfo.text,
               files: [file]
             });
-            console.log('✅ PDF compartido exitosamente');
             return true;
           }
         } catch (fileShareError) {
-          console.warn('⚠️ Error compartiendo archivo, intentando con URL:', fileShareError);
         }
         
         // Fallback: compartir solo la URL
         try {
           const canShareUrl = navigator.canShare({ url: pdfInfo.url });
-          console.log('🔗 Puede compartir URL:', canShareUrl);
-          
           if (canShareUrl) {
-            console.log('📤 Compartiendo URL via Web Share API');
             await navigator.share({
               title: pdfInfo.title,
               text: `${pdfInfo.text}\n\nPDF: ${pdfInfo.url}`,
               url: pdfInfo.url
             });
-            console.log('✅ URL compartida exitosamente');
             return true;
           }
         } catch (urlShareError) {
-          console.warn('⚠️ Error compartiendo URL, intentando solo texto:', urlShareError);
         }
         
         // Fallback: compartir solo texto
         try {
-          console.log('📤 Compartiendo solo texto via Web Share API');
           await navigator.share({
             title: pdfInfo.title,
             text: `${pdfInfo.text}\n\nPDF: ${pdfInfo.url}`
           });
-          console.log('✅ Texto compartido exitosamente');
           return true;
         } catch (textShareError) {
-          console.warn('⚠️ Error compartiendo texto via Web Share API:', textShareError);
         }
       }
       
@@ -186,7 +160,6 @@ export class PdfService {
    * Estrategia específica para Android cuando Web Share API falla
    */
   private async shareAndroidFallback(pdfBlob: Blob, pdfInfo: PdfInfo): Promise<boolean> {
-    console.log('📱 Usando estrategia Android fallback');
     
     try {
       // Crear URL temporal para el blob
@@ -197,8 +170,6 @@ export class PdfService {
       const userChoice = confirm(`${message}\n\nOK = Abrir PDF para compartir manualmente\nCancelar = Copiar información al portapapeles`);
       
       if (userChoice) {
-        // Abrir PDF para compartir manualmente
-        console.log('📄 Abriendo PDF para compartir manual');
         window.open(blobUrl, '_blank');
         
         // Mostrar instrucciones específicas para Android
@@ -210,8 +181,6 @@ export class PdfService {
         setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
         
       } else {
-        // Copiar al portapapeles
-        console.log('📋 Copiando información al portapapeles');
         const textToCopy = `${pdfInfo.text}\n\nPDF: ${pdfInfo.url}`;
         
         if (this.capabilities.clipboard) {
