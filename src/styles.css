@@ -141,6 +141,37 @@ body {
   padding-right: 0.9em;
 }
 
+/* Botón de configuración en el header: igual que navegación pero responsive */
+.header-btn {
+  font-size: 0.8rem !important; /* tamaño base aún más pequeño */
+  font-weight: 600 !important;
+  padding: 0.35rem 0.5rem !important; /* padding más compacto */
+  letter-spacing: 0.01em !important;
+  line-height: 1.4 !important; /* altura de línea más generosa para evitar cortes */
+}
+
+.header-btn span {
+  font-size: inherit !important; /* asegurar que el span herede el tamaño */
+}
+
+.header-btn svg {
+  width: 1rem !important; /* icono más pequeño */
+  height: 1rem !important;
+}
+
+/* Responsive: en pantallas pequeñas mantener compacto */
+@media (min-width: 640px) {
+  .header-btn {
+    font-size: 0.85rem !important; /* un poco más grande en desktop pero mucho menor que nav-btn */
+    padding: 0.4rem 0.6rem !important;
+  }
+  
+  .header-btn svg {
+    width: 1.1rem !important; /* icono ligeramente más grande en desktop */
+    height: 1.1rem !important;
+  }
+}
+
 /* Estilos específicos para modo oscuro del botón activo */
 .dark-theme .nav-btn-active {
   background-color: #27272a !important; /* zinc-800 - más sutil */

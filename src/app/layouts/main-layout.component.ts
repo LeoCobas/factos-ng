@@ -20,13 +20,14 @@ import { Router, RouterOutlet } from '@angular/router';
           
           <button 
             (click)="navigate('/configuracion')"
-            class="flex items-center space-x-1 sm:space-x-2 text-muted-foreground hover:text-foreground transition-colors duration-200"
+            class="ml-auto flex items-center space-x-2 rounded-md header-btn transition-all duration-200"
+            [class]="isActive('/configuracion') ? 'ml-auto flex items-center space-x-2 rounded-md header-btn nav-btn-active' : 'ml-auto flex items-center space-x-2 rounded-md header-btn text-muted-foreground hover:text-foreground hover:bg-background/50'"
           >
-            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
               <circle cx="12" cy="12" r="4"/>
             </svg>
-            <span class="text-xs sm:text-sm font-medium">Configuración</span>
+            <span class="truncate">Configuración</span>
           </button>
         </div>
 
