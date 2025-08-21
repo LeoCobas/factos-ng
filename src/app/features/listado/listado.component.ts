@@ -6,6 +6,7 @@ import { CurrencyPipe } from '@angular/common';
 import { supabase } from '../../core/services/supabase.service';
 import { PdfService } from '../../core/services/pdf.service';
 import { FacturacionService } from '../../core/services/facturacion.service';
+import { PdfViewerComponent, PdfViewerConfig } from '../../shared/components/ui/pdf-viewer.component';
 
 interface Factura {
   id: string;
@@ -25,7 +26,7 @@ interface Factura {
 @Component({
   selector: 'app-listado',
   standalone: true,
-  imports: [CurrencyPipe],
+  imports: [CurrencyPipe, PdfViewerComponent],
   template: `
     <!-- Simplified mobile-first design matching screenshot -->
     <div class="space-y-4 sm:space-y-6">
@@ -212,26 +213,13 @@ interface Factura {
     @if (pdfViewing()) {
       <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" 
            (click)="cerrarVisorPdf()">
-        <div class="bg-card rounded-lg w-full max-w-4xl h-full max-h-[90vh] flex flex-col shadow-2xl"
+        <div class="bg-card rounded-lg w-full max-w-6xl h-full max-h-[95vh] flex flex-col shadow-2xl overflow-hidden"
              (click)="$event.stopPropagation()">
-          <!-- Header del modal -->
-          <div class="flex justify-between items-center p-4 border-b border-border">
-            <h3 class="text-lg font-semibold text-foreground">{{ pdfViewingInfo()?.title || 'Documento PDF' }}</h3>
-            <button (click)="cerrarVisorPdf()" 
-                    class="text-muted-foreground hover:text-foreground transition-colors">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
-          </div>
           
           <!-- Visor PDF -->
-          <div class="flex-1 overflow-hidden bg-gray-100">
-            @if (pdfViewingUrl()) {
-              <iframe [src]="pdfViewingUrl()" 
-                      class="w-full h-full border-0"
-                      title="Visor PDF">
-              </iframe>
+          <div class="flex-1 overflow-hidden">
+            @if (pdfViewerConfig()) {
+              <app-pdf-viewer [config]="pdfViewerConfig()!" (closeRequested)="cerrarVisorPdf()"></app-pdf-viewer>
             } @else {
               <div class="flex items-center justify-center h-full">
                 <div class="text-center">
@@ -291,6 +279,20 @@ export class ListadoComponent {
   pdfViewing = signal<Factura | null>(null);
   pdfViewingInfo = signal<{title: string; url: string; filename: string} | null>(null);
   pdfViewingBlobUrl = signal<string | null>(null);
+
+  // Config para el PDF viewer
+  pdfViewerConfig = computed((): PdfViewerConfig | null => {
+    const blobUrl = this.pdfViewingBlobUrl();
+    const info = this.pdfViewingInfo();
+    
+    if (!blobUrl || !info) return null;
+    
+    return {
+      url: blobUrl,
+      title: info.title,
+      filename: info.filename
+    };
+  });
 
   constructor(
     private pdfService: PdfService,
