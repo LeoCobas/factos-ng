@@ -32,6 +32,11 @@ interface ConfiguracionRow {
   updated_at: string;
 }
 
+interface MensajeEstado {
+  texto: string;
+  tipo: 'success' | 'error';
+}
+
 @Component({
   selector: 'app-configuracion',
   template: `
@@ -361,15 +366,15 @@ export class ConfiguracionComponent implements OnInit {
   readonly themeService = inject(ThemeService);
 
   // Estados
-  cargando = signal(false);
-  guardando = signal(false);
-  mensaje = signal<{ texto: string; tipo: 'success' | 'error' } | null>(null);
-  mostrarApiToken = signal(false);
-  mostrarApiKey = signal(false);
-  mostrarUserToken = signal(false);
+  readonly cargando = signal(false);
+  readonly guardando = signal(false);
+  readonly mensaje = signal<MensajeEstado | null>(null);
+  readonly mostrarApiToken = signal(false);
+  readonly mostrarApiKey = signal(false);
+  readonly mostrarUserToken = signal(false);
 
   // Formulario
-  configForm: FormGroup;
+  readonly configForm: FormGroup;
 
   constructor() {
     this.configForm = this.fb.group({
@@ -405,8 +410,8 @@ export class ConfiguracionComponent implements OnInit {
         return;
       }
 
-      const row = (Array.isArray(data) ? data[0] : data) as ConfiguracionRow;
-      if (row) {
+      if (data && data.length > 0) {
+        const row = data[0] as ConfiguracionRow;
         this.configForm.patchValue({
           concepto: row.concepto,
           iva_porcentaje: Number(row.iva_porcentaje).toFixed(2),
@@ -421,8 +426,7 @@ export class ConfiguracionComponent implements OnInit {
         });
       }
     } catch (error) {
-      console.error('Error al cargar configuración:', error);
-      this.mostrarMensaje('Ocurrió un error inesperado.', 'error');
+      this.mostrarMensaje('Ocurrió un error inesperado al cargar la configuración.', 'error');
     } finally {
       this.cargando.set(false);
     }
@@ -434,17 +438,6 @@ export class ConfiguracionComponent implements OnInit {
     this.guardando.set(true);
     
     try {
-      // Obtener configuración existente
-      const { data: existentes, error: readErr } = await supabase
-        .from('configuracion')
-        .select('id')
-        .order('updated_at', { ascending: false })
-        .limit(1);
-
-      if (readErr) {
-        throw readErr;
-      }
-
       const formData = this.configForm.value;
       const payload = {
         concepto: formData.concepto,
@@ -459,14 +452,24 @@ export class ConfiguracionComponent implements OnInit {
         tipo_comprobante_default: formData.tipo_comprobante_default
       };
 
+      // Obtener configuración existente
+      const { data: existentes, error: readErr } = await supabase
+        .from('configuracion')
+        .select('id')
+        .order('updated_at', { ascending: false })
+        .limit(1);
+
+      if (readErr) {
+        throw readErr;
+      }
+
       let error;
       if (existentes && existentes.length > 0) {
         // Actualizar configuración existente
-        const id = existentes[0].id;
         const { error: updErr } = await supabase
           .from('configuracion')
           .update(payload)
-          .eq('id', id);
+          .eq('id', existentes[0].id);
         error = updErr;
       } else {
         // Insertar nueva configuración
@@ -485,8 +488,7 @@ export class ConfiguracionComponent implements OnInit {
       await this.cargarConfiguracion();
 
     } catch (error) {
-      console.error('Error al guardar configuración:', error);
-      this.mostrarMensaje('Ocurrió un error inesperado.', 'error');
+      this.mostrarMensaje('Ocurrió un error inesperado al guardar.', 'error');
     } finally {
       this.guardando.set(false);
     }
@@ -497,12 +499,7 @@ export class ConfiguracionComponent implements OnInit {
     setTimeout(() => this.mensaje.set(null), 5000);
   }
 
-  onThemeChange(event: Event) {
-    const value = (event.target as HTMLSelectElement).value as ThemeMode;
-    this.themeService.setTheme(value);
-  }
-
-  setTheme(theme: ThemeMode) {
+  setTheme(theme: ThemeMode): void {
     this.themeService.setTheme(theme);
   }
 }

@@ -21,17 +21,17 @@ export class ThemeService {
   });
 
   constructor() {
-    // Apply class when theme or system preference changes
+    // Apply theme classes when theme or system preference changes
     effect(() => {
       const mode = this.theme();
       this.save(mode);
       const isDark = this.isDark();
       const root = this.doc.documentElement;
       
-      // Eliminar clases previas siguiendo el artículo Medium
+      // Remove previous theme classes
       root.classList.remove('light-theme', 'dark-theme');
       
-      // Aplicar clase apropiada
+      // Apply appropriate theme class
       if (isDark) {
         root.classList.add('dark-theme');
       } else {
@@ -49,8 +49,8 @@ export class ThemeService {
     if (this.media) {
       const handleMediaChange = () => {
         if (this.theme() === 'auto') {
-          // Force re-evaluation by updating signal value
-          this.theme.update(v => v);
+          // Trigger re-evaluation of computed when system preference changes
+          this.theme.update(current => current);
         }
       };
       
@@ -66,6 +66,7 @@ export class ThemeService {
   }
 
   private get(): ThemeMode | null {
+    if (typeof localStorage === 'undefined') return null;
     try {
       const v = localStorage.getItem('theme');
       return v === 'light' || v === 'dark' || v === 'auto' ? v : null;
@@ -74,7 +75,8 @@ export class ThemeService {
     }
   }
 
-  private save(v: ThemeMode) {
+  private save(v: ThemeMode): void {
+    if (typeof localStorage === 'undefined') return;
     try { 
       localStorage.setItem('theme', v); 
     } catch { 
