@@ -341,8 +341,8 @@ export class ListadoComponent {
         URL.revokeObjectURL(oldBlobUrl);
         this.pdfViewingBlobUrl.set(null);
       }
-      // Descargar PDF usando el método que funciona (igual que impresión)
-      const pdfBlob = await this.downloadPdfBlob(factura.pdf_url);
+      // Descargar PDF usando el servicio centralizado
+      const pdfBlob = await this.pdfService['downloadPdfBlob'](factura.pdf_url);
       // Crear blob URL local
       const blobUrl = URL.createObjectURL(pdfBlob);
       this.pdfViewingBlobUrl.set(blobUrl);
@@ -353,34 +353,6 @@ export class ListadoComponent {
       // Fallback: abrir en nueva ventana
       window.open(factura.pdf_url, '_blank');
     }
-  }
-
-  // Helper method para descargar PDF usando el proxy (igual que en PDF service)
-  private async downloadPdfBlob(pdfUrl: string): Promise<Blob> {
-    // Obtener session token para autenticación
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw new Error('No hay sesión activa');
-    }
-
-    // Usar pdf-proxy para evitar CORS
-    const proxyUrl = `https://tejrdiwlgdzxsrqrqsbj.supabase.co/functions/v1/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
-    const response = await fetch(proxyUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    if (!response.ok) {
-      throw new Error(`Error descargando PDF: ${response.status} ${response.statusText}`);
-    }
-    const blob = await response.blob();
-    // Asegurar que el tipo MIME sea correcto
-    if (blob.type !== 'application/pdf') {
-      return new Blob([blob], { type: 'application/pdf' });
-    }
-    return blob;
   }
 
   async compartir(factura: any, event?: Event) {
@@ -395,12 +367,7 @@ export class ListadoComponent {
     }
 
     try {
-      const pdfInfo = {
-        url: factura.pdf_url,
-        filename: `factura-${factura.numero_factura}.pdf`,
-        title: `Factura ${factura.numero_factura}`,
-        text: `Factura ${factura.numero_factura} - ${factura.monto}`
-      };
+      const pdfInfo = this.pdfService.createPdfInfo(factura);
       await this.pdfService.sharePdf(pdfInfo);
     } catch (error) {
       console.error('Error al compartir:', error);
@@ -419,12 +386,7 @@ export class ListadoComponent {
     }
 
     try {
-      const pdfInfo = {
-        url: factura.pdf_url,
-        filename: `factura-${factura.numero_factura}.pdf`,
-        title: `Factura ${factura.numero_factura}`,
-        text: `Factura ${factura.numero_factura} - ${factura.monto}`
-      };
+      const pdfInfo = this.pdfService.createPdfInfo(factura);
       await this.pdfService.downloadPdf(pdfInfo);
     } catch (error) {
       console.error('Error al descargar:', error);

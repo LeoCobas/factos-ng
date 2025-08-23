@@ -1,12 +1,6 @@
 import { Injectable } from '@angular/core';
 import { supabase } from './supabase.service';
 
-export interface PdfShareOptions {
-  title?: string;
-  text?: string;
-  filename?: string;
-}
-
 export interface PdfInfo {
   url: string;
   filename: string;
@@ -24,50 +18,25 @@ export class PdfService {
   /**
    * Detectar capacidades del navegador
    */
-  get capabilities() {
+  private get capabilities() {
     return {
       webShare: 'share' in navigator,
       canShare: 'canShare' in navigator,
       fileSystemAccess: 'showSaveFilePicker' in window,
       clipboard: 'clipboard' in navigator && 'writeText' in navigator.clipboard,
-      isAndroid: /Android/i.test(navigator.userAgent),
-      isMobile: /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      isAndroid: /Android/i.test(navigator.userAgent)
     };
-  }
-
-  /**
-   * Descarga PDF directamente sin proxy (para cuando no hay problemas CORS)
-   */
-  private async downloadPdfBlobDirect(pdfUrl: string): Promise<Blob> {
-    const response = await fetch(pdfUrl, {
-      method: 'GET',
-      mode: 'cors',
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error descargando PDF: ${response.status} ${response.statusText}`);
-    }
-    
-    const blob = await response.blob();
-    // Asegurar que el tipo MIME sea correcto
-    if (blob.type !== 'application/pdf') {
-      return new Blob([blob], { type: 'application/pdf' });
-    }
-    
-    return blob;
   }
 
   /**
    * Descargar PDF usando proxy para evitar CORS
    */
   private async downloadPdfBlob(pdfUrl: string): Promise<Blob> {
-    // Obtener session token para autenticación
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       throw new Error('No hay sesión activa');
     }
 
-    // Usar pdf-proxy para evitar CORS
     const proxyUrl = `https://tejrdiwlgdzxsrqrqsbj.supabase.co/functions/v1/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
     const response = await fetch(proxyUrl, {
       method: 'GET',
@@ -75,194 +44,83 @@ export class PdfService {
         'Authorization': `Bearer ${session.access_token}`,
       }
     });
+    
     if (!response.ok) {
       throw new Error(`Error del proxy: ${response.status} ${response.statusText}`);
     }
+    
     const blob = await response.blob();
-    // Asegurar que el tipo MIME sea correcto
-    if (blob.type !== 'application/pdf') {
-      return new Blob([blob], { type: 'application/pdf' });
-    }
-    return blob;
+    return blob.type !== 'application/pdf' ? new Blob([blob], { type: 'application/pdf' }) : blob;
   }
 
   /**
-   * Compartir PDF usando Web Share API nativa
+   * Compartir PDF usando Web Share API con fallbacks inteligentes
    */
   async sharePdf(pdfInfo: PdfInfo): Promise<boolean> {
     const caps = this.capabilities;
     
     try {
-      // Descargar el PDF como blob
       const pdfBlob = await this.downloadPdfBlob(pdfInfo.url);
-      
-      // Crear File object para Web Share API
       const file = new File([pdfBlob], pdfInfo.filename, { 
         type: 'application/pdf',
         lastModified: Date.now()
       });
 
-      // Intentar Web Share API con archivos (Android 10+, iOS 14+)
+      // Intentar Web Share API con archivos
       if (caps.webShare && caps.canShare) {
-        try {
-          const canShareFiles = navigator.canShare({ files: [file] });
-          if (canShareFiles) {
-            await navigator.share({
-              title: pdfInfo.title,
-              text: pdfInfo.text,
-              files: [file]
-            });
-            return true;
-          }
-        } catch (fileShareError) {
-        }
-        
-        // Fallback: compartir solo la URL
-        try {
-          const canShareUrl = navigator.canShare({ url: pdfInfo.url });
-          if (canShareUrl) {
-            await navigator.share({
-              title: pdfInfo.title,
-              text: `${pdfInfo.text}\n\nPDF: ${pdfInfo.url}`,
-              url: pdfInfo.url
-            });
-            return true;
-          }
-        } catch (urlShareError) {
-        }
-        
-        // Fallback: compartir solo texto
-        try {
+        if (navigator.canShare({ files: [file] })) {
           await navigator.share({
             title: pdfInfo.title,
-            text: `${pdfInfo.text}\n\nPDF: ${pdfInfo.url}`
+            text: pdfInfo.text,
+            files: [file]
           });
           return true;
-        } catch (textShareError) {
         }
+        
+        // Fallback: compartir URL
+        if (navigator.canShare({ url: pdfInfo.url })) {
+          await navigator.share({
+            title: pdfInfo.title,
+            text: `${pdfInfo.text}\n\nPDF: ${pdfInfo.url}`,
+            url: pdfInfo.url
+          });
+          return true;
+        }
+        
+        // Fallback: solo texto
+        await navigator.share({
+          title: pdfInfo.title,
+          text: `${pdfInfo.text}\n\nPDF: ${pdfInfo.url}`
+        });
+        return true;
       }
       
-      // Fallback final: estrategia específica para Android
+      // Fallback para Android sin Web Share API
       if (caps.isAndroid) {
-        return await this.shareAndroidFallback(pdfBlob, pdfInfo);
+        const blobUrl = URL.createObjectURL(pdfBlob);
+        window.open(blobUrl, '_blank');
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+        return true;
       }
       
-      // Fallback para otros dispositivos
-      return await this.shareGenericFallback(pdfInfo);
+      // Fallback final: copiar al portapapeles
+      return this.copyToClipboard(`${pdfInfo.text}\n\nPDF: ${pdfInfo.url}`);
       
     } catch (error) {
       console.error('❌ Error en sharePdf:', error);
-      return await this.shareGenericFallback(pdfInfo);
+      return this.copyToClipboard(`${pdfInfo.text}\n\nPDF: ${pdfInfo.url}`);
     }
   }
 
   /**
-   * Estrategia específica para Android cuando Web Share API falla
-   */
-  private async shareAndroidFallback(pdfBlob: Blob, pdfInfo: PdfInfo): Promise<boolean> {
-    
-    try {
-      // Crear URL temporal para el blob
-      const blobUrl = URL.createObjectURL(pdfBlob);
-      
-      // Mostrar opciones al usuario
-      const message = `${pdfInfo.title}\n${pdfInfo.text}\n\n¿Cómo deseas compartir?`;
-      const userChoice = confirm(`${message}\n\nOK = Abrir PDF para compartir manualmente\nCancelar = Copiar información al portapapeles`);
-      
-      if (userChoice) {
-        window.open(blobUrl, '_blank');
-        
-        // Mostrar instrucciones específicas para Android
-        setTimeout(() => {
-          alert(`📱 PDF abierto\n\nPara compartir en Android:\n• Toca ⋮ (menú)\n• Selecciona "Compartir"\n• Elige la app destino`);
-        }, 1500);
-        
-        // Limpiar URL después de un tiempo
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-        
-      } else {
-        const textToCopy = `${pdfInfo.text}\n\nPDF: ${pdfInfo.url}`;
-        
-        if (this.capabilities.clipboard) {
-          await navigator.clipboard.writeText(textToCopy);
-          alert('📋 Información copiada al portapapeles');
-        } else {
-          // Fallback para portapapeles
-          this.showCopyFallback(textToCopy);
-        }
-        
-        URL.revokeObjectURL(blobUrl);
-      }
-      
-      return true;
-      
-    } catch (error) {
-      console.error('❌ Error en Android fallback:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Fallback genérico para dispositivos sin Web Share API
-   */
-  private async shareGenericFallback(pdfInfo: PdfInfo): Promise<boolean> {
-    console.log('📋 Usando fallback genérico');
-    
-    const textToCopy = `${pdfInfo.text}\n\nPDF: ${pdfInfo.url}`;
-    
-    if (this.capabilities.clipboard) {
-      try {
-        await navigator.clipboard.writeText(textToCopy);
-        alert('📋 Información de la factura copiada al portapapeles');
-        return true;
-      } catch (error) {
-        console.warn('⚠️ Error copiando al portapapeles:', error);
-      }
-    }
-    
-    // Fallback final: mostrar información
-    this.showCopyFallback(textToCopy);
-    return true;
-  }
-
-  /**
-   * Mostrar información cuando no se puede copiar al portapapeles
-   */
-  private showCopyFallback(text: string): void {
-    // Crear un textarea temporal para seleccionar el texto
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-999999px';
-    textarea.style.top = '-999999px';
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
-    
-    try {
-      document.execCommand('copy');
-      alert('📋 Información copiada al portapapeles');
-    } catch (error) {
-      alert(`📄 Información de la factura:\n\n${text}`);
-    }
-    
-    document.body.removeChild(textarea);
-  }
-
-  /**
-   * Descargar PDF con File System Access API o fallback
+   * Descargar PDF con File System Access API o fallback automático
    */
   async downloadPdf(pdfInfo: PdfInfo): Promise<boolean> {
-    console.log('💾 Iniciando descarga PDF:', pdfInfo.filename);
-    const caps = this.capabilities;
-    
     try {
-      // Descargar el PDF como blob
       const pdfBlob = await this.downloadPdfBlob(pdfInfo.url);
       
-      // File System Access API (Chrome 86+)
-      if (caps.fileSystemAccess) {
-        console.log('💾 Usando File System Access API');
+      // Intentar File System Access API (Chrome 86+)
+      if (this.capabilities.fileSystemAccess) {
         try {
           const fileHandle = await (window as any).showSaveFilePicker({
             suggestedName: pdfInfo.filename,
@@ -276,33 +134,29 @@ export class PdfService {
           await writable.write(pdfBlob);
           await writable.close();
           
-          console.log('✅ PDF guardado con File System Access API');
           alert('✅ PDF guardado exitosamente');
           return true;
           
         } catch (fsError) {
-          if (fsError instanceof Error && fsError.name !== 'AbortError') {
-            console.warn('⚠️ Error en File System Access API:', fsError);
+          if (fsError instanceof Error && fsError.name === 'AbortError') {
+            return false; // Usuario canceló
           }
-          // Continuar con fallback si no es cancelación del usuario
         }
       }
       
       // Fallback: descarga automática
-      console.log('💾 Usando descarga automática');
       this.downloadFallback(pdfBlob, pdfInfo.filename);
       return true;
       
     } catch (error) {
       console.error('❌ Error descargando PDF:', error);
-      // Fallback final: abrir URL original
       window.open(pdfInfo.url, '_blank');
       return false;
     }
   }
 
   /**
-   * Descarga automática (fallback)
+   * Descarga automática usando elemento <a>
    */
   private downloadFallback(blob: Blob, filename: string): void {
     const url = URL.createObjectURL(blob);
@@ -316,15 +170,42 @@ export class PdfService {
     document.body.removeChild(a);
     
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    console.log('✅ PDF descargado automáticamente');
   }
 
   /**
-   * Abrir PDF (simple pero efectivo)
+   * Copiar texto al portapapeles con fallback
    */
-  openPdf(pdfUrl: string): void {
-    console.log('📄 Abriendo PDF:', pdfUrl);
-    window.open(pdfUrl, '_blank');
+  private async copyToClipboard(text: string): Promise<boolean> {
+    if (this.capabilities.clipboard) {
+      try {
+        await navigator.clipboard.writeText(text);
+        alert('📋 Información copiada al portapapeles');
+        return true;
+      } catch (error) {
+        console.warn('⚠️ Error copiando al portapapeles:', error);
+      }
+    }
+    
+    // Fallback: usar documento.execCommand
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-999999px';
+    textarea.style.top = '-999999px';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    
+    try {
+      document.execCommand('copy');
+      alert('📋 Información copiada al portapapeles');
+      return true;
+    } catch (error) {
+      alert(`📄 Información de la factura:\n\n${text}`);
+      return false;
+    } finally {
+      document.body.removeChild(textarea);
+    }
   }
 
   /**
@@ -344,7 +225,7 @@ export class PdfService {
   }
 
   /**
-   * Métodos helper para formatear datos
+   * Obtener tipo de comprobante formateado
    */
   private getTipoComprobante(factura: any): string {
     if (factura.tipo_comprobante === 'FACTURA B') return 'FC B';
@@ -352,6 +233,9 @@ export class PdfService {
     return factura.tipo_comprobante || 'FC B';
   }
 
+  /**
+   * Obtener número de factura sin ceros iniciales
+   */
   private getNumeroSinCeros(numeroCompleto: string): string {
     if (numeroCompleto?.includes('-')) {
       return numeroCompleto.split('-')[1];
@@ -359,6 +243,9 @@ export class PdfService {
     return numeroCompleto?.replace(/^0+/, '') || '0';
   }
 
+  /**
+   * Formatear monto en pesos argentinos
+   */
   private formatearMonto(monto: number): string {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',

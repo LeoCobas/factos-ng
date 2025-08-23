@@ -304,12 +304,8 @@ export class FacturarNuevoComponent {
     }
 
     try {
-      await this.pdfService.sharePdf({
-        url: factura.pdf_url,
-        filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura)}.pdf`,
-        title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`,
-        text: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)} - ${this.formatearMonto(factura.monto)}`
-      });
+      const pdfInfo = this.pdfService.createPdfInfo(factura);
+      await this.pdfService.sharePdf(pdfInfo);
     } catch (error) {
       console.error('❌ Error compartiendo:', error);
       alert('Error al compartir el PDF');
@@ -344,12 +340,8 @@ export class FacturarNuevoComponent {
     }
 
     try {
-      await this.pdfService.downloadPdf({
-        url: factura.pdf_url,
-        filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura)}.pdf`,
-        title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`,
-        text: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`
-      });
+      const pdfInfo = this.pdfService.createPdfInfo(factura);
+      await this.pdfService.downloadPdf(pdfInfo);
     } catch (error) {
       console.error('❌ Error descargando:', error);
       // Fallback - abrir URL original
