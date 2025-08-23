@@ -1,14 +1,16 @@
 import { Component, signal } from '@angular/core';
+import { PdfViewerComponent, PdfViewerConfig } from '../../shared/components/ui/pdf-viewer.component';
 import { supabase } from '../../core/services/supabase.service';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FacturacionService } from '../../core/services/facturacion.service';
 import { PdfService } from '../../core/services/pdf.service';
+import { PdfJsPrintService } from '../../core/services/pdfjs-print.service';
 
 @Component({
   selector: 'app-facturar-nuevo',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, PdfViewerComponent],
   template: `
     <div class="max-w-md mx-auto">
       <div class="card-surface p-6">
@@ -73,42 +75,24 @@ import { PdfService } from '../../core/services/pdf.service';
                   {{ obtenerTipoComprobante(facturaEmitida()!) }} {{ obtenerNumeroSinCeros(facturaEmitida()!.numero_factura) }} {{ formatearMonto(facturaEmitida()!.monto) }}
                 </div>
               </div>
-              
-              <!-- Botones de acción -->
+              <!-- Botones de acción - Grid completo con 4 botones -->
               <div class="grid grid-cols-2 gap-2 mb-3">
-                <button
-                  (click)="verPDF()"
-                  class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-                >
-                  Ver
-                </button>
-                <button
-                  (click)="compartir()"
-                  class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-                >
-                  Compartir
-                </button>
-                <button
-                  (click)="descargar()"
-                  class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-                >
-                  Descargar
-                </button>
-                <button
-                  (click)="imprimir()"
-                  class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-                >
-                  Imprimir
-                </button>
+                <button (click)="verPDF()" class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm">Ver</button>
+                <button (click)="compartir()" class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm">Compartir</button>
+                <button (click)="descargar()" class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm">Descargar</button>
+                <button (click)="imprimir()" class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm">Imprimir</button>
               </div>
-              
               <!-- Botón Volver -->
-              <button
-                (click)="volver()"
-                class="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-              >
-                Volver
-              </button>
+              <button (click)="volver()" class="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 font-medium py-2 px-3 rounded-lg transition-colors text-sm">Volver</button>
+            </div>
+          }
+
+          <!-- Modal visor PDF -->
+          @if (pdfViewing() && pdfViewingConfig()) {
+            <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" (click)="cerrarVisorPdf()">
+              <div class="bg-card rounded-lg w-full max-w-2xl h-full max-h-[95vh] flex flex-col shadow-2xl overflow-hidden" (click)="$event.stopPropagation()">
+                <app-pdf-viewer [config]="pdfViewingConfig()!" (closeRequested)="cerrarVisorPdf()"></app-pdf-viewer>
+              </div>
             </div>
           }
 
@@ -131,6 +115,10 @@ export class FacturarNuevoComponent {
   esExito = signal(false);
   facturaEmitida = signal<any>(null);
 
+  // Signals para visor PDF
+  pdfViewing = signal<any>(null);
+  pdfViewingConfig = signal<PdfViewerConfig | null>(null);
+
   // Signals para actividad y límites de fecha
   actividad = signal<'bienes' | 'servicios' | null>(null);
   _minFecha = signal<string>('');
@@ -142,7 +130,8 @@ export class FacturarNuevoComponent {
   constructor(
     private fb: FormBuilder,
     private facturacionService: FacturacionService,
-    private pdfService: PdfService
+    private pdfService: PdfService,
+    private pdfJsPrintService: PdfJsPrintService
   ) {
     // Inicializar formulario
     this.formFactura = this.fb.group({
@@ -290,11 +279,22 @@ export class FacturarNuevoComponent {
   verPDF(): void {
     const factura = this.facturaEmitida();
     if (factura?.pdf_url) {
-      this.pdfService.openPdf(factura.pdf_url);
+      this.pdfViewing.set(factura);
+      this.pdfViewingConfig.set({
+        url: factura.pdf_url,
+        filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura)}.pdf`,
+        title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`
+      });
     } else {
       alert('PDF no disponible');
     }
   }
+
+  cerrarVisorPdf() {
+    this.pdfViewing.set(null);
+    this.pdfViewingConfig.set(null);
+  }
+
 
   async compartir(): Promise<void> {
     const factura = this.facturaEmitida();
@@ -322,17 +322,16 @@ export class FacturarNuevoComponent {
       alert('PDF no disponible para imprimir');
       return;
     }
-    const pdfInfo = {
-      url: factura.pdf_url,
-      filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura)}.pdf`,
-      title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`,
-      text: `Imprimir Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`
-    };
+    
     try {
-      await this.pdfService.printPdf(pdfInfo);
+      const printOptions = {
+        url: factura.pdf_url,
+        filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura)}.pdf`,
+        title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`
+      };
+      await this.pdfJsPrintService.printPdfDirect(printOptions);
     } catch (error) {
-      console.error('❌ Error imprimiendo:', error);
-      // Fallback - abrir en nueva ventana
+      // Último recurso: abrir en nueva ventana
       window.open(factura.pdf_url, '_blank');
     }
   }

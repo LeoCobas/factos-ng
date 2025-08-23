@@ -229,24 +229,6 @@ interface Factura {
               </div>
             }
           </div>
-          
-          <!-- Footer con acciones -->
-          <div class="flex justify-end gap-2 p-4 border-t border-border bg-muted">
-            <button (click)="descargarPdfViewing()" 
-                    class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-              </svg>
-              Descargar
-            </button>
-            <button (click)="imprimirPdfViewing()" 
-                    class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
-              </svg>
-              Imprimir
-            </button>
-          </div>
         </div>
       </div>
     }
@@ -447,13 +429,8 @@ export class ListadoComponent {
     }
 
     try {
-      const pdfInfo = {
-        url: factura.pdf_url,
-        filename: `factura-${factura.numero_factura}.pdf`,
-        title: `Factura ${factura.numero_factura}`,
-        text: `Factura ${factura.numero_factura} - ${factura.monto}`
-      };
-      await this.pdfService.printPdf(pdfInfo);
+      // Último recurso: abrir en nueva ventana
+      window.open(factura.pdf_url, '_blank');
     } catch (error) {
       console.error('Error al imprimir:', error);
     }
@@ -777,19 +754,5 @@ export class ListadoComponent {
     this.pdfViewing.set(null);
     this.pdfViewingInfo.set(null);
     this.pdfViewingBlobUrl.set(null);
-  }
-
-  async descargarPdfViewing() {
-    const factura = this.pdfViewing();
-    if (factura) {
-      await this.descargar(factura);
-    }
-  }
-
-  async imprimirPdfViewing() {
-    const factura = this.pdfViewing();
-    if (factura) {
-      await this.imprimir(factura);
-    }
   }
 }

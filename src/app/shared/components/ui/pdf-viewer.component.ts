@@ -1,15 +1,12 @@
 import { Component, input, signal, AfterViewInit, ViewChild, ElementRef, OnDestroy, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { supabase } from '../../../core/services/supabase.service';
 
-// Declaraciones globales para PDF.js v5.4.54
-declare global {
-  interface Window {
-    pdfjsLib: any;
-  }
-}
+// PDF.js tipos usando el archivo centralizado
+/// <reference path="../../../../types/pdfjs.d.ts" />
 
 export interface PdfViewerConfig {
-  url: string;           // Blob URL del PDF
+  url: string;           // URL del PDF (blob URL local o URL externa)
   title: string;         // Título para mostrar
   filename: string;      // Nombre del archivo
 }
@@ -21,73 +18,57 @@ export interface PdfViewerConfig {
   template: `
     <div class="w-full h-full flex flex-col bg-gray-100 dark:bg-gray-900">
       <!-- Header -->
-      <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between">
-        <div class="flex-1 min-w-0">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
+      <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-2 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        <div class="flex-1 min-w-0 w-full sm:w-auto">
+          <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
             {{ config().title }}
           </h3>
-          @if (totalPages() > 0) {
-            <p class="text-sm text-gray-600 dark:text-gray-400">
-              Página {{ currentPage() }} de {{ totalPages() }}
-            </p>
-          }
+          <!-- Eliminado: texto de página actual -->
         </div>
         
-        <!-- Controles de navegación -->
-        <div class="flex items-center gap-2">
-          @if (totalPages() > 1) {
-            <button 
-              (click)="previousPage()"
-              [disabled]="currentPage() <= 1"
-              class="p-2 rounded bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Página anterior">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-              </svg>
-            </button>
-            
-            <button 
-              (click)="nextPage()"
-              [disabled]="currentPage() >= totalPages()"
-              class="p-2 rounded bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Página siguiente">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-              </svg>
-            </button>
-          }
-          
+        <!-- Controles -->
+        <div class="flex items-center gap-1 sm:gap-2 flex-wrap w-full sm:w-auto justify-end">
           <!-- Controles de zoom -->
           <button 
             (click)="zoomOut()"
             [disabled]="scale() <= 0.5"
-            class="p-2 rounded bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="p-1.5 sm:p-2 rounded bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Alejar">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
             </svg>
           </button>
           
-          <span class="text-sm text-gray-600 dark:text-gray-400 min-w-12 text-center">
+          <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 min-w-8 sm:min-w-12 text-center px-1">
             {{ Math.round(scale() * 100) }}%
           </span>
           
           <button 
             (click)="zoomIn()"
             [disabled]="scale() >= 3"
-            class="p-2 rounded bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="p-1.5 sm:p-2 rounded bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Acercar">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+          </button>
+          
+          <!-- Botón imprimir -->
+          <button 
+            (click)="printFirstPage()"
+            class="p-1.5 sm:p-2 rounded bg-orange-500 hover:bg-orange-600 text-white"
+            title="Imprimir primera página">
+            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
             </svg>
           </button>
           
           <!-- Botón cerrar -->
           <button 
             (click)="close()"
-            class="p-2 rounded bg-red-500 hover:bg-red-600 text-white ml-2"
+            class="p-1.5 sm:p-2 rounded bg-red-500 hover:bg-red-600 text-white"
             title="Cerrar">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
@@ -98,26 +79,26 @@ export interface PdfViewerConfig {
       <div class="flex-1 overflow-auto relative">
         @if (loading()) {
           <div class="absolute inset-0 flex items-center justify-center">
-            <div class="text-center">
-              <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
-              <p class="text-gray-600 dark:text-gray-400">Cargando PDF...</p>
+            <div class="text-center p-4">
+              <div class="inline-block animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600 mb-2 sm:mb-4"></div>
+              <p class="text-sm sm:text-base text-gray-600 dark:text-gray-400">Cargando PDF...</p>
             </div>
           </div>
         }
         
         @if (error()) {
-          <div class="absolute inset-0 flex items-center justify-center">
-            <div class="text-center max-w-md mx-auto p-6">
-              <div class="text-red-500 mb-4">
-                <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="text-center max-w-md mx-auto p-4 sm:p-6">
+              <div class="text-red-500 mb-2 sm:mb-4">
+                <svg class="w-8 h-8 sm:w-12 sm:h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
               </div>
-              <h4 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Error al cargar PDF</h4>
-              <p class="text-gray-600 dark:text-gray-400 mb-4 text-sm">{{ error() }}</p>
+              <h4 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Error al cargar PDF</h4>
+              <p class="text-gray-600 dark:text-gray-400 mb-4 text-xs sm:text-sm">{{ error() }}</p>
               <button 
                 (click)="retryLoad()"
-                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors">
+                class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:px-4 sm:py-2 rounded transition-colors text-sm sm:text-base">
                 Reintentar
               </button>
             </div>
@@ -125,7 +106,7 @@ export interface PdfViewerConfig {
         }
         
         <!-- Canvas para renderizar PDF -->
-        <div class="flex justify-center p-4">
+        <div class="flex justify-center p-2 sm:p-4">
           <canvas 
             #pdfCanvas
             [style.display]="loading() || error() ? 'none' : 'block'"
@@ -139,6 +120,25 @@ export interface PdfViewerConfig {
     canvas {
       max-width: 100%;
       height: auto;
+    }
+    
+    /* Mejoras responsive para mobile */
+    @media (max-width: 640px) {
+      .print-container {
+        padding: 8px !important;
+      }
+      
+      /* Asegurar que los botones sean tocables en mobile */
+      button {
+        min-height: 44px;
+        min-width: 44px;
+      }
+      
+      /* Mejorar legibilidad en pantallas pequeñas */
+      .text-container {
+        font-size: 14px !important;
+        line-height: 1.4;
+      }
     }
   `]
 })
@@ -161,6 +161,15 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
   // PDF.js objects
   private pdfDocument: any = null;
   private currentPageObject: any = null;
+  
+  // Device capabilities
+  private get isAndroid() {
+    return /Android/i.test(navigator.userAgent);
+  }
+  
+  private get isMobile() {
+    return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  }
   
   // Computed
   Math = Math; // Para usar en template
@@ -247,6 +256,37 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
     window.pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
     console.log('✅ Worker configurado:', workerSrc);
   }
+
+  /**
+   * Descargar PDF usando el pdf-proxy de Supabase (reutiliza lógica del servicio de impresión)
+   */
+  private async downloadPdfArrayBuffer(pdfUrl: string): Promise<ArrayBuffer> {
+    // Obtener session token para autenticación
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('No hay sesión activa');
+    }
+
+    // Usar el mismo pdf-proxy que ya existe en el sistema
+    const proxyUrl = `https://tejrdiwlgdzxsrqrqsbj.supabase.co/functions/v1/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
+    console.log('🌐 [DEBUG] PDF Viewer usando pdf-proxy:', proxyUrl);
+    
+    const response = await fetch(proxyUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error del pdf-proxy: ${response.status} ${response.statusText}`);
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    console.log('✅ [DEBUG] PDF descargado exitosamente del proxy para el visor');
+    
+    return arrayBuffer;
+  }
   
   private async loadPdf() {
     try {
@@ -256,12 +296,28 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
       const pdfUrl = this.config().url;
       console.log('📄 Cargando PDF:', pdfUrl);
       
-      // Cargar el PDF usando la blob URL
-      const loadingTask = window.pdfjsLib.getDocument({
-        url: pdfUrl,
-        disableAutoFetch: false,
-        disableStream: false
-      });
+      let loadingTask: any;
+      
+      // Detectar si es una blob URL local o una URL externa
+      if (pdfUrl.startsWith('blob:')) {
+        console.log('🔗 [DEBUG] Detectada blob URL local, cargando directamente...');
+        // Para blob URLs locales, cargar directamente sin proxy
+        loadingTask = window.pdfjsLib.getDocument({
+          url: pdfUrl,
+          verbosity: 0
+        });
+      } else {
+        console.log('🌐 [DEBUG] Detectada URL externa, usando pdf-proxy de Supabase...');
+        // Para URLs externas, usar el pdf-proxy de Supabase
+        const arrayBuffer = await this.downloadPdfArrayBuffer(pdfUrl);
+        console.log('✅ [DEBUG] ArrayBuffer obtenido del proxy, tamaño:', arrayBuffer.byteLength, 'bytes');
+        
+        // Cargar PDF desde ArrayBuffer (evita CORS)
+        loadingTask = window.pdfjsLib.getDocument({
+          data: arrayBuffer,
+          verbosity: 0
+        });
+      }
       
       this.pdfDocument = await loadingTask.promise;
       this.totalPages.set(this.pdfDocument.numPages);
@@ -368,6 +424,129 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
   
   close() {
     this.closeRequested.emit();
+  }
+  
+  /**
+   * Imprime solo la primera página del PDF
+   * Método directo sin cuadros de diálogo adicionales
+   */
+  async printFirstPage(): Promise<void> {
+    if (!this.pdfDocument) {
+      console.error('❌ No hay documento PDF cargado para imprimir');
+      return;
+    }
+    
+    try {
+      console.log(`🖨️ Iniciando impresión directa de primera página`);
+      
+      // Obtener solo la primera página
+      const page = await this.pdfDocument.getPage(1);
+      
+      // Configurar viewport para impresión optimizada
+      const viewport = page.getViewport({ 
+        scale: 2.0,
+        rotation: 0 
+      });
+
+      // Crear canvas temporal
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      
+      if (!context) {
+        throw new Error('No se pudo obtener el contexto del canvas');
+      }
+      
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      // Renderizar la página en el canvas
+      const renderContext = {
+        canvasContext: context,
+        viewport: viewport
+      };
+
+      await page.render(renderContext).promise;
+
+      // Convertir canvas a imagen
+      const dataUrl = canvas.toDataURL('image/png', 1.0);
+      
+      // Imprimir directamente sin cuadros de diálogo
+      this.openDirectPrintWindow(dataUrl, viewport.width, viewport.height);
+      
+    } catch (error) {
+      console.error('❌ Error al imprimir primera página:', error);
+    }
+  }
+  
+  /**
+   * Ventana de impresión directa y simplificada
+   */
+  private openDirectPrintWindow(imageDataUrl: string, width: number, height: number): void {
+    const printWindow = window.open('', '_blank');
+    
+    if (!printWindow) {
+      console.error('No se pudo abrir la ventana de impresión');
+      return;
+    }
+
+    // HTML simplificado para impresión directa
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Imprimir Factura</title>
+        <style>
+          @page { margin: 5mm; size: auto; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            margin: 0; 
+            padding: 0; 
+            background: white; 
+            display: flex; 
+            justify-content: center; 
+            align-items: flex-start; 
+          }
+          .print-container { 
+            width: 100%; 
+            max-width: ${Math.min(width * 0.5, 400)}px; 
+            text-align: center; 
+          }
+          .print-image { 
+            width: 100%; 
+            height: auto; 
+            display: block; 
+            margin: 0 auto; 
+          }
+          @media print {
+            .print-image { 
+              max-width: 100% !important; 
+              page-break-inside: avoid; 
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="print-container">
+          <img src="${imageDataUrl}" alt="Factura" class="print-image" />
+        </div>
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+              setTimeout(function() {
+                window.close();
+              }, 1000);
+            }, 500);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
   }
   
   private cleanup() {

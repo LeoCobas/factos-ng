@@ -2,11 +2,11 @@
 declare global {
   interface Window {
     pdfjsLib: {
-      getDocument(params: { url?: string; data?: Uint8Array; disableAutoFetch?: boolean; disableStream?: boolean }): {
+      getDocument(params: { url?: string; data?: Uint8Array | ArrayBuffer; disableAutoFetch?: boolean; disableStream?: boolean; verbosity?: number }): {
         promise: Promise<{
           numPages: number;
           getPage(pageNumber: number): Promise<{
-            getViewport(params: { scale: number }): {
+            getViewport(params: { scale: number; rotation?: number }): {
               width: number;
               height: number;
             };
@@ -28,3 +28,5 @@ declare global {
     };
   }
 }
+
+export {};
