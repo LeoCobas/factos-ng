@@ -56,6 +56,29 @@ Este proyecto Angular 20 es la nueva versión de FACTOS, especializada en la **f
 
 - **PdfService**: Acciones sobre PDFs (ver, compartir, descargar, imprimir)
 
+### 📝 Refactorización y simplificación de PdfService (agosto 2025)
+
+- Se redujo el tamaño del servicio de 370 a 258 líneas (-30%)
+- Se eliminaron métodos y helpers no utilizados (`openPdf`, `downloadPdfBlobDirect`, `PdfShareOptions`)
+- Se centralizó la creación de `PdfInfo` con `createPdfInfo()`
+- Se eliminaron duplicados de lógica de descarga y helpers en los componentes
+- Se mantuvieron todos los fallbacks y compatibilidad multiplataforma
+- Los componentes ahora usan sólo `sharePdf`, `downloadPdf` y `createPdfInfo`
+
+**Resultado:** código más limpio, mantenible y fácil de extender, sin perder funcionalidad.
+
+### 🔧 Optimización del FacturacionService (agosto 2025)
+
+- Se redujo el tamaño del servicio de 515+ líneas a 468 líneas (-10% aproximadamente)
+- **Eliminado logging excesivo**: Se removieron 30+ console.log/console.error no necesarios
+- **Nuevo tipado TypeScript**: Se agregaron interfaces `TusFacturasResponse`, `FacturaResult`, `NotaCreditoResult`
+- **Método extraído**: `getValidatedConfig()` centraliza validación de configuración
+- **Simplificación de métodos**: `crearNotaCredito()` y `emitirFactura()` sin debug logging
+- **Mejor tipado de respuestas**: Interfaces específicas para respuestas de TusFacturas API
+- **Código más limpio**: Menos duplicación, mejor estructura, mantenimiento simplificado
+
+**Resultado:** servicio más eficiente, mejor tipado, sin logging innecesario y más fácil de mantener.
+
 ## 🏗️ Arquitectura Actualizada
 
 ```

@@ -1,8 +1,7 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { supabase } from './supabase.service';
 import { environment } from '../../../environments/environment';
 
-// Usar la lógica que funcionaba en el proyecto anterior React
 export interface FacturaRequestData {
   monto: number;
   fecha: string; // DD/MM/YYYY
@@ -21,6 +20,44 @@ export interface ConfigData {
   actividad?: 'bienes' | 'servicios';
 }
 
+export interface TusFacturasResponse {
+  error: 'S' | 'N';
+  errores?: string[];
+  message?: string;
+  comprobante_nro?: string;
+  numero?: string;
+  cae?: string;
+  vencimiento_cae?: string;
+  cae_vto?: string;
+  comprobante_pdf_url?: string;
+  pdf_url?: string;
+  comprobante_ticket_url?: string;
+  pdf_ticket_url?: string;
+  afip_id?: number;
+  comprobante_tipo?: string;
+  tipo?: string;
+  mantenimiento?: number;
+}
+
+export interface FacturaResult {
+  success: boolean;
+  factura?: any;
+  error?: string;
+}
+
+export interface NotaCreditoResult {
+  success: boolean;
+  data?: {
+    numero: string;
+    cae?: string;
+    cae_vto?: string;
+    pdf_url?: string;
+    notaCredito: any;
+  };
+  error?: string;
+  shouldRetry?: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -29,9 +66,7 @@ export class FacturacionService {
   
   constructor() {}
 
-  /**
-   * Valida fecha según actividad (igual que en proyecto anterior)
-   */
+  // Valida fecha según actividad AFIP
   private isValidInvoiceDate(fecha: Date, actividad: 'bienes' | 'servicios'): { isValid: boolean; error?: string } {
     const today = new Date();
     const daysDiff = Math.floor((today.getTime() - fecha.getTime()) / (1000 * 60 * 60 * 24));
@@ -51,30 +86,30 @@ export class FacturacionService {
     return { isValid: true };
   }
 
-  /**
-   * Emite factura usando la misma lógica del proyecto anterior React
-   */
-  async emitirFactura(facturaData: FacturaRequestData): Promise<any> {
+  // Obtiene y valida configuración de Supabase
+  private async getValidatedConfig() {
+    const { data: config, error } = await supabase
+      .from('configuracion')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !config) {
+      throw new Error('No se pudo obtener la configuración');
+    }
+
+    if (!config.api_token || !config.api_key || !config.user_token || !config.cuit) {
+      throw new Error('Configuración incompleta. Complete todos los campos de TusFacturas.');
+    }
+
+    return config;
+  }
+
+  
+  async emitirFactura(facturaData: FacturaRequestData): Promise<FacturaResult> {
     try {
-      console.log('🚀 SERVICIO UNIFICADO LIMPIO - facturacion.service.ts - BUILD: ' + Date.now());
-      console.log('� Iniciando emisión de factura...');
-      
-      // Obtener configuración
-      const { data: config, error: configError } = await supabase
-        .from('configuracion')
-        .select('*')
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (configError || !config) {
-        throw new Error('No se pudo obtener la configuración');
-      }
-
-      // Validar configuración
-      if (!config.api_token || !config.api_key || !config.user_token || !config.cuit) {
-        throw new Error('Configuración incompleta. Complete todos los campos de TusFacturas.');
-      }
+      const config = await this.getValidatedConfig();
 
       // Validar fecha según actividad
       const actividad = config.actividad === 'bienes' ? 'bienes' : 'servicios';
@@ -86,7 +121,6 @@ export class FacturacionService {
         throw new Error(fechaValidation.error);
       }
 
-      // Usar la estructura exacta que funcionaba en el proyecto React
       const configFormatted: ConfigData = {
         apitoken: config.api_token,
         apikey: config.api_key,
@@ -100,8 +134,7 @@ export class FacturacionService {
         actividad: actividad
       };
 
-      // Llamar usando la misma estructura que el proyecto React
-      const resultado = await this.llamarTusFacturasOriginal(configFormatted, facturaData);
+      const resultado = await this.llamarTusFacturas(configFormatted, facturaData);
 
       if (!resultado.success) {
         throw new Error(resultado.error || 'Error al emitir factura');
@@ -128,7 +161,6 @@ export class FacturacionService {
         .single();
 
       if (facturaError) {
-        console.error('Error al guardar factura:', facturaError);
         throw new Error('No se pudo guardar la factura en la base de datos');
       }
 
@@ -143,15 +175,12 @@ export class FacturacionService {
       };
 
     } catch (error) {
-      console.error('❌ Error en facturación:', error);
       throw error;
     }
   }
 
-  /**
-   * Implementa la lógica exacta del proyecto React que funcionaba
-   */
-  private async llamarTusFacturasOriginal(config: ConfigData, facturaData: FacturaRequestData): Promise<{ success: boolean; data?: any; error?: string }> {
+  // Llamar a TusFacturas API
+  private async llamarTusFacturas(config: ConfigData, facturaData: FacturaRequestData): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -159,16 +188,10 @@ export class FacturacionService {
         throw new Error('No hay sesión activa');
       }
 
-      // Determinar tipo de comprobante
       const tipoComprobante = config.tipo_comprobante_default || 'FACTURA B';
       const isFacturaC = tipoComprobante === 'FACTURA C';
+      const montoSinIva = isFacturaC ? facturaData.monto : (facturaData.monto / (1 + config.iva_porcentaje / 100));
 
-      // Calcular montos según tipo
-      const montoSinIva = isFacturaC
-        ? facturaData.monto
-        : (facturaData.monto / (1 + config.iva_porcentaje / 100));
-
-      // Estructura exacta que funcionaba en el proyecto React
       const requestData = {
         apitoken: config.apitoken,
         cliente: {
@@ -224,8 +247,6 @@ export class FacturacionService {
         usertoken: config.usertoken
       };
 
-      console.log('📤 Enviando a TusFacturas:', requestData);
-
       const response = await fetch(`${this.supabaseUrl}/functions/v1/tf-proxy?path=${encodeURIComponent('facturacion/nuevo')}`, {
         method: 'POST',
         headers: {
@@ -235,13 +256,7 @@ export class FacturacionService {
         body: JSON.stringify(requestData)
       });
 
-      const responseData = await response.json();
-      console.log('📥 Respuesta de TusFacturas:', responseData);
-      console.log('🔍 DEBUG - Campos PDF disponibles:');
-      console.log('  - pdf_url:', responseData.pdf_url);
-      console.log('  - comprobante_pdf_url:', responseData.comprobante_pdf_url);
-      console.log('  - pdf_ticket_url:', responseData.pdf_ticket_url);
-      console.log('  - comprobante_ticket_url:', responseData.comprobante_ticket_url);
+      const responseData: TusFacturasResponse = await response.json();
       
       // Manejar errores
       if (!response.ok || responseData?.error === 'S') {
@@ -250,39 +265,20 @@ export class FacturacionService {
         throw new Error(errorMessage);
       }
 
-      // Parsear respuesta exitosa (igual que en React)
-      const isOk = (responseData && (responseData.error === 'N' || responseData.success === true));
+      // Verificar respuesta exitosa
+      const isOk = (responseData && (responseData.error === 'N'));
       if (!isOk) {
         const errores = Array.isArray(responseData?.errores) ? responseData.errores : [];
-        const errMsg = responseData?.message || responseData?.rta || (errores.length > 0 ? errores.join("; ") : 'Error al emitir comprobante');
+        const errMsg = responseData?.message || (errores.length > 0 ? errores.join("; ") : 'Error al emitir comprobante');
         throw new Error(errMsg);
       }
-
-      // 🔍 DEBUGGING PDF FIELDS - Ver todos los campos relacionados con PDF
-      console.log('🔍 DEBUGGING PDF FIELDS:');
-      console.log('📊 comprobante_ticket_url:', responseData.comprobante_ticket_url);
-      console.log('📊 pdf_ticket_url:', responseData.pdf_ticket_url);
-      console.log('📊 comprobante_pdf_url:', responseData.comprobante_pdf_url);
-      console.log('📊 pdf_url:', responseData.pdf_url);
-      console.log('📊 All PDF related fields:', Object.keys(responseData).filter(key => 
-        key.toLowerCase().includes('pdf') || 
-        key.toLowerCase().includes('url') ||
-        key.toLowerCase().includes('comprobante')
-      ).map(key => ({ [key]: responseData[key] })));
-      console.log('📋 Original response data keys:', Object.keys(responseData));
 
       const numero = responseData.comprobante_nro || responseData.numero || '';
       const cae = (responseData.cae || '').toString().trim();
       const cae_vto = responseData.vencimiento_cae || responseData.cae_vto || '';
       const pdfTicket = responseData.comprobante_ticket_url || responseData.pdf_ticket_url;
       const pdfA4 = responseData.comprobante_pdf_url || responseData.pdf_url;
-      const tipo = responseData.comprobante_tipo || responseData.tipo;
       const afip_id = responseData.afip_id;
-
-      console.log('🎯 PDF MAPPING RESULTS:');
-      console.log('📄 pdfTicket:', pdfTicket);
-      console.log('📄 pdfA4:', pdfA4);
-      console.log('📄 Final pdf_url:', pdfTicket || pdfA4 || '');
 
       return {
         success: true,
@@ -292,12 +288,10 @@ export class FacturacionService {
           cae_vto,
           pdf_url: pdfTicket || pdfA4 || '',
           afip_id,
-          tipo,
         }
       };
 
     } catch (error) {
-      console.error('Error en llamarTusFacturasOriginal:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Error desconocido'
@@ -305,29 +299,10 @@ export class FacturacionService {
     }
   }
 
-  /**
-   * Crea una nota de crédito para anular una factura
-   */
-  async crearNotaCredito(facturaId: string, numeroFactura: string, monto: number): Promise<{ success: boolean; data?: any; error?: string; shouldRetry?: boolean }> {
+  // Crear nota de crédito para anular factura
+  async crearNotaCredito(facturaId: string, numeroFactura: string, monto: number): Promise<NotaCreditoResult> {
     try {
-      console.log('🚀 Iniciando creación de nota de crédito para factura:', numeroFactura);
-
-      // Obtener configuración
-      const { data: config, error: configError } = await supabase
-        .from('configuracion')
-        .select('*')
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (configError || !config) {
-        throw new Error('No se pudo obtener la configuración');
-      }
-
-      // Validar configuración
-      if (!config.api_token || !config.api_key || !config.user_token) {
-        throw new Error('Configuración incompleta para TusFacturas');
-      }
+      const config = await this.getValidatedConfig();
 
       // Obtener datos de la factura original
       const { data: facturaOriginal, error: facturaError } = await supabase
@@ -340,22 +315,15 @@ export class FacturacionService {
         throw new Error('No se pudo obtener la factura original');
       }
 
-      // Determinar tipo de nota de crédito basado en la factura original
       const tipoNotaCredito = facturaOriginal.tipo_comprobante === 'FACTURA C' ? 'NOTA DE CREDITO C' : 'NOTA DE CREDITO B';
       const isNotaCreditoC = tipoNotaCredito === 'NOTA DE CREDITO C';
-
-      // Calcular montos según tipo
       const ivaPercentage = config.iva_porcentaje || 21;
-      const montoSinIva = isNotaCreditoC
-        ? monto  // Para Nota C, el monto ya está sin IVA
-        : Number((monto / (1 + ivaPercentage / 100)).toFixed(2)); // Para Nota B, calcular monto sin IVA
+      const montoSinIva = isNotaCreditoC ? monto : Number((monto / (1 + ivaPercentage / 100)).toFixed(2));
 
-      // Calcular fecha de vencimiento (30 días después de la fecha actual)
       const fechaActual = new Date();
       const fechaVencimiento = new Date(fechaActual);
       fechaVencimiento.setDate(fechaVencimiento.getDate() + 30);
 
-      // Formatear fechas en formato dd/mm/yyyy
       const formatearFecha = (fecha: Date) => {
         const dd = String(fecha.getDate()).padStart(2, '0');
         const mm = String(fecha.getMonth() + 1).padStart(2, '0');
@@ -363,7 +331,6 @@ export class FacturacionService {
         return `${dd}/${mm}/${yyyy}`;
       };
 
-      // Estructura para nota de crédito según la documentación oficial de TusFacturas
       const requestData = {
         usertoken: config.user_token,
         apikey: config.api_key,
@@ -376,7 +343,7 @@ export class FacturacionService {
           domicilio: 'Sin especificar',
           provincia: '2',
           envia_por_mail: 'N',
-          condicion_pago: '211', // Contado según documentación
+          condicion_pago: '211',
           condicion_iva: 'CF',
           condicion_iva_operacion: 'CF'
         },
@@ -406,17 +373,13 @@ export class FacturacionService {
               tipo_comprobante: facturaOriginal.tipo_comprobante,
               punto_venta: String(config.punto_venta || 4),
               numero: parseInt(numeroFactura.split('-').pop() || '1'),
-              comprobante_fecha: formatearFecha(fechaActual), // Fecha de la factura original
+              comprobante_fecha: formatearFecha(fechaActual),
               cuit: config.cuit || '0'
             }
           ]
         }
       };
 
-      console.log('📤 Enviando nota de crédito a TusFacturas...');
-      console.log('📋 Datos enviados:', JSON.stringify(requestData, null, 2));
-
-      // Llamar a TusFacturas usando tf-proxy unificado
       const response = await fetch(`${this.supabaseUrl}/functions/v1/tf-proxy?path=nota-credito`, {
         method: 'POST',
         headers: {
@@ -431,19 +394,14 @@ export class FacturacionService {
         throw new Error(`Error en TusFacturas: ${response.status} - ${errorText}`);
       }
 
-      const responseData = await response.json();
-      console.log('✅ Respuesta completa de TusFacturas:', JSON.stringify(responseData, null, 2));
+      const responseData: TusFacturasResponse = await response.json();
 
-      // TusFacturas devuelve error: 'S' cuando hay errores, 'N' cuando es exitoso
       if (responseData.error === 'S') {
         const errorDetails = responseData.errores && responseData.errores.length > 0 
           ? responseData.errores 
           : ['Error desconocido en TusFacturas'];
         
-        console.error('❌ Errores de TusFacturas:', errorDetails);
-        
         if (responseData.mantenimiento === 1) {
-          // Error de mantenimiento - se puede reintentar
           throw Object.assign(
             new Error(`TusFacturas está en mantenimiento temporalmente. ${errorDetails.join(', ')}. Intenta nuevamente en unos minutos.`),
             { shouldRetry: true }
@@ -453,28 +411,19 @@ export class FacturacionService {
         }
       }
 
-      // Verificar si hay respuesta exitosa (error: 'N' significa sin errores)
       if (responseData.error !== 'N') {
-        console.error('❌ Respuesta inesperada de TusFacturas, error field:', responseData.error);
         throw new Error('Respuesta inesperada de TusFacturas');
       }
 
-      // Extraer datos de la respuesta
       const numero = responseData.comprobante_nro || responseData.numero;
       const cae = responseData.cae;
       const cae_vto = responseData.vencimiento_cae;
-      const pdf_url = responseData.comprobante_pdf_url || responseData.pdf_url_ticket || responseData.pdf_url_a4 || '';
+      const pdf_url = responseData.comprobante_pdf_url || responseData.pdf_ticket_url || '';
 
-      console.log('📋 Datos extraídos de la respuesta:', { numero, cae, cae_vto, pdf_url });
-
-      // Validar que tenemos los datos mínimos necesarios
       if (!numero) {
-        console.error('❌ No se pudo obtener el número de la nota de crédito de la respuesta');
-        console.error('📄 Respuesta completa:', responseData);
         throw new Error('No se pudo obtener el número de la nota de crédito de TusFacturas');
       }
 
-      // Guardar en Supabase
       const { data: notaCredito, error: insertError } = await supabase
         .from('notas_credito')
         .insert({
@@ -491,11 +440,8 @@ export class FacturacionService {
         .single();
 
       if (insertError) {
-        console.error('Error al guardar nota de crédito:', insertError);
         throw new Error('Error al guardar la nota de crédito en la base de datos');
       }
-
-      console.log('✅ Nota de crédito creada exitosamente:', notaCredito);
 
       return {
         success: true,
@@ -509,8 +455,6 @@ export class FacturacionService {
       };
 
     } catch (error) {
-      console.error('Error al crear nota de crédito:', error);
-      
       const isRetryable = (error as any)?.shouldRetry === true;
       
       return {
