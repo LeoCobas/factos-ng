@@ -1,3 +1,11 @@
+// Utilidad para obtener la fecha local en formato YYYY-MM-DD
+function getFechaLocalArgentina(): string {
+  const hoy = new Date();
+  const año = hoy.getFullYear();
+  const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+  const dia = String(hoy.getDate()).padStart(2, '0');
+  return `${año}-${mes}-${dia}`;
+}
 import { Component, signal, computed, inject } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { format, startOfDay, endOfDay } from 'date-fns';
@@ -6,7 +14,10 @@ import { CurrencyPipe } from '@angular/common';
 import { supabase } from '../../core/services/supabase.service';
 import { PdfService } from '../../core/services/pdf.service';
 import { FacturacionService } from '../../core/services/facturacion.service';
+import { PdfJsPrintService } from '../../core/services/pdfjs-print.service';
+
 import { PdfViewerComponent, PdfViewerConfig } from '../../shared/components/ui/pdf-viewer.component';
+
 
 interface Factura {
   id: string;
@@ -250,9 +261,11 @@ interface Factura {
     }
   `]
 })
+
+
 export class ListadoComponent {
   // Signals para estado
-  fechaSeleccionada = signal(new Date().toISOString().split('T')[0]); // Fecha actual por defecto
+  fechaSeleccionada = signal(getFechaLocalArgentina()); // Fecha actual por defecto
   facturas = signal<Factura[]>([]);
   cargando = signal(false);
   facturaExpandida = signal<string | null>(null); // ID de factura expandida
@@ -279,6 +292,7 @@ export class ListadoComponent {
   constructor(
     private pdfService: PdfService,
     private facturacionService: FacturacionService,
+    private pdfJsPrintService: PdfJsPrintService,
     private sanitizer: DomSanitizer
   ) {
   // Cargar facturas iniciales
@@ -429,10 +443,15 @@ export class ListadoComponent {
     }
 
     try {
+      const printOptions = {
+        url: factura.pdf_url,
+        filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura)}.pdf`,
+        title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`
+      };
+      await this.pdfJsPrintService.printPdfDirect(printOptions);
+    } catch (error) {
       // Último recurso: abrir en nueva ventana
       window.open(factura.pdf_url, '_blank');
-    } catch (error) {
-      console.error('Error al imprimir:', error);
     }
   }
 
