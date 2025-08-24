@@ -220,6 +220,73 @@ interface Factura {
       }
     </div>
 
+    <!-- Card de Nota de Crédito Emitida -->
+    @if (notaCreditoEmitida()) {
+      <div class="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4" 
+           (click)="cerrarNotaCredito()">
+        <div class="bg-card rounded-lg max-w-md w-full shadow-2xl"
+             (click)="$event.stopPropagation()">
+          <div class="p-6">
+            <!-- Encabezado -->
+            <div class="text-center mb-6">
+              <div class="inline-flex items-center justify-center w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full mb-3">
+                <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <h3 class="text-lg font-semibold text-foreground mb-2">Nota de Crédito emitida:</h3>
+              <div class="text-xl font-bold text-primary">
+                NC {{ notaCreditoEmitida()?.numero }} - {{ notaCreditoEmitida()?.monto | currency:'ARS':'symbol':'1.2-2':'es-AR' }}
+              </div>
+              <p class="text-sm text-muted-foreground mt-1">
+                Anula factura {{ notaCreditoEmitida()?.facturaOriginal }}
+              </p>
+              @if (notaCreditoEmitida()?.cae) {
+                <p class="text-xs text-muted-foreground mt-1">
+                  CAE: {{ notaCreditoEmitida()?.cae }}
+                </p>
+              }
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="grid grid-cols-2 gap-2 mb-4">
+              <button 
+                (click)="verPDFNotaCredito()" 
+                class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                [disabled]="!notaCreditoEmitida()?.pdf_url">
+                Ver PDF
+              </button>
+              <button 
+                (click)="compartirNotaCredito()" 
+                class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                [disabled]="!notaCreditoEmitida()?.pdf_url">
+                Compartir
+              </button>
+              <button 
+                (click)="descargarNotaCredito()" 
+                class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                [disabled]="!notaCreditoEmitida()?.pdf_url">
+                Descargar
+              </button>
+              <button 
+                (click)="imprimirNotaCredito()" 
+                class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                [disabled]="!notaCreditoEmitida()?.pdf_url">
+                Imprimir
+              </button>
+            </div>
+
+            <!-- Botón Cerrar -->
+            <button 
+              (click)="cerrarNotaCredito()" 
+              class="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 font-medium py-2 px-3 rounded-lg transition-colors text-sm">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
     <!-- Modal visor PDF -->
     @if (pdfViewing()) {
       <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" 
@@ -269,6 +336,7 @@ export class ListadoComponent {
   facturas = signal<Factura[]>([]);
   cargando = signal(false);
   facturaExpandida = signal<string | null>(null); // ID de factura expandida
+  notaCreditoEmitida = signal<any>(null); // Nota de crédito recién emitida
 
   // Signals para el visor PDF
   pdfViewing = signal<Factura | null>(null);
@@ -415,6 +483,100 @@ export class ListadoComponent {
       // Último recurso: abrir en nueva ventana
       window.open(factura.pdf_url, '_blank');
     }
+  }
+
+  // Métodos específicos para acciones de nota de crédito
+  async verPDFNotaCredito() {
+    const notaCredito = this.notaCreditoEmitida();
+    if (!notaCredito?.pdf_url) {
+      console.error('No hay URL de PDF disponible para la nota de crédito');
+      return;
+    }
+
+    try {
+      // Crear un objeto temporal para usar con el visor existente
+      const notaCreditoTemporal = {
+        numero_factura: notaCredito.numero,
+        pdf_url: notaCredito.pdf_url,
+        tipo_comprobante: 'NOTA DE CREDITO',
+        monto: notaCredito.monto
+      };
+
+      // Usar el método verPDF existente
+      await this.verPDF(notaCreditoTemporal);
+    } catch (error) {
+      console.error('Error al ver PDF de nota de crédito:', error);
+    }
+  }
+
+  async compartirNotaCredito() {
+    const notaCredito = this.notaCreditoEmitida();
+    if (!notaCredito?.pdf_url) {
+      console.error('No hay URL de PDF disponible para compartir');
+      return;
+    }
+
+    try {
+      // Crear un objeto temporal compatible con createPdfInfo
+      const notaCreditoTemporal = {
+        numero_factura: notaCredito.numero,
+        pdf_url: notaCredito.pdf_url,
+        tipo_comprobante: 'NOTA DE CREDITO',
+        monto: notaCredito.monto
+      };
+      const pdfInfo = this.pdfService.createPdfInfo(notaCreditoTemporal);
+      await this.pdfService.sharePdf(pdfInfo);
+    } catch (error) {
+      console.error('Error al compartir nota de crédito:', error);
+    }
+  }
+
+  async descargarNotaCredito() {
+    const notaCredito = this.notaCreditoEmitida();
+    if (!notaCredito?.pdf_url) {
+      console.error('No hay URL de PDF disponible para descargar');
+      return;
+    }
+
+    try {
+      // Crear un objeto temporal compatible con createPdfInfo
+      const notaCreditoTemporal = {
+        numero_factura: notaCredito.numero,
+        pdf_url: notaCredito.pdf_url,
+        tipo_comprobante: 'NOTA DE CREDITO',
+        monto: notaCredito.monto
+      };
+      const pdfInfo = this.pdfService.createPdfInfo(notaCreditoTemporal);
+      await this.pdfService.downloadPdf(pdfInfo);
+    } catch (error) {
+      console.error('Error al descargar nota de crédito:', error);
+    }
+  }
+
+  async imprimirNotaCredito() {
+    const notaCredito = this.notaCreditoEmitida();
+    if (!notaCredito?.pdf_url) {
+      console.error('No hay URL de PDF disponible para imprimir');
+      return;
+    }
+
+    try {
+      const printOptions = {
+        url: notaCredito.pdf_url,
+        filename: `NotaCredito_${notaCredito.numero}.pdf`,
+        title: `Nota de Crédito N° ${notaCredito.numero}`
+      };
+      await this.pdfJsPrintService.printPdfDirect(printOptions);
+    } catch (error) {
+      console.error('Error al imprimir nota de crédito:', error);
+      // Último recurso: abrir en nueva ventana
+      window.open(notaCredito.pdf_url, '_blank');
+    }
+  }
+
+  // Método para cerrar la card de nota de crédito
+  cerrarNotaCredito() {
+    this.notaCreditoEmitida.set(null);
   }
 
   // Computed para nombre de fecha formateado
@@ -645,13 +807,16 @@ export class ListadoComponent {
       );
       // Manejar el resultado
       if (resultado.success) {
-        // Mostrar mensaje de éxito
-        alert(
-          `✅ Factura anulada exitosamente!\n\n` +
-          `Nota de Crédito: ${resultado.data?.numero}\n` +
-          `CAE: ${resultado.data?.cae || 'Pendiente'}\n` +
-          `PDF generado: ${resultado.data?.pdf_url ? 'Sí' : 'No'}`
-        );
+        // Guardar la nota de crédito emitida para mostrar la card
+        this.notaCreditoEmitida.set({
+          numero: resultado.data?.numero,
+          cae: resultado.data?.cae,
+          cae_vto: resultado.data?.cae_vto,
+          pdf_url: resultado.data?.pdf_url,
+          monto: factura.monto,
+          facturaOriginal: factura.numero_factura,
+          notaCredito: resultado.data?.notaCredito
+        });
 
         // Recargar facturas para mostrar la nueva nota de crédito
         await this.cargarFacturasIniciales();
