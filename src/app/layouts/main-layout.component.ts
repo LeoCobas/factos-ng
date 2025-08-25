@@ -35,7 +35,7 @@ import { Router, RouterOutlet } from '@angular/router';
         <div class="flex bg-muted rounded-lg p-1 shadow-sm border border-border">
           <button 
             (click)="navigate('/facturar')"
-            class="flex-1 flex items-center justify-center space-x-0.5 sm:space-x-2 py-1.5 sm:py-2.5 px-0.5 sm:px-3 rounded-md font-medium transition-all duration-200 text-xs sm:text-base min-w-0"
+            class="flex-1 flex items-center justify-center space-x-0.5 sm:space-x-2 nav-button-mobile rounded-md font-medium transition-all duration-200 nav-button-text min-w-0"
             [class]="isActive('/facturar') ? 'nav-btn-active' : 'text-muted-foreground hover:text-foreground hover:bg-background/50'"
           >
             <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -48,7 +48,7 @@ import { Router, RouterOutlet } from '@angular/router';
           
           <button 
             (click)="navigate('/listado')"
-            class="flex-1 flex items-center justify-center space-x-0.5 sm:space-x-2 py-1.5 sm:py-2.5 px-0.5 sm:px-3 rounded-md font-medium transition-all duration-200 text-xs sm:text-base min-w-0"
+            class="flex-1 flex items-center justify-center space-x-0.5 sm:space-x-2 nav-button-mobile rounded-md font-medium transition-all duration-200 nav-button-text min-w-0"
             [class]="isActive('/listado') ? 'nav-btn-active' : 'text-muted-foreground hover:text-foreground hover:bg-background/50'"
           >
             <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -64,7 +64,7 @@ import { Router, RouterOutlet } from '@angular/router';
           
           <button 
             (click)="navigate('/totales')"
-            class="flex-1 flex items-center justify-center space-x-0.5 sm:space-x-2 py-1.5 sm:py-2.5 px-0.5 sm:px-3 rounded-md font-medium transition-all duration-200 text-xs sm:text-base min-w-0"
+            class="flex-1 flex items-center justify-center space-x-0.5 sm:space-x-2 nav-button-mobile rounded-md font-medium transition-all duration-200 nav-button-text min-w-0"
             [class]="isActive('/totales') ? 'nav-btn-active' : 'text-muted-foreground hover:text-foreground hover:bg-background/50'"
           >
             <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
