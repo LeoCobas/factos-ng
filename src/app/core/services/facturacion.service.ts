@@ -443,6 +443,17 @@ export class FacturacionService {
         throw new Error('Error al guardar la nota de crédito en la base de datos');
       }
 
+      // Actualizar el estado de la factura original a 'anulada'
+      const { error: updateError } = await supabase
+        .from('facturas')
+        .update({ estado: 'anulada' })
+        .eq('id', facturaId);
+
+      if (updateError) {
+        console.error('Error al actualizar estado de factura:', updateError);
+        // No lanzamos error aquí para no interrumpir el flujo, solo lo registramos
+      }
+
       return {
         success: true,
         data: {

@@ -32,6 +32,8 @@ interface Factura {
   punto_venta?: number;
   created_at?: string;
   updated_at?: string;
+  // Para notas de crédito, información de la factura que anula
+  factura_anulada?: string;
 }
 
 @Component({
@@ -127,8 +129,11 @@ interface Factura {
                       <div class="grid grid-cols-3 gap-2 mb-2">
                         <button
                           (click)="anularFactura(factura, $event)"
-                          class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
-                          Anular
+                          [disabled]="facturaEstaAnulada(factura)"
+                          [class]="facturaEstaAnulada(factura) ? 
+                            'bg-gray-400 text-gray-600 cursor-not-allowed font-medium py-2 px-3 rounded-lg text-sm flex items-center justify-center gap-2' :
+                            'bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2'">
+                          {{ facturaEstaAnulada(factura) ? 'Anulada' : 'Anular' }}
                         </button>
                         <button
                           (click)="descargar(factura, $event)"
@@ -187,6 +192,9 @@ interface Factura {
                     
                     <!-- Información adicional -->
                     <div class="text-xs text-muted-foreground space-y-1">
+                      @if (esNotaCredito(factura) && factura.factura_anulada) {
+                        <div class="font-medium text-orange-600">Anula factura: {{ obtenerNumeroSinCeros(factura.factura_anulada) }}</div>
+                      }
                       @if (factura.cae) {
                         <div>CAE: {{ factura.cae }}</div>
                       }
@@ -640,10 +648,15 @@ export class ListadoComponent {
         return;
       }
 
-      // Cargar notas de crédito
+      // Cargar notas de crédito con información de factura relacionada
       const { data: notasCredito, error: errorNotas } = await supabase
         .from('notas_credito')
-        .select('*')
+        .select(`
+          *,
+          facturas!notas_credito_factura_id_fkey(
+            numero_factura
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (errorNotas) {
@@ -680,7 +693,9 @@ export class ListadoComponent {
         concepto: 'Nota de Crédito',
         punto_venta: 4, // Valor por defecto
         created_at: nc.created_at,
-        updated_at: nc.updated_at
+        updated_at: nc.updated_at,
+        // Información de la factura que anula
+        factura_anulada: nc.facturas?.numero_factura
       }));
 
       // Combinar facturas y notas de crédito y mantener orden por fecha de creación
@@ -718,6 +733,18 @@ export class ListadoComponent {
 
   esNotaCredito(factura: Factura): boolean {
     return factura.tipo_comprobante.includes('NOTA DE CREDITO');
+  }
+
+  facturaEstaAnulada(factura: Factura): boolean {
+    return factura.estado === 'anulada';
+  }
+
+  obtenerFacturaAnuladaPorNota(notaCredito: Factura): string | null {
+    // Para mostrar qué factura anula una nota de crédito
+    if (!this.esNotaCredito(notaCredito)) return null;
+    
+    // Ahora usamos la información directa de la relación
+    return notaCredito.factura_anulada || null;
   }
 
   obtenerMontoMostrar(factura: Factura): number {
@@ -784,6 +811,12 @@ export class ListadoComponent {
     if (event) {
       event.preventDefault();
       event.stopPropagation();
+    }
+
+    // Verificar si la factura ya está anulada
+    if (this.facturaEstaAnulada(factura)) {
+      alert('Esta factura ya está anulada y no puede ser anulada nuevamente.');
+      return;
     }
 
     // Confirmar anulación
