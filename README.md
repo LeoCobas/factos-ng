@@ -156,7 +156,6 @@ facturas-pdf/
 - ✅ Manejo errores TusFacturas offline
 - ✅ Cards dinámicas sin recargas
 - ✅ Compartir/Imprimir en móviles
-- ✅ Configuración completa React parity
 
 ## 📊 Performance
 
@@ -167,8 +166,6 @@ configuracion-component: 42.78 kB
 totales-component: 24.14 kB
 listado-component: 19.56 kB
 
-# Tiempo de facturación típico
-Validación + TusFacturas + Storage: ~3-5 segundos
 ```
 
 ## 🎯 Estado del Proyecto
