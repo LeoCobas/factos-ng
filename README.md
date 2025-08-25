@@ -55,7 +55,7 @@ ng serve --host 0.0.0.0
 
 ## 📱 Uso del Sistema
 
-### 1. Configuración (una vez)
+### 1. Configuración
 ```
 /configuracion → Completar TODOS los campos:
 - CUIT y razón social
@@ -64,7 +64,7 @@ ng serve --host 0.0.0.0
 - % IVA y tokens TusFacturas
 ```
 
-### 2. Facturación (diaria)
+### 2. Facturación
 ```
 /facturar → Monto + Fecha → Emitir
 - Card verde: Ver PDF, Compartir, Imprimir, Volver
