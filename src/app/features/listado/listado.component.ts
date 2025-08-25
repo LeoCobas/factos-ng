@@ -195,6 +195,9 @@ interface Factura {
                       @if (esNotaCredito(factura) && factura.factura_anulada) {
                         <div class="font-medium text-orange-600">Anula factura: {{ obtenerNumeroSinCeros(factura.factura_anulada) }}</div>
                       }
+                      @if (!esNotaCredito(factura) && factura.estado === 'anulada') {
+                        <div class="font-medium text-red-600">Anulada por nota de crédito: {{ obtenerNotaCreditoQueAnula(factura) || 'N/A' }}</div>
+                      }
                       @if (factura.cae) {
                         <div>CAE: {{ factura.cae }}</div>
                       }
@@ -345,6 +348,9 @@ export class ListadoComponent {
   cargando = signal(false);
   facturaExpandida = signal<string | null>(null); // ID de factura expandida
   notaCreditoEmitida = signal<any>(null); // Nota de crédito recién emitida
+
+  // Cache de facturas por fecha para evitar consultas repetidas
+  private cacheFacturasPorFecha = new Map<string, Factura[]>();
 
   // Signals para el visor PDF
   pdfViewing = signal<Factura | null>(null);
@@ -593,11 +599,10 @@ export class ListadoComponent {
     return `Facturas del ${format(fecha, 'dd/MM/yyyy', { locale: es })}`;
   });
 
-  // Computed para facturas filtradas por fecha
+  // Computed para facturas filtradas por fecha (ahora solo ordena, ya que vienen filtradas)
   facturasFiltradas = computed(() => {
-    const fechaStr = this.fechaSeleccionada();
+    // Los datos ya vienen filtrados por fecha desde la base de datos
     return this.facturas()
-      .filter(f => f.fecha === fechaStr)
       .sort((a, b) => {
         // Ordenar por created_at descendente (más recientes primero)
         if (a.created_at && b.created_at) {
@@ -634,13 +639,25 @@ export class ListadoComponent {
   });
 
   async cargarFacturasIniciales() {
+    // Cargar solo la fecha actual al inicio
+    await this.cargarFacturasPorFecha(this.fechaSeleccionada());
+  }
+
+  async cargarFacturasPorFecha(fecha: string) {
+    // Verificar si ya tenemos esta fecha en caché
+    if (this.cacheFacturasPorFecha.has(fecha)) {
+      this.facturas.set(this.cacheFacturasPorFecha.get(fecha)!);
+      return;
+    }
+
     this.cargando.set(true);
     
     try {
-      // Cargar facturas
+      // Cargar solo facturas de la fecha específica
       const { data: facturas, error: errorFacturas } = await supabase
         .from('facturas')
         .select('*')
+        .eq('fecha', fecha)
         .order('created_at', { ascending: false });
 
       if (errorFacturas) {
@@ -648,7 +665,7 @@ export class ListadoComponent {
         return;
       }
 
-      // Cargar notas de crédito con información de factura relacionada
+      // Cargar solo notas de crédito de la fecha específica con información de factura relacionada
       const { data: notasCredito, error: errorNotas } = await supabase
         .from('notas_credito')
         .select(`
@@ -657,11 +674,12 @@ export class ListadoComponent {
             numero_factura
           )
         `)
+        .eq('fecha', fecha)
         .order('created_at', { ascending: false });
 
       if (errorNotas) {
         console.error('Error al cargar notas de crédito:', errorNotas);
-        return;
+        // Continuar sin notas de crédito si hay error
       }
 
       // Convertir facturas al formato esperado
@@ -706,6 +724,9 @@ export class ListadoComponent {
           const fechaB = new Date(b.created_at || '').getTime();
           return fechaB - fechaA;
         });
+      
+      // Guardar en caché
+      this.cacheFacturasPorFecha.set(fecha, todosLosComprobantes);
       this.facturas.set(todosLosComprobantes);
 
     } catch (error) {
@@ -715,10 +736,13 @@ export class ListadoComponent {
     }
   }
 
-  cambiarFecha(event: Event) {
+  async cambiarFecha(event: Event) {
     const target = event.target as HTMLInputElement;
-    this.fechaSeleccionada.set(target.value);
-    // No necesitamos recargar facturas, el computed se actualiza automáticamente
+    const nuevaFecha = target.value;
+    this.fechaSeleccionada.set(nuevaFecha);
+    
+    // Cargar facturas de la nueva fecha si no están en caché
+    await this.cargarFacturasPorFecha(nuevaFecha);
   }
 
   // Métodos helper para el template
@@ -739,12 +763,37 @@ export class ListadoComponent {
     return factura.estado === 'anulada';
   }
 
-  obtenerFacturaAnuladaPorNota(notaCredito: Factura): string | null {
-    // Para mostrar qué factura anula una nota de crédito
-    if (!this.esNotaCredito(notaCredito)) return null;
+  // Computed para crear un mapa de facturas anuladas y sus notas de crédito (solo para el día actual)
+  mapaFacturasAnuladas = computed(() => {
+    const mapa = new Map<string, string>();
     
-    // Ahora usamos la información directa de la relación
-    return notaCredito.factura_anulada || null;
+    // Buscar solo en las facturas del día actual (conjunto pequeño)
+    this.facturas().forEach(f => {
+      if (this.esNotaCredito(f) && f.factura_anulada) {
+        mapa.set(f.factura_anulada, this.obtenerNumeroSinCeros(f.numero_factura));
+      }
+    });
+    
+    return mapa;
+  });
+
+  // Método optimizado para obtener qué nota de crédito anula una factura (O(1))
+  obtenerNotaCreditoQueAnula(factura: Factura): string | null {
+    // Solo para facturas anuladas
+    if (factura.estado !== 'anulada') return null;
+    
+    // Usar el mapa para búsqueda O(1)
+    return this.mapaFacturasAnuladas().get(factura.numero_factura) || null;
+  }
+
+  // Método para limpiar caché de una fecha específica (útil después de anular facturas)
+  limpiarCacheFecha(fecha: string) {
+    this.cacheFacturasPorFecha.delete(fecha);
+  }
+
+  // Método para limpiar todo el caché (útil para debugging o después de cambios masivos)
+  limpiarTodoElCache() {
+    this.cacheFacturasPorFecha.clear();
   }
 
   obtenerMontoMostrar(factura: Factura): number {
@@ -852,7 +901,9 @@ export class ListadoComponent {
         });
 
         // Recargar facturas para mostrar la nueva nota de crédito
-        await this.cargarFacturasIniciales();
+        // Limpiar caché de la fecha actual para forzar recarga
+        this.limpiarCacheFecha(this.fechaSeleccionada());
+        await this.cargarFacturasPorFecha(this.fechaSeleccionada());
 
         // Contraer la factura expandida
         this.facturaExpandida.set(null);
