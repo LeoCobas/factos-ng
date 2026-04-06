@@ -55,7 +55,7 @@ Deno.serve(async (req: Request) => {
 
       const dg = persona.datosGenerales;
       
-      let dom = dg?.domicilioFiscal || dg?.domicilioFiscalDeReferencia;
+      let dom = dg?.domicilio || dg?.domicilioFiscal || dg?.domicilioFiscalDeReferencia;
       
       if (!dom) {
         dom = persona.domicilioFiscal || (Array.isArray(persona.domicilio) ? persona.domicilio[0] : persona.domicilio);
