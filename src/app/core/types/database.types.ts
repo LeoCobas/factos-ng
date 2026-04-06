@@ -12,9 +12,6 @@ export interface Database {
           iva_porcentaje: number;
           punto_venta: number;
           tipo_comprobante_default: string | null;
-          api_token: string | null;
-          api_key: string | null;
-          user_token: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -28,9 +25,6 @@ export interface Database {
           iva_porcentaje?: number;
           punto_venta?: number;
           tipo_comprobante_default?: string | null;
-          api_token?: string | null;
-          api_key?: string | null;
-          user_token?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -44,9 +38,6 @@ export interface Database {
           iva_porcentaje?: number;
           punto_venta?: number;
           tipo_comprobante_default?: string | null;
-          api_token?: string | null;
-          api_key?: string | null;
-          user_token?: string | null;
           created_at?: string;
           updated_at?: string;
         };

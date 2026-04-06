@@ -9,36 +9,18 @@ export interface FacturaRequestData {
   fecha: string; // DD/MM/YYYY
 }
 
-export interface ConfigData {
-  apitoken: string;
-  apikey: string;
-  usertoken: string;
-  punto_venta: number;
-  concepto: string;
-  iva_porcentaje: number;
-  cuit: string;
-  razon_social: string;
-  tipo_comprobante_default?: 'FACTURA B' | 'FACTURA C';
-  actividad?: 'bienes' | 'servicios';
-}
-
-export interface TusFacturasResponse {
-  error: 'S' | 'N';
-  errores?: string[];
-  message?: string;
-  comprobante_nro?: string;
-  numero?: string;
-  cae?: string;
-  vencimiento_cae?: string;
-  cae_vto?: string;
-  comprobante_pdf_url?: string;
-  pdf_url?: string;
-  comprobante_ticket_url?: string;
-  pdf_ticket_url?: string;
-  afip_id?: number;
-  comprobante_tipo?: string;
-  tipo?: string;
-  mantenimiento?: number;
+/** Respuesta de la Edge Function arca-proxy */
+export interface ArcaProxyResponse {
+  success: boolean;
+  data?: {
+    CAE: string;
+    CAEFchVto: string;
+    CbteDesde: number;
+    CbteTipo: number;
+    PtoVta: number;
+    Resultado: string;
+  };
+  error?: string;
 }
 
 export interface FacturaResult {
@@ -97,11 +79,33 @@ export class FacturacionService {
       throw new Error('No hay contribuyente configurado. Ve a Configuración para completar tus datos.');
     }
 
-    if (!contribuyente.api_token || !contribuyente.api_key || !contribuyente.user_token || !contribuyente.cuit) {
-      throw new Error('Configuración incompleta. Completá todos los campos de TusFacturas en Configuración.');
+    if (!contribuyente.cuit || !contribuyente.razon_social) {
+      throw new Error('Configuración incompleta. Completá al menos CUIT y razón social en Configuración.');
     }
 
     return contribuyente;
+  }
+
+  /** Mapea concepto AFIP según actividad */
+  private getConceptoAfip(actividad: 'bienes' | 'servicios'): number {
+    return actividad === 'bienes' ? 1 : 2;
+  }
+
+  /** Convierte fecha DD/MM/YYYY a YYYY-MM-DD */
+  private fechaDDMMYYYYtoISO(fecha: string): string {
+    const [dia, mes, año] = fecha.split('/');
+    return `${año}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+  }
+
+  /** Convierte fecha DD/MM/YYYY a YYYYMMDD */
+  private fechaDDMMYYYYtoAfip(fecha: string): string {
+    const [dia, mes, año] = fecha.split('/');
+    return `${año}${mes.padStart(2, '0')}${dia.padStart(2, '0')}`;
+  }
+
+  /** Formatea número de comprobante: PPPP-NNNNNNNN */
+  private formatNumeroComprobante(ptoVta: number, cbteNro: number): string {
+    return `${String(ptoVta).padStart(4, '0')}-${String(cbteNro).padStart(8, '0')}`;
   }
 
   async emitirFactura(facturaData: FacturaRequestData): Promise<FacturaResult> {
@@ -118,41 +122,33 @@ export class FacturacionService {
         throw new Error(fechaValidation.error);
       }
 
-      const configFormatted: ConfigData = {
-        apitoken: contribuyente.api_token!,
-        apikey: contribuyente.api_key!,
-        usertoken: contribuyente.user_token!,
-        punto_venta: contribuyente.punto_venta,
-        concepto: contribuyente.concepto || 'Servicios profesionales',
-        iva_porcentaje: contribuyente.iva_porcentaje,
-        cuit: contribuyente.cuit,
-        razon_social: contribuyente.razon_social,
-        tipo_comprobante_default: (contribuyente.tipo_comprobante_default as 'FACTURA B' | 'FACTURA C') || 'FACTURA B',
-        actividad: actividad
-      };
+      const resultado = await this.llamarArca(contribuyente, facturaData);
 
-      const resultado = await this.llamarTusFacturas(configFormatted, facturaData);
-
-      if (!resultado.success) {
+      if (!resultado.success || !resultado.data) {
         throw new Error(resultado.error || 'Error al emitir factura');
       }
+
+      const tipoComprobante = contribuyente.tipo_comprobante_default || 'FACTURA C';
+      const numeroComprobante = this.formatNumeroComprobante(
+        resultado.data.PtoVta,
+        resultado.data.CbteDesde
+      );
 
       // Guardar en tabla comprobantes
       const { data: comprobante, error: insertError } = await supabase
         .from('comprobantes')
         .insert({
           contribuyente_id: contribuyente.id,
-          tipo_comprobante: configFormatted.tipo_comprobante_default || 'FACTURA B',
-          numero_comprobante: resultado.data?.numero || `TEMP-${Date.now()}`,
+          tipo_comprobante: tipoComprobante,
+          numero_comprobante: numeroComprobante,
           punto_venta: contribuyente.punto_venta,
-          fecha: `${año}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`,
+          fecha: this.fechaDDMMYYYYtoISO(facturaData.fecha),
           total: facturaData.monto,
-          cae: resultado.data?.cae,
-          vencimiento_cae: resultado.data?.cae_vto,
+          cae: resultado.data.CAE,
+          vencimiento_cae: resultado.data.CAEFchVto,
           estado: 'emitida',
           concepto: contribuyente.concepto,
-          pdf_url: resultado.data?.pdf_url,
-          afip_id: resultado.data?.afip_id
+          pdf_url: null, // ARCA no genera PDFs
         })
         .select()
         .single();
@@ -165,9 +161,8 @@ export class FacturacionService {
         success: true,
         comprobante: {
           ...comprobante,
-          cae: resultado.data?.cae,
-          vencimiento_cae: resultado.data?.cae_vto,
-          pdf_url: resultado.data?.pdf_url
+          cae: resultado.data.CAE,
+          vencimiento_cae: resultado.data.CAEFchVto,
         }
       };
 
@@ -176,8 +171,11 @@ export class FacturacionService {
     }
   }
 
-  // Llamar a TusFacturas API
-  private async llamarTusFacturas(config: ConfigData, facturaData: FacturaRequestData): Promise<{ success: boolean; data?: any; error?: string }> {
+  // Llamar a la Edge Function arca-proxy
+  private async llamarArca(
+    contribuyente: Contribuyente,
+    facturaData: FacturaRequestData
+  ): Promise<{ success: boolean; data?: ArcaProxyResponse['data']; error?: string }> {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -185,105 +183,38 @@ export class FacturacionService {
         throw new Error('No hay sesión activa');
       }
 
-      const tipoComprobante = config.tipo_comprobante_default || 'FACTURA B';
-      const isFacturaC = tipoComprobante === 'FACTURA C';
-      const montoSinIva = isFacturaC ? facturaData.monto : (facturaData.monto / (1 + config.iva_porcentaje / 100));
+      const actividad = contribuyente.actividad === 'bienes' ? 'bienes' : 'servicios';
 
-      const requestData = {
-        apitoken: config.apitoken,
-        cliente: {
-          documento_tipo: 'OTRO',
-          condicion_iva: 'CF',
-          condicion_iva_operacion: 'CF',
-          domicilio: 'Sin especificar',
-          condicion_pago: '201',
-          documento_nro: '0',
-          razon_social: 'Consumidor Final',
-          provincia: '2',
-          email: '',
-          envia_por_mail: 'N',
-          rg5329: 'N'
-        },
-        apikey: config.apikey,
-        comprobante: {
-          rubro: config.concepto,
-          percepciones_iva: 0,
-          tipo: tipoComprobante,
-          numero: undefined,
-          bonificacion: 0,
-          operacion: 'V',
-          detalle: [
-            {
-              cantidad: 1,
-              afecta_stock: 'N',
-              actualiza_precio: 'N',
-              bonificacion_porcentaje: 0,
-              producto: {
-                descripcion: config.concepto,
-                codigo: 1,
-                lista_precios: 'standard',
-                leyenda: '',
-                unidad_bulto: 1,
-                alicuota: isFacturaC ? 0 : config.iva_porcentaje,
-                actualiza_precio: 'N',
-                rg5329: 'N',
-                precio_unitario_sin_iva: montoSinIva
-              }
-            }
-          ],
-          fecha: facturaData.fecha,
-          vencimiento: facturaData.fecha,
-          rubro_grupo_contable: config.concepto,
-          total: facturaData.monto,
-          cotizacion: 1,
-          moneda: 'PES',
-          punto_venta: String(config.punto_venta).padStart(4, '0'),
-          tributos: [],
-          datos_informativos: { paga_misma_moneda: 'N' }
-        },
-        usertoken: config.usertoken
+      const requestBody = {
+        punto_venta: contribuyente.punto_venta,
+        tipo_comprobante: contribuyente.tipo_comprobante_default || 'FACTURA C',
+        monto: facturaData.monto,
+        fecha: this.fechaDDMMYYYYtoAfip(facturaData.fecha),
+        concepto_afip: this.getConceptoAfip(actividad),
+        iva_porcentaje: contribuyente.iva_porcentaje,
       };
 
-      const response = await fetch(`${this.supabaseUrl}/functions/v1/tf-proxy?path=${encodeURIComponent('facturacion/nuevo')}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(requestData)
-      });
+      const response = await fetch(
+        `${this.supabaseUrl}/functions/v1/arca-proxy?action=crear-factura`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(requestBody),
+        }
+      );
 
-      const responseData: TusFacturasResponse = await response.json();
+      const responseData: ArcaProxyResponse = await response.json();
       
-      if (!response.ok || responseData?.error === 'S') {
-        const errores = responseData?.errores || [];
-        const errorMessage = responseData?.message || errores.join?.(', ') || 'Error al emitir factura';
-        throw new Error(errorMessage);
+      if (!response.ok || !responseData.success) {
+        throw new Error(responseData.error || 'Error al emitir factura');
       }
-
-      const isOk = (responseData && (responseData.error === 'N'));
-      if (!isOk) {
-        const errores = Array.isArray(responseData?.errores) ? responseData.errores : [];
-        const errMsg = responseData?.message || (errores.length > 0 ? errores.join("; ") : 'Error al emitir comprobante');
-        throw new Error(errMsg);
-      }
-
-      const numero = responseData.comprobante_nro || responseData.numero || '';
-      const cae = (responseData.cae || '').toString().trim();
-      const cae_vto = responseData.vencimiento_cae || responseData.cae_vto || '';
-      const pdfTicket = responseData.comprobante_ticket_url || responseData.pdf_ticket_url;
-      const pdfA4 = responseData.comprobante_pdf_url || responseData.pdf_url;
-      const afip_id = responseData.afip_id;
 
       return {
         success: true,
-        data: {
-          numero,
-          cae,
-          cae_vto,
-          pdf_url: pdfTicket || pdfA4 || '',
-          afip_id,
-        }
+        data: responseData.data,
       };
 
     } catch (error) {
@@ -302,7 +233,7 @@ export class FacturacionService {
       // Obtener datos del comprobante original
       const { data: comprobanteOriginal, error: fetchError } = await supabase
         .from('comprobantes')
-        .select('tipo_comprobante, numero_comprobante')
+        .select('tipo_comprobante, numero_comprobante, punto_venta, fecha')
         .eq('id', comprobanteId)
         .single();
 
@@ -310,130 +241,70 @@ export class FacturacionService {
         throw new Error('No se pudo obtener el comprobante original');
       }
 
-      const tipoNotaCredito = comprobanteOriginal.tipo_comprobante === 'FACTURA C' ? 'NOTA DE CREDITO C' : 'NOTA DE CREDITO B';
-      const isNotaCreditoC = tipoNotaCredito === 'NOTA DE CREDITO C';
-      const ivaPercentage = contribuyente.iva_porcentaje || 21;
-      const montoSinIva = isNotaCreditoC ? monto : Number((monto / (1 + ivaPercentage / 100)).toFixed(2));
+      // Extraer número del comprobante (parte después del guión)
+      const cbteNroStr = numeroComprobante.split('-').pop() || '1';
+      const cbteNro = parseInt(cbteNroStr);
 
-      const fechaActual = new Date();
-      const fechaVencimiento = new Date(fechaActual);
-      fechaVencimiento.setDate(fechaVencimiento.getDate() + 30);
+      // Convertir fecha del comprobante original a formato YYYYMMDD
+      const fechaOriginal = comprobanteOriginal.fecha.replace(/-/g, '');
 
-      const formatearFecha = (fecha: Date) => {
-        const dd = String(fecha.getDate()).padStart(2, '0');
-        const mm = String(fecha.getMonth() + 1).padStart(2, '0');
-        const yyyy = fecha.getFullYear();
-        return `${dd}/${mm}/${yyyy}`;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No hay sesión activa');
+      }
+
+      const requestBody = {
+        punto_venta: contribuyente.punto_venta,
+        tipo_comprobante_original: comprobanteOriginal.tipo_comprobante,
+        monto: monto,
+        iva_porcentaje: contribuyente.iva_porcentaje,
+        cbte_asociado_nro: cbteNro,
+        cbte_asociado_fecha: fechaOriginal,
+        cuit_asociado: contribuyente.cuit,
       };
 
-      const requestData = {
-        usertoken: contribuyente.user_token,
-        apikey: contribuyente.api_key,
-        apitoken: contribuyente.api_token,
-        cliente: {
-          documento_tipo: 'OTRO',
-          documento_nro: '0',
-          razon_social: 'Consumidor Final',
-          email: '',
-          domicilio: 'Sin especificar',
-          provincia: '2',
-          envia_por_mail: 'N',
-          condicion_pago: '211',
-          condicion_iva: 'CF',
-          condicion_iva_operacion: 'CF'
-        },
-        comprobante: {
-          fecha: formatearFecha(fechaActual),
-          vencimiento: formatearFecha(fechaVencimiento),
-          tipo: tipoNotaCredito,
-          operacion: 'V',
-          punto_venta: String(contribuyente.punto_venta || 4).padStart(4, '0'),
-          rubro: contribuyente.concepto || 'Servicios profesionales',
-          detalle: [
-            {
-              cantidad: '1',
-              producto: {
-                descripcion: `Anulación de factura ${numeroComprobante}`,
-                unidad_bulto: '1',
-                codigo: 'ANULACION',
-                precio_unitario_sin_iva: String(montoSinIva),
-                alicuota: isNotaCreditoC ? '0' : String(ivaPercentage)
-              }
-            }
-          ],
-          bonificacion: '0.00',
-          total: String(monto),
-          comprobantes_asociados: [
-            {
-              tipo_comprobante: comprobanteOriginal.tipo_comprobante,
-              punto_venta: String(contribuyente.punto_venta || 4),
-              numero: parseInt(numeroComprobante.split('-').pop() || '1'),
-              comprobante_fecha: formatearFecha(fechaActual),
-              cuit: contribuyente.cuit || '0'
-            }
-          ]
+      const response = await fetch(
+        `${this.supabaseUrl}/functions/v1/arca-proxy?action=crear-nota-credito`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(requestBody),
         }
-      };
+      );
 
-      const response = await fetch(`${this.supabaseUrl}/functions/v1/tf-proxy?path=nota-credito`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        },
-        body: JSON.stringify(requestData)
-      });
+      const responseData: ArcaProxyResponse = await response.json();
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error en TusFacturas: ${response.status} - ${errorText}`);
+      if (!response.ok || !responseData.success || !responseData.data) {
+        throw new Error(responseData.error || 'Error al crear nota de crédito');
       }
 
-      const responseData: TusFacturasResponse = await response.json();
+      const tipoNC = comprobanteOriginal.tipo_comprobante === 'FACTURA C' 
+        ? 'NOTA DE CREDITO C' 
+        : 'NOTA DE CREDITO B';
 
-      if (responseData.error === 'S') {
-        const errorDetails = responseData.errores && responseData.errores.length > 0 
-          ? responseData.errores 
-          : ['Error desconocido en TusFacturas'];
-        
-        if (responseData.mantenimiento === 1) {
-          throw Object.assign(
-            new Error(`TusFacturas está en mantenimiento temporalmente. ${errorDetails.join(', ')}. Intenta nuevamente en unos minutos.`),
-            { shouldRetry: true }
-          );
-        } else {
-          throw new Error(`Error en TusFacturas: ${errorDetails.join(', ')}`);
-        }
-      }
+      const ncNumero = this.formatNumeroComprobante(
+        responseData.data.PtoVta,
+        responseData.data.CbteDesde
+      );
 
-      if (responseData.error !== 'N') {
-        throw new Error('Respuesta inesperada de TusFacturas');
-      }
-
-      const numero = responseData.comprobante_nro || responseData.numero;
-      const cae = responseData.cae;
-      const vencimiento_cae = responseData.vencimiento_cae;
-      const pdf_url = responseData.comprobante_pdf_url || responseData.pdf_ticket_url || '';
-
-      if (!numero) {
-        throw new Error('No se pudo obtener el número de la nota de crédito de TusFacturas');
-      }
-
-      // Guardar NC en tabla comprobantes con comprobante_asociado_id
+      // Guardar NC en tabla comprobantes
       const { data: ncComprobante, error: insertError } = await supabase
         .from('comprobantes')
         .insert({
           contribuyente_id: contribuyente.id,
-          tipo_comprobante: tipoNotaCredito,
-          numero_comprobante: numero,
+          tipo_comprobante: tipoNC,
+          numero_comprobante: ncNumero,
           punto_venta: contribuyente.punto_venta,
           fecha: new Date().toISOString().split('T')[0],
           total: monto,
-          cae: cae,
-          vencimiento_cae: vencimiento_cae,
+          cae: responseData.data.CAE,
+          vencimiento_cae: responseData.data.CAEFchVto,
           estado: 'emitida',
           concepto: `Anulación de ${numeroComprobante}`,
-          pdf_url: pdf_url,
+          pdf_url: null,
           comprobante_asociado_id: comprobanteId
         })
         .select()
@@ -456,10 +327,10 @@ export class FacturacionService {
       return {
         success: true,
         data: {
-          numero,
-          cae,
-          vencimiento_cae,
-          pdf_url,
+          numero: ncNumero,
+          cae: responseData.data.CAE,
+          vencimiento_cae: responseData.data.CAEFchVto,
+          pdf_url: undefined,
           comprobante: ncComprobante
         }
       };

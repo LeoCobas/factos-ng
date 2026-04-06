@@ -118,6 +118,15 @@ interface MensajeEstado {
               </div>
 
               <div class="space-y-2">
+                <label class="form-label">Tipo de Comprobante</label>
+                <select formControlName="tipo_comprobante_default" class="form-select">
+                  <option value="" disabled>Seleccionar tipo</option>
+                  <option value="FACTURA B">Factura B / Nota de Crédito B (Responsable Inscripto)</option>
+                  <option value="FACTURA C">Factura C / Nota de Crédito C (Monotributista)</option>
+                </select>
+              </div>
+
+              <div class="space-y-2">
                 <label class="form-label">IVA</label>
                 <select formControlName="iva_porcentaje" class="form-select">
                   <option value="" disabled>Seleccionar IVA</option>
@@ -139,88 +148,22 @@ interface MensajeEstado {
             </div>
           </div>
 
-          <!-- Datos API TusFacturas.app -->
+          <!-- Info sobre ARCA -->
           <div class="card-surface">
             <div class="card-header">
-              <h3 class="card-title">Datos API TusFacturas.app</h3>
+              <h3 class="card-title">Conexión con ARCA (AFIP)</h3>
             </div>
-            <div class="p-6 space-y-4">
-              
-              <div class="space-y-2">
-                <label class="form-label">Tipo de Comprobante</label>
-                <select formControlName="tipo_comprobante_default" class="form-select">
-                  <option value="" disabled>Seleccionar tipo</option>
-                  <option value="FACTURA B">Factura B / Nota de Crédito B (Responsable Inscripto)</option>
-                  <option value="FACTURA C">Factura C / Nota de Crédito C (Monotributista)</option>
-                </select>
-              </div>
-
-              <div class="space-y-2">
-                <label class="form-label">API Token</label>
-                <div class="relative">
-                  <input [type]="mostrarApiToken() ? 'text' : 'password'" formControlName="api_token" placeholder="Token alfanumérico" class="form-input pr-10"
-                    [class.border-red-500]="configForm.get('api_token')?.invalid && configForm.get('api_token')?.touched">
-                  <button type="button" (click)="mostrarApiToken.set(!mostrarApiToken())"
-                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors duration-200">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      @if (mostrarApiToken()) {
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 11-4.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"></path>
-                      } @else {
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                      }
-                    </svg>
-                  </button>
+            <div class="p-6">
+              <div class="flex items-start gap-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
+                <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="text-sm text-blue-700 dark:text-blue-300">
+                  <p class="font-medium mb-1">Facturación directa con ARCA/AFIP</p>
+                  <p>Los certificados de ARCA se configuran a nivel servidor como variables de entorno seguras. No es necesario ingresarlos aquí.</p>
+                  <p class="mt-1 text-blue-600 dark:text-blue-400">Powered by Arca SDK — Conexión directa a Web Services de ARCA</p>
                 </div>
-                @if (configForm.get('api_token')?.invalid && configForm.get('api_token')?.touched) {
-                  <p class="form-error">El API Token es requerido</p>
-                }
               </div>
-
-              <div class="space-y-2">
-                <label class="form-label">API Key</label>
-                <div class="relative">
-                  <input [type]="mostrarApiKey() ? 'text' : 'password'" formControlName="api_key" placeholder="Clave numérica" class="form-input pr-10"
-                    [class.border-red-500]="configForm.get('api_key')?.invalid && configForm.get('api_key')?.touched">
-                  <button type="button" (click)="mostrarApiKey.set(!mostrarApiKey())"
-                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors duration-200">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      @if (mostrarApiKey()) {
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 11-4.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"></path>
-                      } @else {
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                      }
-                    </svg>
-                  </button>
-                </div>
-                @if (configForm.get('api_key')?.invalid && configForm.get('api_key')?.touched) {
-                  <p class="form-error">La API Key es requerida</p>
-                }
-              </div>
-
-              <div class="space-y-2">
-                <label class="form-label">User Token</label>
-                <div class="relative">
-                  <input [type]="mostrarUserToken() ? 'text' : 'password'" formControlName="user_token" placeholder="Token alfanumérico del usuario" class="form-input pr-10"
-                    [class.border-red-500]="configForm.get('user_token')?.invalid && configForm.get('user_token')?.touched">
-                  <button type="button" (click)="mostrarUserToken.set(!mostrarUserToken())"
-                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors duration-200">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      @if (mostrarUserToken()) {
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 11-4.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"></path>
-                      } @else {
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                      }
-                    </svg>
-                  </button>
-                </div>
-                @if (configForm.get('user_token')?.invalid && configForm.get('user_token')?.touched) {
-                  <p class="form-error">El User Token es requerido</p>
-                }
-              </div>
-
             </div>
           </div>
 
@@ -258,9 +201,6 @@ export class ConfiguracionComponent implements OnInit {
   readonly cargando = signal(false);
   readonly guardando = signal(false);
   readonly mensaje = signal<MensajeEstado | null>(null);
-  readonly mostrarApiToken = signal(false);
-  readonly mostrarApiKey = signal(false);
-  readonly mostrarUserToken = signal(false);
 
   readonly configForm: FormGroup;
 
@@ -273,9 +213,6 @@ export class ConfiguracionComponent implements OnInit {
       iva_porcentaje: ['', Validators.required],
       actividad: ['', Validators.required],
       tipo_comprobante_default: ['', Validators.required],
-      api_token: ['', Validators.required],
-      api_key: ['', Validators.required],
-      user_token: ['', Validators.required]
     });
   }
 
@@ -302,9 +239,6 @@ export class ConfiguracionComponent implements OnInit {
           iva_porcentaje: Number(contribuyente.iva_porcentaje).toFixed(2),
           actividad: contribuyente.actividad || 'servicios',
           tipo_comprobante_default: contribuyente.tipo_comprobante_default || 'FACTURA C',
-          api_token: contribuyente.api_token || '',
-          api_key: contribuyente.api_key || '',
-          user_token: contribuyente.user_token || ''
         });
       }
     } catch (error) {
@@ -329,9 +263,6 @@ export class ConfiguracionComponent implements OnInit {
         iva_porcentaje: parseFloat(formData.iva_porcentaje),
         actividad: formData.actividad as 'bienes' | 'servicios',
         tipo_comprobante_default: formData.tipo_comprobante_default,
-        api_token: formData.api_token,
-        api_key: formData.api_key,
-        user_token: formData.user_token
       };
 
       const contribuyente = this.contribuyenteService.contribuyente();

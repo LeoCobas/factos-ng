@@ -903,8 +903,8 @@ export class ListadoComponent {
         // Si es un error de mantenimiento, ofrecer reintentar
         if (resultado.shouldRetry) {
           const shouldRetry = confirm(
-            `⚠️ TusFacturas está en mantenimiento\n\n` +
-            `El sistema de facturación de AFIP está temporalmente fuera de servicio.\n` +
+            `⚠️ ARCA está en mantenimiento\n\n` +
+            `El sistema de facturación de ARCA/AFIP está temporalmente fuera de servicio.\n` +
             `${errorMessage}\n\n` +
             `¿Quieres intentar nuevamente en unos segundos?`
           );
@@ -929,8 +929,8 @@ export class ListadoComponent {
       // Manejo específico para diferentes tipos de errores
       if (errorMessage.includes('mantenimiento')) {
         alert(
-          `⚠️ TusFacturas está en mantenimiento\n\n` +
-          `El sistema de facturación de AFIP está temporalmente fuera de servicio.\n` +
+          `⚠️ ARCA está en mantenimiento\n\n` +
+          `El sistema de facturación de ARCA/AFIP está temporalmente fuera de servicio.\n` +
           `Por favor, intenta nuevamente en unos minutos.\n\n` +
           `Error: ${errorMessage}`
         );
@@ -944,8 +944,8 @@ export class ListadoComponent {
       } else if (errorMessage.includes('autenticación') || errorMessage.includes('credentials') || errorMessage.includes('token')) {
         alert(
           `🔐 Error de autenticación\n\n` +
-          `Las credenciales de TusFacturas parecen estar incorrectas.\n` +
-          `Revisa la configuración en el panel de administración.\n\n` +
+          `Las credenciales de ARCA parecen estar incorrectas.\n` +
+          `Revisa los certificados en la configuración del servidor.\n\n` +
           `Error: ${errorMessage}`
         );
       } else {
