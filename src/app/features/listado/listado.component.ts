@@ -266,26 +266,22 @@ interface Factura {
             <div class="grid grid-cols-2 gap-2 mb-4">
               <button 
                 (click)="verPDFNotaCredito()" 
-                class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-                [disabled]="!notaCreditoEmitida()?.pdf_url">
+                class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm">
                 Ver PDF
               </button>
               <button 
                 (click)="compartirNotaCredito()" 
-                class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-                [disabled]="!notaCreditoEmitida()?.pdf_url">
+                class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm">
                 Compartir
               </button>
               <button 
                 (click)="descargarNotaCredito()" 
-                class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-                [disabled]="!notaCreditoEmitida()?.pdf_url">
+                class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm">
                 Descargar
               </button>
               <button 
                 (click)="imprimirNotaCredito()" 
-                class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-                [disabled]="!notaCreditoEmitida()?.pdf_url">
+                class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm">
                 Imprimir
               </button>
             </div>
@@ -419,35 +415,30 @@ export class ListadoComponent {
       event.preventDefault();
       event.stopPropagation();
     }
-    if (!factura.pdf_url) {
-      console.error('No hay URL de PDF disponible');
-      return;
-    }
+    
     try {
-      // Establecer la información básica del modal primero
+      // Descargar PDF usando el servicio centralizado (se genera al vuelo)
+      const pdfBlob = await this.pdfService.getPdfBlob(factura);
+      const blobUrl = URL.createObjectURL(pdfBlob);
+
+      // Establecer la información básica del modal
       this.pdfViewing.set(factura);
       this.pdfViewingInfo.set({
-        title: `${this.obtenerTipoComprobante(factura)} ${this.obtenerNumeroSinCeros(factura.numero_factura)}`,
-        url: factura.pdf_url,
-        filename: `${this.obtenerTipoComprobante(factura).toLowerCase().replace(' ', '-')}-${factura.numero_factura}.pdf`
+        title: `Ticket ${this.obtenerTipoComprobante(factura)} ${this.obtenerNumeroSinCeros(factura.numero_factura || factura.numero_comprobante || '0')}`,
+        url: blobUrl,
+        filename: `Ticket_${this.obtenerTipoComprobante(factura).toLowerCase().replace(' ', '-')}-${factura.numero_factura || factura.numero_comprobante || '0'}.pdf`
       });
       // Limpiar blob URL anterior si existe
       const oldBlobUrl = this.pdfViewingBlobUrl();
       if (oldBlobUrl) {
         URL.revokeObjectURL(oldBlobUrl);
-        this.pdfViewingBlobUrl.set(null);
       }
-      // Descargar PDF usando el servicio centralizado
-      const pdfBlob = await this.pdfService['downloadPdfBlob'](factura.pdf_url);
-      // Crear blob URL local
-      const blobUrl = URL.createObjectURL(pdfBlob);
+      
       this.pdfViewingBlobUrl.set(blobUrl);
     } catch (error) {
       console.error('❌ Error al cargar PDF en modal:', error);
-      // Limpiar el modal en caso de error
       this.cerrarVisorPdf();
-      // Fallback: abrir en nueva ventana
-      window.open(factura.pdf_url, '_blank');
+      alert('Hubo un error al generar el ticket.');
     }
   }
 
@@ -457,11 +448,6 @@ export class ListadoComponent {
       event.stopPropagation();
     }
     
-    if (!factura.pdf_url) {
-      console.error('No hay URL de PDF disponible para compartir');
-      return;
-    }
-
     try {
       const pdfInfo = this.pdfService.createPdfInfo(factura);
       await this.pdfService.sharePdf(pdfInfo);
@@ -476,11 +462,6 @@ export class ListadoComponent {
       event.stopPropagation();
     }
     
-    if (!factura.pdf_url) {
-      console.error('No hay URL de PDF disponible para descargar');
-      return;
-    }
-
     try {
       const pdfInfo = this.pdfService.createPdfInfo(factura);
       await this.pdfService.downloadPdf(pdfInfo);
@@ -495,42 +476,43 @@ export class ListadoComponent {
       event.stopPropagation();
     }
     
-    if (!factura.pdf_url) {
-      console.error('No hay URL de PDF disponible para imprimir');
-      return;
-    }
-
     try {
+      // Obtenemos el Blob (Ticket) generado al vuelo
+      const pdfBlob = await this.pdfService.getPdfBlob(factura);
+      const blobUrl = URL.createObjectURL(pdfBlob);
+
       const printOptions = {
-        url: factura.pdf_url,
-        filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura)}.pdf`,
-        title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`
+        url: blobUrl,
+        filename: `Ticket_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura || factura.numero_comprobante || '0')}.pdf`,
+        title: `Ticket ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura || factura.numero_comprobante || '0')}`
       };
       await this.pdfJsPrintService.printPdfDirect(printOptions);
+      
+      // Cleanup de url para que no quede ocupando la memoria del browser
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
     } catch (error) {
-      // Último recurso: abrir en nueva ventana
-      window.open(factura.pdf_url, '_blank');
+      console.error('Error al imprimir:', error);
+      alert('Hubo un error enviando a imprimir');
     }
   }
 
   // Métodos específicos para acciones de nota de crédito
   async verPDFNotaCredito() {
     const notaCredito = this.notaCreditoEmitida();
-    if (!notaCredito?.pdf_url) {
-      console.error('No hay URL de PDF disponible para la nota de crédito');
-      return;
-    }
+    if (!notaCredito) return;
 
     try {
       // Crear un objeto temporal para usar con el visor existente
       const notaCreditoTemporal = {
-        numero_factura: notaCredito.numero,
-        pdf_url: notaCredito.pdf_url,
-        tipo_comprobante: 'NOTA DE CREDITO',
-        monto: notaCredito.monto
+        numero_comprobante: notaCredito.numero,
+        tipo_comprobante: notaCredito.tipo_comprobante || 'NOTA DE CREDITO',
+        monto: notaCredito.monto,
+        total: notaCredito.monto,
+        fecha: new Date().toISOString().split('T')[0],
+        cae: notaCredito.cae,
+        vencimiento_cae: notaCredito.vencimiento_cae
       };
 
-      // Usar el método verPDF existente
       await this.verPDF(notaCreditoTemporal);
     } catch (error) {
       console.error('Error al ver PDF de nota de crédito:', error);
@@ -539,18 +521,17 @@ export class ListadoComponent {
 
   async compartirNotaCredito() {
     const notaCredito = this.notaCreditoEmitida();
-    if (!notaCredito?.pdf_url) {
-      console.error('No hay URL de PDF disponible para compartir');
-      return;
-    }
+    if (!notaCredito) return;
 
     try {
-      // Crear un objeto temporal compatible con createPdfInfo
       const notaCreditoTemporal = {
-        numero_factura: notaCredito.numero,
-        pdf_url: notaCredito.pdf_url,
-        tipo_comprobante: 'NOTA DE CREDITO',
-        monto: notaCredito.monto
+        numero_comprobante: notaCredito.numero,
+        tipo_comprobante: notaCredito.tipo_comprobante || 'NOTA DE CREDITO',
+        monto: notaCredito.monto,
+        total: notaCredito.monto,
+        fecha: new Date().toISOString().split('T')[0],
+        cae: notaCredito.cae,
+        vencimiento_cae: notaCredito.vencimiento_cae
       };
       const pdfInfo = this.pdfService.createPdfInfo(notaCreditoTemporal);
       await this.pdfService.sharePdf(pdfInfo);
@@ -561,18 +542,17 @@ export class ListadoComponent {
 
   async descargarNotaCredito() {
     const notaCredito = this.notaCreditoEmitida();
-    if (!notaCredito?.pdf_url) {
-      console.error('No hay URL de PDF disponible para descargar');
-      return;
-    }
+    if (!notaCredito) return;
 
     try {
-      // Crear un objeto temporal compatible con createPdfInfo
       const notaCreditoTemporal = {
-        numero_factura: notaCredito.numero,
-        pdf_url: notaCredito.pdf_url,
-        tipo_comprobante: 'NOTA DE CREDITO',
-        monto: notaCredito.monto
+        numero_comprobante: notaCredito.numero,
+        tipo_comprobante: notaCredito.tipo_comprobante || 'NOTA DE CREDITO',
+        monto: notaCredito.monto,
+        total: notaCredito.monto,
+        fecha: new Date().toISOString().split('T')[0],
+        cae: notaCredito.cae,
+        vencimiento_cae: notaCredito.vencimiento_cae
       };
       const pdfInfo = this.pdfService.createPdfInfo(notaCreditoTemporal);
       await this.pdfService.downloadPdf(pdfInfo);
@@ -583,22 +563,32 @@ export class ListadoComponent {
 
   async imprimirNotaCredito() {
     const notaCredito = this.notaCreditoEmitida();
-    if (!notaCredito?.pdf_url) {
-      console.error('No hay URL de PDF disponible para imprimir');
-      return;
-    }
+    if (!notaCredito) return;
 
     try {
+      const notaCreditoTemporal = {
+        numero_comprobante: notaCredito.numero,
+        tipo_comprobante: notaCredito.tipo_comprobante || 'NOTA DE CREDITO',
+        monto: notaCredito.monto,
+        total: notaCredito.monto,
+        fecha: new Date().toISOString().split('T')[0],
+        cae: notaCredito.cae,
+        vencimiento_cae: notaCredito.vencimiento_cae
+      };
+      
+      const pdfBlob = await this.pdfService.getPdfBlob(notaCreditoTemporal);
+      const blobUrl = URL.createObjectURL(pdfBlob);
+
       const printOptions = {
-        url: notaCredito.pdf_url,
+        url: blobUrl,
         filename: `NotaCredito_${notaCredito.numero}.pdf`,
         title: `Nota de Crédito N° ${notaCredito.numero}`
       };
       await this.pdfJsPrintService.printPdfDirect(printOptions);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
     } catch (error) {
       console.error('Error al imprimir nota de crédito:', error);
-      // Último recurso: abrir en nueva ventana
-      window.open(notaCredito.pdf_url, '_blank');
+      alert('Hubo un error al intentar imprimir la nota de crédito');
     }
   }
 

@@ -1,18 +1,22 @@
-import { Injectable } from '@angular/core';
-import { supabase } from './supabase.service';
+import { Injectable, inject } from '@angular/core';
+import { FacturaPdfService } from './factura-pdf.service';
+import { ContribuyenteService } from './contribuyente.service';
 
 export interface PdfInfo {
-  url: string;
   filename: string;
   title: string;
   text: string;
+  factura: any; // Se pasa el objeto factura completo para generarlo en tiempo real
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class PdfService {
-  
+
+  private facturaPdfService = inject(FacturaPdfService);
+  private contribuyenteService = inject(ContribuyenteService);
+
   constructor() {}
 
   /**
@@ -29,28 +33,14 @@ export class PdfService {
   }
 
   /**
-   * Descargar PDF usando proxy para evitar CORS
+   * Generar el PDF Blob on-the-fly
    */
-  private async downloadPdfBlob(pdfUrl: string): Promise<Blob> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw new Error('No hay sesión activa');
+  async getPdfBlob(factura: any): Promise<Blob> {
+    const contribuyente = this.contribuyenteService.contribuyente();
+    if (!contribuyente) {
+      throw new Error('Configuración de contribuyente no disponible');
     }
-
-    const proxyUrl = `https://ifkfofyylfkxwtxvyewi.supabase.co/functions/v1/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
-    const response = await fetch(proxyUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error del proxy: ${response.status} ${response.statusText}`);
-    }
-    
-    const blob = await response.blob();
-    return blob.type !== 'application/pdf' ? new Blob([blob], { type: 'application/pdf' }) : blob;
+    return await this.facturaPdfService.generarFacturaPdf(contribuyente, factura);
   }
 
   /**
@@ -60,7 +50,7 @@ export class PdfService {
     const caps = this.capabilities;
     
     try {
-      const pdfBlob = await this.downloadPdfBlob(pdfInfo.url);
+      const pdfBlob = await this.getPdfBlob(pdfInfo.factura);
       const file = new File([pdfBlob], pdfInfo.filename, { 
         type: 'application/pdf',
         lastModified: Date.now()
@@ -77,20 +67,10 @@ export class PdfService {
           return true;
         }
         
-        // Fallback: compartir URL
-        if (navigator.canShare({ url: pdfInfo.url })) {
-          await navigator.share({
-            title: pdfInfo.title,
-            text: `${pdfInfo.text}\n\nPDF: ${pdfInfo.url}`,
-            url: pdfInfo.url
-          });
-          return true;
-        }
-        
         // Fallback: solo texto
         await navigator.share({
           title: pdfInfo.title,
-          text: `${pdfInfo.text}\n\nPDF: ${pdfInfo.url}`
+          text: pdfInfo.text
         });
         return true;
       }
@@ -104,11 +84,11 @@ export class PdfService {
       }
       
       // Fallback final: copiar al portapapeles
-      return this.copyToClipboard(`${pdfInfo.text}\n\nPDF: ${pdfInfo.url}`);
+      return this.copyToClipboard(pdfInfo.text);
       
     } catch (error) {
       console.error('❌ Error en sharePdf:', error);
-      return this.copyToClipboard(`${pdfInfo.text}\n\nPDF: ${pdfInfo.url}`);
+      return this.copyToClipboard(pdfInfo.text);
     }
   }
 
@@ -117,7 +97,7 @@ export class PdfService {
    */
   async downloadPdf(pdfInfo: PdfInfo): Promise<boolean> {
     try {
-      const pdfBlob = await this.downloadPdfBlob(pdfInfo.url);
+      const pdfBlob = await this.getPdfBlob(pdfInfo.factura);
       
       // Intentar File System Access API (Chrome 86+)
       if (this.capabilities.fileSystemAccess) {
@@ -134,7 +114,7 @@ export class PdfService {
           await writable.write(pdfBlob);
           await writable.close();
           
-          alert('✅ PDF guardado exitosamente');
+          alert('✅ Ticket guardado exitosamente');
           return true;
           
         } catch (fsError) {
@@ -150,7 +130,7 @@ export class PdfService {
       
     } catch (error) {
       console.error('❌ Error descargando PDF:', error);
-      window.open(pdfInfo.url, '_blank');
+      alert('Error al generar el PDF del ticket');
       return false;
     }
   }
@@ -179,7 +159,7 @@ export class PdfService {
     if (this.capabilities.clipboard) {
       try {
         await navigator.clipboard.writeText(text);
-        alert('📋 Información copiada al portapapeles');
+        alert('📋 Información de Factura copiada al portapapeles');
         return true;
       } catch (error) {
         console.warn('⚠️ Error copiando al portapapeles:', error);
@@ -198,7 +178,7 @@ export class PdfService {
     
     try {
       document.execCommand('copy');
-      alert('📋 Información copiada al portapapeles');
+      alert('📋 Información de Factura copiada al portapapeles');
       return true;
     } catch (error) {
       alert(`📄 Información de la factura:\n\n${text}`);
@@ -213,14 +193,14 @@ export class PdfService {
    */
   createPdfInfo(factura: any): PdfInfo {
     const tipoComprobante = this.getTipoComprobante(factura);
-    const numeroSinCeros = this.getNumeroSinCeros(factura.numero_factura);
-    const montoFormateado = this.formatearMonto(factura.monto);
+    const numeroSinCeros = this.getNumeroSinCeros(factura.numero_comprobante || factura.numero_factura);
+    const montoFormateado = this.formatearMonto(factura.total || factura.monto);
     
     return {
-      url: factura.pdf_url,
-      filename: `Factura_${tipoComprobante.replace(' ', '')}_${numeroSinCeros}.pdf`,
-      title: 'Factura Emitida',
-      text: `Factura ${tipoComprobante} ${numeroSinCeros} - ${montoFormateado}`
+      factura: factura,
+      filename: `Ticket_${tipoComprobante.replace(' ', '')}_${numeroSinCeros}.pdf`,
+      title: 'Ticket de Venta Emitido',
+      text: `Ticket ${tipoComprobante} ${numeroSinCeros} - ${montoFormateado}`
     };
   }
 
@@ -230,6 +210,8 @@ export class PdfService {
   private getTipoComprobante(factura: any): string {
     if (factura.tipo_comprobante === 'FACTURA B') return 'FC B';
     if (factura.tipo_comprobante === 'FACTURA C') return 'FC C';
+    if (factura.tipo_comprobante === 'NOTA DE CREDITO B') return 'NC B';
+    if (factura.tipo_comprobante === 'NOTA DE CREDITO C') return 'NC C';
     return factura.tipo_comprobante || 'FC B';
   }
 
@@ -238,7 +220,7 @@ export class PdfService {
    */
   private getNumeroSinCeros(numeroCompleto: string): string {
     if (numeroCompleto?.includes('-')) {
-      return numeroCompleto.split('-')[1];
+      return numeroCompleto.split('-')[1].replace(/^0+/, '');
     }
     return numeroCompleto?.replace(/^0+/, '') || '0';
   }
