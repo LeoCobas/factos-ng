@@ -68,27 +68,27 @@ ALTER TABLE comprobantes ENABLE ROW LEVEL SECURITY;
 -- Contribuyentes: solo acceder al propio
 CREATE POLICY "contribuyentes_select_own"
   ON contribuyentes FOR SELECT
-  USING (user_id = auth.uid());
+  USING (user_id = (select auth.uid()));
 
 CREATE POLICY "contribuyentes_insert_own"
   ON contribuyentes FOR INSERT
-  WITH CHECK (user_id = auth.uid());
+  WITH CHECK (user_id = (select auth.uid()));
 
 CREATE POLICY "contribuyentes_update_own"
   ON contribuyentes FOR UPDATE
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+  USING (user_id = (select auth.uid()))
+  WITH CHECK (user_id = (select auth.uid()));
 
 CREATE POLICY "contribuyentes_delete_own"
   ON contribuyentes FOR DELETE
-  USING (user_id = auth.uid());
+  USING (user_id = (select auth.uid()));
 
 -- Comprobantes: solo acceder a los del contribuyente propio
 CREATE POLICY "comprobantes_select_own"
   ON comprobantes FOR SELECT
   USING (
     contribuyente_id IN (
-      SELECT id FROM contribuyentes WHERE user_id = auth.uid()
+      SELECT id FROM contribuyentes WHERE user_id = (select auth.uid())
     )
   );
 
@@ -96,7 +96,7 @@ CREATE POLICY "comprobantes_insert_own"
   ON comprobantes FOR INSERT
   WITH CHECK (
     contribuyente_id IN (
-      SELECT id FROM contribuyentes WHERE user_id = auth.uid()
+      SELECT id FROM contribuyentes WHERE user_id = (select auth.uid())
     )
   );
 
@@ -104,12 +104,12 @@ CREATE POLICY "comprobantes_update_own"
   ON comprobantes FOR UPDATE
   USING (
     contribuyente_id IN (
-      SELECT id FROM contribuyentes WHERE user_id = auth.uid()
+      SELECT id FROM contribuyentes WHERE user_id = (select auth.uid())
     )
   )
   WITH CHECK (
     contribuyente_id IN (
-      SELECT id FROM contribuyentes WHERE user_id = auth.uid()
+      SELECT id FROM contribuyentes WHERE user_id = (select auth.uid())
     )
   );
 
@@ -117,7 +117,7 @@ CREATE POLICY "comprobantes_delete_own"
   ON comprobantes FOR DELETE
   USING (
     contribuyente_id IN (
-      SELECT id FROM contribuyentes WHERE user_id = auth.uid()
+      SELECT id FROM contribuyentes WHERE user_id = (select auth.uid())
     )
   );
 
@@ -130,7 +130,7 @@ BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = '';
 
 CREATE TRIGGER set_updated_at_contribuyentes
   BEFORE UPDATE ON contribuyentes
