@@ -24,7 +24,7 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   async save(cuit: number, credentials: any): Promise<void> {
-    const { error } = await this.supabaseClient
+    await this.supabaseClient
       .from('contribuyentes')
       .update({ arca_ticket: credentials })
       .eq('user_id', this.userId);
@@ -57,16 +57,16 @@ Deno.serve(async (req: Request) => {
     
     if (!cuit) throw new Error('CUIT requerido');
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) throw new Error('Sesión inválida');
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Sesión inválida');
 
-    const { data: contribuyente, error: dbError } = await supabase
+    const { data: contribuyente } = await supabase
       .from('contribuyentes')
       .select('cuit, arca_cert, arca_key, arca_production, arca_ticket')
       .eq('user_id', user.id)
       .single();
 
-    if (dbError || !contribuyente) throw new Error('No se encontró la configuración del usuario');
+    if (!contribuyente) throw new Error('No se encontró configuración');
 
     const arca = new Arca({
       key: contribuyente.arca_key,
@@ -82,25 +82,35 @@ Deno.serve(async (req: Request) => {
       const persona = await arca.registerScopeThirteenService.getTaxpayerDetails(parseInt(String(cuit), 10));
       
       if (!persona) {
-        return new Response(JSON.stringify({ success: false, error: 'CUIT no encontrado en el padrón' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ success: false, error: 'CUIT no encontrado' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       const datosPersona = persona.datosGenerales || persona;
+      
+      const dom = Array.isArray(persona.domicilio) 
+        ? (persona.domicilio.find((d: any) => d.tipoDomicilio === 'FISCAL') || persona.domicilio[0])
+        : persona.domicilio;
+      
+      let domicilioString = '';
+      if (dom) {
+        domicilioString = `${dom.direccion || ''} ${dom.localidad || ''} ${dom.descripcionProvincia || ''}`.trim();
+      }
+
       return new Response(JSON.stringify({
         success: true,
         data: {
           razon_social: datosPersona.razonSocial || `${datosPersona.apellido || ''} ${datosPersona.nombre || ''}`.trim(),
-          domicilio: 'Domicilio disponible en padrón', 
+          domicilio: domicilioString || 'No especificado en padrón',
           condicion_iva: 'Responsable Monotributo',
         }
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     } catch (afipErr: any) {
       console.error("AFIP ERROR:", afipErr);
-      return new Response(JSON.stringify({ success: false, error: `AFIP: ${afipErr.message}` }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ success: false, error: `Error AFIP: ${afipErr.message}` }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
   } catch (error: any) {
-    return new Response(JSON.stringify({ success: false, error: error.message || 'Error técnico de sistema' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ success: false, error: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
