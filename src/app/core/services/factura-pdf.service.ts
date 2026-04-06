@@ -26,11 +26,13 @@ export class FacturaPdfService {
   /**
    * Crea el árbol de definición de objeto que entiende pdfmake para un formato Ticket 80mm
    */
-  private crearDefinicionDocumento(contribuyente: Contribuyente, comprobante: Comprobante): TDocumentDefinitions {
-    const esFacturaC = comprobante.tipo_comprobante.includes('C');
-    const letra = esFacturaC ? 'C' : 'B';
-    const numComp = comprobante.numero_comprobante.padEnd(13, ' '); // Formato: 0004-00000012
-    const fechaFormat = this.formatearFechaArg(comprobante.fecha);
+  private crearDefinicionDocumento(contribuyente: Contribuyente, comprobante: any): TDocumentDefinitions {
+    const tipo = comprobante.tipo_comprobante || 'FACTURA C';
+    const esFacturaC = tipo.includes('C');
+    const importe = Number(comprobante.total || comprobante.monto || 0);
+    const numero = String(comprobante.numero_comprobante || comprobante.numero_factura || '0000-00000000');
+    const numComp = numero.padEnd(13, ' '); // Formato: 0004-00000012
+    const fechaFormat = this.formatearFechaArg(comprobante.fecha || new Date().toISOString());
     
     // QR Code
     const qrData = this.generarQrData(contribuyente, comprobante);
@@ -68,13 +70,13 @@ export class FacturaPdfService {
           columns: [
             {
               width: '*',
-              text: comprobante.tipo_comprobante,
+              text: tipo,
               bold: true,
               fontSize: 10
             },
             {
               width: 'auto',
-              text: `Cod. ${this.getCbteTipoEnum(comprobante.tipo_comprobante).toString().padStart(3, '0')}`,
+              text: `Cod. ${this.getCbteTipoEnum(tipo).toString().padStart(3, '0')}`,
               alignment: 'right'
             }
           ]
@@ -108,7 +110,7 @@ export class FacturaPdfService {
               // Fila producto/servicio único
               [
                 { text: comprobante.concepto || contribuyente.concepto || 'Varios' }, 
-                { text: `$${comprobante.total.toFixed(2)}`, alignment: 'right' }
+                { text: `$${importe.toFixed(2)}`, alignment: 'right' }
               ]
             ]
           },
@@ -121,7 +123,7 @@ export class FacturaPdfService {
         {
           columns: [
             { text: 'TOTAL:', bold: true, fontSize: 12 },
-            { text: `$${comprobante.total.toFixed(2)}`, bold: true, fontSize: 12, alignment: 'right' }
+            { text: `$${importe.toFixed(2)}`, bold: true, fontSize: 12, alignment: 'right' }
           ]
         },
 
@@ -189,34 +191,25 @@ export class FacturaPdfService {
     return tipos[tipoComprobante.toUpperCase()] || 11;
   }
 
-  private generarQrData(contribuyente: Contribuyente, comprobante: Comprobante): any {
+  private generarQrData(contribuyente: Contribuyente, comprobante: any): any {
     // Requisito AFIP para el código QR
-    // ver: 1
-    // fecha: YYYY-MM-DD del comprobante
-    // cuit: Number
-    // ptoVta: Number
-    // tipoCmp: Number
-    // nroCmp: Number
-    // importe: Number
-    // moneda: "PES"
-    // ctz: 1
-    // tipoDocRec: 99 (Consumidor final)
-    // nroDocRec: 0
-    // tipoCodAut: "E"
-    // codAut: Number (CAE)
     
     // Parse nroCmp (ex: "0004-00000012" -> 12)
-    const nroCmpStr = comprobante.numero_comprobante.split('-').pop() || '1';
+    const numero = String(comprobante.numero_comprobante || comprobante.numero_factura || '0');
+    const nroCmpStr = numero.split('-').pop() || '1';
     const nroCmp = parseInt(nroCmpStr, 10);
+    
+    const tipo = comprobante.tipo_comprobante || 'FACTURA C';
+    const importe = Number(comprobante.total || comprobante.monto || 0);
 
     return {
       ver: 1,
-      fecha: comprobante.fecha,  // YYYY-MM-DD format is in 'fecha' typically
+      fecha: comprobante.fecha || new Date().toISOString().split('T')[0],
       cuit: parseInt(contribuyente.cuit, 10),
       ptoVta: Number(comprobante.punto_venta) || Number(contribuyente.punto_venta),
-      tipoCmp: this.getCbteTipoEnum(comprobante.tipo_comprobante),
+      tipoCmp: this.getCbteTipoEnum(tipo),
       nroCmp: nroCmp,
-      importe: Number(comprobante.total),
+      importe: importe,
       moneda: 'PES',
       ctz: 1,
       tipoDocRec: 99,

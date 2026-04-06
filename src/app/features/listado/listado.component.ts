@@ -688,6 +688,7 @@ export class ListadoComponent {
           monto: Number(c.total),
           estado: c.estado as 'emitida' | 'anulada',
           cae: c.cae || undefined,
+          vencimiento_cae: c.vencimiento_cae || undefined,
           tipo_comprobante: c.tipo_comprobante,
           pdf_url: c.pdf_url || undefined,
           concepto: c.concepto,
