@@ -30,6 +30,68 @@ function getSupabaseClient(authHeader: string | null) {
   return createClient(supabaseUrl, supabaseKey);
 }
 
+/** Une partes de domicilio típicas del padrón AFIP (a veces viene calle+numero y no "direccion"). */
+function buildDomicilioString(dom: unknown): string {
+  if (dom == null) return '';
+  if (typeof dom === 'string') return dom.trim();
+  if (typeof dom !== 'object') return '';
+  const d = dom as Record<string, unknown>;
+  const calleLine = [d.calle, d.numero, d.piso, d.dpto, d.sector, d.manzana]
+    .map((x) => (x == null ? '' : String(x).trim()))
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  const linea1 = String(d.direccion || d.domicilio || calleLine || '').trim();
+  const loc = String(d.localidad || d.localidadDescripcion || d.municipio || d.descripcionLocalidad || '').trim();
+  const prov = String(d.descripcionProvincia || d.provincia || d.provinciaDescripcion || '').trim();
+  const cp = String(d.codPostal || d.cp || d.codigoPostal || '').trim();
+  const parts = [linea1, loc, prov, cp].filter((p) => p.length > 0);
+  return parts.join(', ').trim();
+}
+
+/** Busca en el subárbol de `datosGenerales` un nodo del que se pueda armar domicilio (profundidad acotada). */
+function deepFindDomicilioEnDatosGenerales(node: unknown, depth: number): string {
+  if (depth <= 0 || node == null) return '';
+  const direct = buildDomicilioString(node);
+  if (direct) return direct;
+  if (typeof node !== 'object') return '';
+  for (const v of Object.values(node)) {
+    if (v != null && typeof v === 'object') {
+      const s = deepFindDomicilioEnDatosGenerales(v, depth - 1);
+      if (s) return s;
+    }
+  }
+  return '';
+}
+
+/** Recorre candidatos hasta obtener un texto no vacío. */
+function extractDomicilioFromPersona(persona: Record<string, unknown>): string {
+  const dg = persona.datosGenerales as Record<string, unknown> | undefined;
+  const push = (arr: unknown[], v: unknown) => {
+    if (v == null) return;
+    if (Array.isArray(v)) for (const item of v) arr.push(item);
+    else arr.push(v);
+  };
+  const candidates: unknown[] = [];
+  if (dg) {
+    push(candidates, dg.domicilio);
+    push(candidates, dg.domicilioFiscal);
+    push(candidates, dg.domicilioFiscalDeReferencia);
+  }
+  push(candidates, persona.domicilioFiscal);
+  push(candidates, persona.domicilio);
+
+  for (const c of candidates) {
+    const s = buildDomicilioString(c);
+    if (s) return s;
+  }
+  if (dg && typeof dg === 'object') {
+    const deep = deepFindDomicilioEnDatosGenerales(dg, 8);
+    if (deep) return deep;
+  }
+  return '';
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
@@ -53,18 +115,9 @@ Deno.serve(async (req: Request) => {
       const persona = await arca.registerScopeThirteenService.getTaxpayerDetails(parseInt(String(cuit), 10));
       if (!persona) return new Response(JSON.stringify({ success: false, error: 'CUIT no encontrado' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-      const dg = persona.datosGenerales;
-      
-      let dom = dg?.domicilio || dg?.domicilioFiscal || dg?.domicilioFiscalDeReferencia;
-      
-      if (!dom) {
-        dom = persona.domicilioFiscal || (Array.isArray(persona.domicilio) ? persona.domicilio[0] : persona.domicilio);
-      }
-      
-      let domicilioString = '';
-      if (dom) {
-        domicilioString = `${dom.direccion || dom.domicilio || ''} ${dom.localidad || ''} ${dom.descripcionProvincia || dom.provincia || ''}`.trim();
-      }
+      const dg = persona.datosGenerales as Record<string, unknown> | undefined;
+      const personaObj = persona as Record<string, unknown>;
+      const domicilioString = extractDomicilioFromPersona(personaObj);
 
       return new Response(JSON.stringify({
         success: true,
