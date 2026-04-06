@@ -516,6 +516,9 @@ export class ConfiguracionComponent implements OnInit {
       const response = await supabase.functions.invoke('padron-lookup', {
         body: { cuit }
       });
+      // #region agent log
+      fetch('http://127.0.0.1:7505/ingest/ad0c39a8-614b-4c4e-ac91-2e1f9d2af1c1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'52b477'},body:JSON.stringify({sessionId:'52b477',runId:'pre-fix',hypothesisId:'H5',location:'src/app/features/configuracion/configuracion.component.ts:520',message:'Padron invoke response metadata',data:{hasError:!!response.error,hasData:!!response.data},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
 
       if (response.error) {
         this.mensajePadron.set({ texto: response.error.message || 'Error de conexión con el padrón', tipo: 'error' });
@@ -523,6 +526,9 @@ export class ConfiguracionComponent implements OnInit {
       }
 
       const result = response.data;
+      // #region agent log
+      fetch('http://127.0.0.1:7505/ingest/ad0c39a8-614b-4c4e-ac91-2e1f9d2af1c1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'52b477'},body:JSON.stringify({sessionId:'52b477',runId:'pre-fix',hypothesisId:'H5',location:'src/app/features/configuracion/configuracion.component.ts:529',message:'Padron payload snapshot',data:{success:result?.success??null,hasRazonSocial:!!result?.data?.razon_social,domicilioValue:result?.data?.domicilio??null,domicilioDebug:result?.data?.__debug?.domicilio??null},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       if (result && result.success) {
         const datos = result.data;
         // Autocompletar campos
