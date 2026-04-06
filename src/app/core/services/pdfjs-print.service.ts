@@ -216,7 +216,7 @@ export class PdfJsPrintService {
     }
 
     // Usar el mismo pdf-proxy que ya existe en el sistema
-    const proxyUrl = `https://tejrdiwlgdzxsrqrqsbj.supabase.co/functions/v1/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
+    const proxyUrl = `https://ifkfofyylfkxwtxvyewi.supabase.co/functions/v1/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
     console.log('🌐 [DEBUG] Usando pdf-proxy:', proxyUrl);
     
     const response = await fetch(proxyUrl, {

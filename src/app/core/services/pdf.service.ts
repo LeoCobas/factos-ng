@@ -37,7 +37,7 @@ export class PdfService {
       throw new Error('No hay sesión activa');
     }
 
-    const proxyUrl = `https://tejrdiwlgdzxsrqrqsbj.supabase.co/functions/v1/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
+    const proxyUrl = `https://ifkfofyylfkxwtxvyewi.supabase.co/functions/v1/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
     const response = await fetch(proxyUrl, {
       method: 'GET',
       headers: {
