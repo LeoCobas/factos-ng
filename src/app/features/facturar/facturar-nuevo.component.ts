@@ -22,10 +22,10 @@ import { ContribuyenteService } from '../../core/services/contribuyente.service'
                 Monto Total
               </label>
               <input
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                formControlName="monto"
+                type="text"
+                placeholder="0"
+                [value]="displayMonto()"
+                (input)="onMontoInput($event)"
                 class="form-input w-full text-2xl sm:text-3xl text-center py-2 sm:py-4 px-3"
                 [class.border-red-500]="formFactura.get('monto')?.invalid && formFactura.get('monto')?.touched"
               />
@@ -123,6 +123,9 @@ export class FacturarNuevoComponent {
   actividad = signal<'bienes' | 'servicios' | null>(null);
   _minFecha = signal<string>('');
   _maxFecha = signal<string>('');
+
+  // Signal para display del monto formateado
+  displayMonto = signal('');
 
   minFecha() { return this._minFecha(); }
   maxFecha() { return this._maxFecha(); }
@@ -231,6 +234,7 @@ export class FacturarNuevoComponent {
           monto: '',
           fecha: this.obtenerFechaHoy()
         });
+        this.displayMonto.set('');
       } else {
         throw new Error('Error al emitir factura');
       }
@@ -268,6 +272,20 @@ export class FacturarNuevoComponent {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(monto);
+  }
+
+  onMontoInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const rawValue = input.value.replace(/\D/g, ''); // solo dígitos
+    const numValue = parseInt(rawValue, 10);
+
+    if (!isNaN(numValue) && numValue > 0) {
+      this.displayMonto.set(numValue.toLocaleString('es-AR'));
+      this.formFactura.get('monto')?.setValue(numValue);
+    } else {
+      this.displayMonto.set('');
+      this.formFactura.get('monto')?.setValue('');
+    }
   }
 
   // Métodos para los botones de acción
