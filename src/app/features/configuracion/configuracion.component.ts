@@ -518,12 +518,13 @@ export class ConfiguracionComponent implements OnInit {
       });
 
       if (response.error) {
-        this.mensajePadron.set({ texto: response.error.message || 'Error al consultar el padrón', tipo: 'error' });
+        this.mensajePadron.set({ texto: response.error.message || 'Error de conexión con el padrón', tipo: 'error' });
         return;
       }
 
-      const datos = response.data;
-      if (datos) {
+      const result = response.data;
+      if (result && result.success) {
+        const datos = result.data;
         // Autocompletar campos
         if (datos.razon_social) {
           this.facturacionForm.patchValue({ razon_social: datos.razon_social });
@@ -540,9 +541,11 @@ export class ConfiguracionComponent implements OnInit {
         }
 
         this.mensajePadron.set({ texto: '✅ Datos obtenidos del padrón ARCA', tipo: 'success' });
+      } else {
+        this.mensajePadron.set({ texto: result?.error || 'No se pudo obtener datos del CUIT', tipo: 'error' });
       }
-    } catch (error) {
-      this.mensajePadron.set({ texto: 'No se pudo consultar el padrón. ¿Tenés los certificados ARCA cargados?', tipo: 'error' });
+    } catch (error: any) {
+      this.mensajePadron.set({ texto: error.message || 'Error al consultar el padrón', tipo: 'error' });
     } finally {
       this.buscandoCuit.set(false);
     }
