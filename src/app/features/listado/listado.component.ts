@@ -6,7 +6,7 @@ function getFechaLocalArgentina(): string {
   const dia = String(hoy.getDate()).padStart(2, '0');
   return `${año}-${mes}-${dia}`;
 }
-import { Component, signal, computed, inject } from '@angular/core';
+import { Component, signal, computed, inject, effect } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -15,8 +15,10 @@ import { supabase } from '../../core/services/supabase.service';
 import { PdfService } from '../../core/services/pdf.service';
 import { FacturacionService } from '../../core/services/facturacion.service';
 import { PdfJsPrintService } from '../../core/services/pdfjs-print.service';
+import { ContribuyenteService } from '../../core/services/contribuyente.service';
 
 import { PdfViewerComponent, PdfViewerConfig } from '../../shared/components/ui/pdf-viewer.component';
+
 
 
 interface Factura {
@@ -32,8 +34,9 @@ interface Factura {
   punto_venta?: number;
   created_at?: string;
   updated_at?: string;
-  // Para notas de crédito, información de la factura que anula
+  // Para notas de crédito: número del comprobante que anula
   factura_anulada?: string;
+  comprobante_asociado_id?: string;
 }
 
 @Component({
@@ -371,14 +374,25 @@ export class ListadoComponent {
     };
   });
 
+  private readonly contribuyenteService = inject(ContribuyenteService);
+
   constructor(
     private pdfService: PdfService,
     private facturacionService: FacturacionService,
     private pdfJsPrintService: PdfJsPrintService,
     private sanitizer: DomSanitizer
   ) {
-  // Cargar facturas iniciales
-  this.cargarFacturasIniciales();
+    // Cargar facturas iniciales
+    this.cargarFacturasIniciales();
+
+    // Recargar cuando cambia el contribuyente
+    effect(() => {
+      const contribuyente = this.contribuyenteService.contribuyente();
+      if (contribuyente) {
+        this.limpiarTodoElCache();
+        this.cargarFacturasPorFecha(this.fechaSeleccionada());
+      }
+    });
   }
 
   // Función para alternar la expansión de una tarjeta
@@ -644,93 +658,62 @@ export class ListadoComponent {
   }
 
   async cargarFacturasPorFecha(fecha: string) {
-    // Verificar si ya tenemos esta fecha en caché
-    if (this.cacheFacturasPorFecha.has(fecha)) {
-      this.facturas.set(this.cacheFacturasPorFecha.get(fecha)!);
+    const contribuyente = this.contribuyenteService.contribuyente();
+    if (!contribuyente) return;
+
+    const cacheKey = `${contribuyente.id}:${fecha}`;
+    if (this.cacheFacturasPorFecha.has(cacheKey)) {
+      this.facturas.set(this.cacheFacturasPorFecha.get(cacheKey)!);
       return;
     }
 
     this.cargando.set(true);
     
     try {
-      // Cargar solo facturas de la fecha específica
-      const { data: facturas, error: errorFacturas } = await supabase
-        .from('facturas')
-        .select('*')
+      // Query unificada a tabla comprobantes
+      const { data: comprobantes, error } = await supabase
+        .from('comprobantes')
+        .select(`
+          *,
+          comprobante_asociado:comprobante_asociado_id (
+            numero_comprobante
+          )
+        `)
+        .eq('contribuyente_id', contribuyente.id)
         .eq('fecha', fecha)
         .order('created_at', { ascending: false });
 
-      if (errorFacturas) {
-        console.error('Error al cargar facturas:', errorFacturas);
+      if (error) {
+        console.error('Error al cargar comprobantes:', error);
         return;
       }
 
-      // Cargar solo notas de crédito de la fecha específica con información de factura relacionada
-      const { data: notasCredito, error: errorNotas } = await supabase
-        .from('notas_credito')
-        .select(`
-          *,
-          facturas!notas_credito_factura_id_fkey(
-            numero_factura
-          )
-        `)
-        .eq('fecha', fecha)
-        .order('created_at', { ascending: false });
-
-      if (errorNotas) {
-        console.error('Error al cargar notas de crédito:', errorNotas);
-        // Continuar sin notas de crédito si hay error
-      }
-
-      // Convertir facturas al formato esperado
-      const facturasFormateadas: Factura[] = (facturas || []).map(f => ({
-        id: f.id,
-        numero_factura: f.numero_factura,
-        fecha: f.fecha,
-        monto: Number(f.monto),
-        estado: f.estado as 'emitida' | 'anulada',
-        cae: f.cae || undefined,
-        tipo_comprobante: f.tipo_comprobante,
-        pdf_url: f.pdf_url || undefined,
-        concepto: f.concepto,
-        punto_venta: f.punto_venta,
-        created_at: f.created_at,
-        updated_at: f.updated_at
-      }));
-
-      // Convertir notas de crédito al formato esperado
-      const notasCreditoFormateadas: Factura[] = (notasCredito || []).map(nc => ({
-        id: nc.id,
-        numero_factura: nc.numero_nota,
-        fecha: nc.fecha,
-        monto: Number(nc.monto),
-        estado: 'emitida' as 'emitida' | 'anulada', // Las NC siempre están emitidas
-        cae: nc.cae || undefined,
-        tipo_comprobante: nc.tipo_comprobante || 'NOTA DE CREDITO B', // Usar tipo real de la DB
-        pdf_url: nc.pdf_url || undefined,
-        concepto: 'Nota de Crédito',
-        punto_venta: 4, // Valor por defecto
-        created_at: nc.created_at,
-        updated_at: nc.updated_at,
-        // Información de la factura que anula
-        factura_anulada: nc.facturas?.numero_factura
-      }));
-
-      // Combinar facturas y notas de crédito y mantener orden por fecha de creación
-      const todosLosComprobantes = [...facturasFormateadas, ...notasCreditoFormateadas]
-        .sort((a, b) => {
-          // Ordenar por created_at descendente (más recientes primero)
-          const fechaA = new Date(a.created_at || '').getTime();
-          const fechaB = new Date(b.created_at || '').getTime();
-          return fechaB - fechaA;
-        });
+      // Convertir al formato esperado por el template
+      const comprobantesFormateados: Factura[] = (comprobantes || []).map(c => {
+        const esNC = c.tipo_comprobante.includes('NOTA DE CREDITO');
+        return {
+          id: c.id,
+          numero_factura: c.numero_comprobante,
+          fecha: c.fecha,
+          monto: Number(c.total),
+          estado: c.estado as 'emitida' | 'anulada',
+          cae: c.cae || undefined,
+          tipo_comprobante: c.tipo_comprobante,
+          pdf_url: c.pdf_url || undefined,
+          concepto: c.concepto,
+          punto_venta: c.punto_venta,
+          created_at: c.created_at,
+          updated_at: c.updated_at,
+          comprobante_asociado_id: c.comprobante_asociado_id || undefined,
+          factura_anulada: esNC ? (c as any).comprobante_asociado?.numero_comprobante : undefined
+        };
+      });
       
-      // Guardar en caché
-      this.cacheFacturasPorFecha.set(fecha, todosLosComprobantes);
-      this.facturas.set(todosLosComprobantes);
+      this.cacheFacturasPorFecha.set(cacheKey, comprobantesFormateados);
+      this.facturas.set(comprobantesFormateados);
 
     } catch (error) {
-      console.error('Error inesperado al cargar facturas:', error);
+      console.error('Error inesperado al cargar comprobantes:', error);
     } finally {
       this.cargando.set(false);
     }
@@ -788,7 +771,12 @@ export class ListadoComponent {
 
   // Método para limpiar caché de una fecha específica (útil después de anular facturas)
   limpiarCacheFecha(fecha: string) {
-    this.cacheFacturasPorFecha.delete(fecha);
+    // Las keys son "{contribuyente_id}:{fecha}", buscar por suffix
+    for (const key of this.cacheFacturasPorFecha.keys()) {
+      if (key.endsWith(`:${fecha}`)) {
+        this.cacheFacturasPorFecha.delete(key);
+      }
+    }
   }
 
   // Método para limpiar todo el caché (útil para debugging o después de cambios masivos)
@@ -893,11 +881,11 @@ export class ListadoComponent {
         this.notaCreditoEmitida.set({
           numero: resultado.data?.numero,
           cae: resultado.data?.cae,
-          cae_vto: resultado.data?.cae_vto,
+          cae_vto: resultado.data?.vencimiento_cae,
           pdf_url: resultado.data?.pdf_url,
           monto: factura.monto,
           facturaOriginal: factura.numero_factura,
-          notaCredito: resultado.data?.notaCredito
+          notaCredito: resultado.data?.comprobante
         });
 
         // Recargar facturas para mostrar la nueva nota de crédito

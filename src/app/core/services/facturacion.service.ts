@@ -1,6 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { supabase } from './supabase.service';
+import { ContribuyenteService } from './contribuyente.service';
 import { environment } from '../../../environments/environment';
+import { Contribuyente } from '../types/database.types';
 
 export interface FacturaRequestData {
   monto: number;
@@ -41,7 +43,7 @@ export interface TusFacturasResponse {
 
 export interface FacturaResult {
   success: boolean;
-  factura?: any;
+  comprobante?: any;
   error?: string;
 }
 
@@ -50,9 +52,9 @@ export interface NotaCreditoResult {
   data?: {
     numero: string;
     cae?: string;
-    cae_vto?: string;
+    vencimiento_cae?: string;
     pdf_url?: string;
-    notaCredito: any;
+    comprobante: any;
   };
   error?: string;
   shouldRetry?: boolean;
@@ -63,6 +65,7 @@ export interface NotaCreditoResult {
 })
 export class FacturacionService {
   private readonly supabaseUrl = environment.supabase.url;
+  private readonly contribuyenteService = inject(ContribuyenteService);
   
   constructor() {}
 
@@ -86,33 +89,27 @@ export class FacturacionService {
     return { isValid: true };
   }
 
-  // Obtiene y valida configuración de Supabase
-  private async getValidatedConfig() {
-    const { data: config, error } = await supabase
-      .from('configuracion')
-      .select('*')
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .single();
+  // Obtiene y valida el contribuyente activo
+  private getValidatedConfig(): Contribuyente {
+    const contribuyente = this.contribuyenteService.contribuyente();
 
-    if (error || !config) {
-      throw new Error('No se pudo obtener la configuración');
+    if (!contribuyente) {
+      throw new Error('No hay contribuyente configurado. Ve a Configuración para completar tus datos.');
     }
 
-    if (!config.api_token || !config.api_key || !config.user_token || !config.cuit) {
-      throw new Error('Configuración incompleta. Complete todos los campos de TusFacturas.');
+    if (!contribuyente.api_token || !contribuyente.api_key || !contribuyente.user_token || !contribuyente.cuit) {
+      throw new Error('Configuración incompleta. Completá todos los campos de TusFacturas en Configuración.');
     }
 
-    return config;
+    return contribuyente;
   }
 
-  
   async emitirFactura(facturaData: FacturaRequestData): Promise<FacturaResult> {
     try {
-      const config = await this.getValidatedConfig();
+      const contribuyente = this.getValidatedConfig();
 
       // Validar fecha según actividad
-      const actividad = config.actividad === 'bienes' ? 'bienes' : 'servicios';
+      const actividad = contribuyente.actividad === 'bienes' ? 'bienes' : 'servicios';
       const [dia, mes, año] = facturaData.fecha.split('/');
       const fecha = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia));
       
@@ -122,15 +119,15 @@ export class FacturacionService {
       }
 
       const configFormatted: ConfigData = {
-        apitoken: config.api_token,
-        apikey: config.api_key,
-        usertoken: config.user_token,
-        punto_venta: config.punto_venta,
-        concepto: config.concepto,
-        iva_porcentaje: config.iva_porcentaje,
-        cuit: config.cuit,
-        razon_social: config.razon_social,
-        tipo_comprobante_default: config.tipo_comprobante_default || 'FACTURA B',
+        apitoken: contribuyente.api_token!,
+        apikey: contribuyente.api_key!,
+        usertoken: contribuyente.user_token!,
+        punto_venta: contribuyente.punto_venta,
+        concepto: contribuyente.concepto || 'Servicios profesionales',
+        iva_porcentaje: contribuyente.iva_porcentaje,
+        cuit: contribuyente.cuit,
+        razon_social: contribuyente.razon_social,
+        tipo_comprobante_default: (contribuyente.tipo_comprobante_default as 'FACTURA B' | 'FACTURA C') || 'FACTURA B',
         actividad: actividad
       };
 
@@ -140,36 +137,36 @@ export class FacturacionService {
         throw new Error(resultado.error || 'Error al emitir factura');
       }
 
-      // Guardar en base de datos
-      const { data: factura, error: facturaError } = await supabase
-        .from('facturas')
+      // Guardar en tabla comprobantes
+      const { data: comprobante, error: insertError } = await supabase
+        .from('comprobantes')
         .insert({
-          numero_factura: resultado.data?.numero || `TEMP-${Date.now()}`,
+          contribuyente_id: contribuyente.id,
+          tipo_comprobante: configFormatted.tipo_comprobante_default || 'FACTURA B',
+          numero_comprobante: resultado.data?.numero || `TEMP-${Date.now()}`,
+          punto_venta: contribuyente.punto_venta,
           fecha: `${año}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`,
-          monto: facturaData.monto,
-          concepto: config.concepto,
-          iva_porcentaje: config.iva_porcentaje,
-          punto_venta: config.punto_venta,
-          estado: 'emitida',
-          afip_id: resultado.data?.afip_id,
-          pdf_url: resultado.data?.pdf_url,
-          tipo_comprobante: configFormatted.tipo_comprobante_default,
+          total: facturaData.monto,
           cae: resultado.data?.cae,
-          cae_vto: resultado.data?.cae_vto
+          vencimiento_cae: resultado.data?.cae_vto,
+          estado: 'emitida',
+          concepto: contribuyente.concepto,
+          pdf_url: resultado.data?.pdf_url,
+          afip_id: resultado.data?.afip_id
         })
         .select()
         .single();
 
-      if (facturaError) {
-        throw new Error('No se pudo guardar la factura en la base de datos');
+      if (insertError) {
+        throw new Error('No se pudo guardar el comprobante en la base de datos');
       }
 
       return {
         success: true,
-        factura: {
-          ...factura,
+        comprobante: {
+          ...comprobante,
           cae: resultado.data?.cae,
-          cae_vto: resultado.data?.cae_vto,
+          vencimiento_cae: resultado.data?.cae_vto,
           pdf_url: resultado.data?.pdf_url
         }
       };
@@ -258,14 +255,12 @@ export class FacturacionService {
 
       const responseData: TusFacturasResponse = await response.json();
       
-      // Manejar errores
       if (!response.ok || responseData?.error === 'S') {
         const errores = responseData?.errores || [];
         const errorMessage = responseData?.message || errores.join?.(', ') || 'Error al emitir factura';
         throw new Error(errorMessage);
       }
 
-      // Verificar respuesta exitosa
       const isOk = (responseData && (responseData.error === 'N'));
       if (!isOk) {
         const errores = Array.isArray(responseData?.errores) ? responseData.errores : [];
@@ -300,24 +295,24 @@ export class FacturacionService {
   }
 
   // Crear nota de crédito para anular factura
-  async crearNotaCredito(facturaId: string, numeroFactura: string, monto: number): Promise<NotaCreditoResult> {
+  async crearNotaCredito(comprobanteId: string, numeroComprobante: string, monto: number): Promise<NotaCreditoResult> {
     try {
-      const config = await this.getValidatedConfig();
+      const contribuyente = this.getValidatedConfig();
 
-      // Obtener datos de la factura original
-      const { data: facturaOriginal, error: facturaError } = await supabase
-        .from('facturas')
-        .select('tipo_comprobante, numero_factura')
-        .eq('id', facturaId)
+      // Obtener datos del comprobante original
+      const { data: comprobanteOriginal, error: fetchError } = await supabase
+        .from('comprobantes')
+        .select('tipo_comprobante, numero_comprobante')
+        .eq('id', comprobanteId)
         .single();
 
-      if (facturaError || !facturaOriginal) {
-        throw new Error('No se pudo obtener la factura original');
+      if (fetchError || !comprobanteOriginal) {
+        throw new Error('No se pudo obtener el comprobante original');
       }
 
-      const tipoNotaCredito = facturaOriginal.tipo_comprobante === 'FACTURA C' ? 'NOTA DE CREDITO C' : 'NOTA DE CREDITO B';
+      const tipoNotaCredito = comprobanteOriginal.tipo_comprobante === 'FACTURA C' ? 'NOTA DE CREDITO C' : 'NOTA DE CREDITO B';
       const isNotaCreditoC = tipoNotaCredito === 'NOTA DE CREDITO C';
-      const ivaPercentage = config.iva_porcentaje || 21;
+      const ivaPercentage = contribuyente.iva_porcentaje || 21;
       const montoSinIva = isNotaCreditoC ? monto : Number((monto / (1 + ivaPercentage / 100)).toFixed(2));
 
       const fechaActual = new Date();
@@ -332,9 +327,9 @@ export class FacturacionService {
       };
 
       const requestData = {
-        usertoken: config.user_token,
-        apikey: config.api_key,
-        apitoken: config.api_token,
+        usertoken: contribuyente.user_token,
+        apikey: contribuyente.api_key,
+        apitoken: contribuyente.api_token,
         cliente: {
           documento_tipo: 'OTRO',
           documento_nro: '0',
@@ -352,13 +347,13 @@ export class FacturacionService {
           vencimiento: formatearFecha(fechaVencimiento),
           tipo: tipoNotaCredito,
           operacion: 'V',
-          punto_venta: String(config.punto_venta || 4).padStart(4, '0'),
-          rubro: config.concepto || 'Servicios profesionales',
+          punto_venta: String(contribuyente.punto_venta || 4).padStart(4, '0'),
+          rubro: contribuyente.concepto || 'Servicios profesionales',
           detalle: [
             {
               cantidad: '1',
               producto: {
-                descripcion: `Anulación de factura ${numeroFactura}`,
+                descripcion: `Anulación de factura ${numeroComprobante}`,
                 unidad_bulto: '1',
                 codigo: 'ANULACION',
                 precio_unitario_sin_iva: String(montoSinIva),
@@ -370,11 +365,11 @@ export class FacturacionService {
           total: String(monto),
           comprobantes_asociados: [
             {
-              tipo_comprobante: facturaOriginal.tipo_comprobante,
-              punto_venta: String(config.punto_venta || 4),
-              numero: parseInt(numeroFactura.split('-').pop() || '1'),
+              tipo_comprobante: comprobanteOriginal.tipo_comprobante,
+              punto_venta: String(contribuyente.punto_venta || 4),
+              numero: parseInt(numeroComprobante.split('-').pop() || '1'),
               comprobante_fecha: formatearFecha(fechaActual),
-              cuit: config.cuit || '0'
+              cuit: contribuyente.cuit || '0'
             }
           ]
         }
@@ -417,24 +412,29 @@ export class FacturacionService {
 
       const numero = responseData.comprobante_nro || responseData.numero;
       const cae = responseData.cae;
-      const cae_vto = responseData.vencimiento_cae;
+      const vencimiento_cae = responseData.vencimiento_cae;
       const pdf_url = responseData.comprobante_pdf_url || responseData.pdf_ticket_url || '';
 
       if (!numero) {
         throw new Error('No se pudo obtener el número de la nota de crédito de TusFacturas');
       }
 
-      const { data: notaCredito, error: insertError } = await supabase
-        .from('notas_credito')
+      // Guardar NC en tabla comprobantes con comprobante_asociado_id
+      const { data: ncComprobante, error: insertError } = await supabase
+        .from('comprobantes')
         .insert({
-          factura_id: facturaId,
-          numero_nota: numero,
+          contribuyente_id: contribuyente.id,
+          tipo_comprobante: tipoNotaCredito,
+          numero_comprobante: numero,
+          punto_venta: contribuyente.punto_venta,
           fecha: new Date().toISOString().split('T')[0],
-          monto: monto,
-          pdf_url: pdf_url,
+          total: monto,
           cae: cae,
-          cae_vto: cae_vto,
-          tipo_comprobante: tipoNotaCredito
+          vencimiento_cae: vencimiento_cae,
+          estado: 'emitida',
+          concepto: `Anulación de ${numeroComprobante}`,
+          pdf_url: pdf_url,
+          comprobante_asociado_id: comprobanteId
         })
         .select()
         .single();
@@ -443,15 +443,14 @@ export class FacturacionService {
         throw new Error('Error al guardar la nota de crédito en la base de datos');
       }
 
-      // Actualizar el estado de la factura original a 'anulada'
+      // Actualizar estado de la factura original a 'anulada'
       const { error: updateError } = await supabase
-        .from('facturas')
+        .from('comprobantes')
         .update({ estado: 'anulada' })
-        .eq('id', facturaId);
+        .eq('id', comprobanteId);
 
       if (updateError) {
-        console.error('Error al actualizar estado de factura:', updateError);
-        // No lanzamos error aquí para no interrumpir el flujo, solo lo registramos
+        console.error('Error al actualizar estado de comprobante:', updateError);
       }
 
       return {
@@ -459,9 +458,9 @@ export class FacturacionService {
         data: {
           numero,
           cae,
-          cae_vto,
+          vencimiento_cae,
           pdf_url,
-          notaCredito
+          comprobante: ncComprobante
         }
       };
 

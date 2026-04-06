@@ -1,8 +1,9 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal, computed, inject, effect } from '@angular/core';
 import { format, startOfMonth, endOfMonth, subMonths, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CurrencyPipe } from '@angular/common';
 import { supabase } from '../../core/services/supabase.service';
+import { ContribuyenteService } from '../../core/services/contribuyente.service';
 
 interface PeriodoTotal {
   nombre: string;
@@ -123,50 +124,50 @@ export class TotalesComponent {
   facturas = signal<FacturaData[]>([]);
   cargando = signal(false);
 
+  private readonly contribuyenteService = inject(ContribuyenteService);
+
   constructor() {
     this.cargarDatosIniciales();
+
+    // Recargar cuando cambia el contribuyente
+    effect(() => {
+      const contribuyente = this.contribuyenteService.contribuyente();
+      if (contribuyente) {
+        this.cargarDatosIniciales();
+      }
+    });
   }
 
   async cargarDatosIniciales() {
     this.cargando.set(true);
     
     try {
-      // Cargar facturas
-      const { data: facturas, error: errorFacturas } = await supabase
-        .from('facturas')
-        .select('fecha, monto, estado, tipo_comprobante')
-        .order('fecha', { ascending: false });
-
-      // Cargar notas de crédito
-      const { data: notasCredito, error: errorNotas } = await supabase
-        .from('notas_credito')
-        .select('fecha, monto, tipo_comprobante')
-        .order('fecha', { ascending: false });
-
-      if (errorFacturas || errorNotas) {
-        console.error('Error al cargar datos:', errorFacturas, errorNotas);
+      const contribuyente = this.contribuyenteService.contribuyente();
+      if (!contribuyente) {
+        this.facturas.set([]);
         return;
       }
 
-      // Combinar y convertir al formato esperado
-      const todosLosComprobantes: FacturaData[] = [
-        // Facturas
-        ...(facturas || []).map(f => ({
-          fecha: f.fecha,
-          monto: Number(f.monto),
-          estado: f.estado,
-          tipo_comprobante: f.tipo_comprobante,
-          esNotaCredito: false
-        })),
-        // Notas de crédito
-        ...(notasCredito || []).map(nc => ({
-          fecha: nc.fecha,
-          monto: Number(nc.monto),
-          estado: 'emitida', // Las NC siempre están emitidas
-          tipo_comprobante: nc.tipo_comprobante || 'NOTA DE CREDITO B',
-          esNotaCredito: true
-        }))
-      ];
+      // Query unificada a tabla comprobantes
+      const { data: comprobantes, error } = await supabase
+        .from('comprobantes')
+        .select('fecha, total, estado, tipo_comprobante')
+        .eq('contribuyente_id', contribuyente.id)
+        .order('fecha', { ascending: false });
+
+      if (error) {
+        console.error('Error al cargar comprobantes:', error);
+        return;
+      }
+
+      // Convertir al formato esperado
+      const todosLosComprobantes: FacturaData[] = (comprobantes || []).map(c => ({
+        fecha: c.fecha,
+        monto: Number(c.total),
+        estado: c.estado,
+        tipo_comprobante: c.tipo_comprobante,
+        esNotaCredito: c.tipo_comprobante.includes('NOTA DE CREDITO')
+      }));
 
       this.facturas.set(todosLosComprobantes);
 

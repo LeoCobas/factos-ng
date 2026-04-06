@@ -1,11 +1,12 @@
 export const environment = {
   production: false,
   supabase: {
-    url: 'https://tejrdiwlgdzxsrqrqsbj.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlanJkaXdsZ2R6eHNycXJxc2JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NDE1NDgsImV4cCI6MjA3MDAxNzU0OH0.1gQHxkd2wVj3q4vyXzNk6eru0lUCPzShFtJEZjKoMNo'
+    // TODO: Reemplazar con las credenciales del NUEVO proyecto de Supabase
+    url: 'https://TU-NUEVO-PROYECTO.supabase.co',
+    anonKey: 'TU-NUEVA-ANON-KEY'
   },
   tusFacturas: {
     apiUrl: 'https://www.tusfacturas.com.ar/app/api',
-    // La API key se configurará en la base de datos por usuario
+    // La API key se configurará en la tabla contribuyentes por cada contribuyente
   }
 };

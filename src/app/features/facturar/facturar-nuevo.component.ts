@@ -1,11 +1,11 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject, effect } from '@angular/core';
 import { PdfViewerComponent, PdfViewerConfig } from '../../shared/components/ui/pdf-viewer.component';
-import { supabase } from '../../core/services/supabase.service';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FacturacionService } from '../../core/services/facturacion.service';
 import { PdfService } from '../../core/services/pdf.service';
 import { PdfJsPrintService } from '../../core/services/pdfjs-print.service';
+import { ContribuyenteService } from '../../core/services/contribuyente.service';
 
 @Component({
   selector: 'app-facturar-nuevo',
@@ -127,6 +127,8 @@ export class FacturarNuevoComponent {
   minFecha() { return this._minFecha(); }
   maxFecha() { return this._maxFecha(); }
 
+  private readonly contribuyenteService = inject(ContribuyenteService);
+
   constructor(
     private fb: FormBuilder,
     private facturacionService: FacturacionService,
@@ -139,23 +141,16 @@ export class FacturarNuevoComponent {
       fecha: [this.obtenerFechaHoy(), Validators.required]
     });
 
-    // Obtener configuración y setear límites de fecha
-    this.cargarConfiguracionYLimites();
+    // Reaccionar a cambios de contribuyente activo para actualizar límites de fecha
+    effect(() => {
+      const contribuyente = this.contribuyenteService.contribuyente();
+      if (contribuyente) {
+        this.actualizarLimitesFecha(contribuyente.actividad === 'bienes' ? 'bienes' : 'servicios');
+      }
+    });
   }
 
-  private async cargarConfiguracionYLimites() {
-    // Obtener configuración más reciente
-    const { data: config, error } = await supabase
-      .from('configuracion')
-      .select('actividad')
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    let actividad: 'bienes' | 'servicios' = 'bienes';
-    if (!error && config && (config.actividad === 'bienes' || config.actividad === 'servicios')) {
-      actividad = config.actividad;
-    }
+  private actualizarLimitesFecha(actividad: 'bienes' | 'servicios') {
     this.actividad.set(actividad);
 
     // Calcular límites
@@ -229,8 +224,8 @@ export class FacturarNuevoComponent {
       });
       if (resultado.success) {
         this.esExito.set(true);
-        this.mensaje.set(`¡Factura emitida exitosamente! Número: ${resultado.factura.numero_factura}`);
-        this.facturaEmitida.set(resultado.factura);
+        this.mensaje.set(`¡Factura emitida exitosamente! Número: ${resultado.comprobante.numero_comprobante}`);
+        this.facturaEmitida.set(resultado.comprobante);
         // Limpiar formulario
         this.formFactura.reset({
           monto: '',
