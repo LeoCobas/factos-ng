@@ -513,8 +513,17 @@ export class ConfiguracionComponent implements OnInit {
         return;
       }
 
+      // Refrescar token y enviar Authorization explícita: evita 401 del gateway cuando el JWT
+      // está al límite o el cliente no adjunta el header en functions.invoke.
+      await supabase.auth.refreshSession();
+      const { data: { session: fresh } } = await supabase.auth.getSession();
+      const accessToken = fresh?.access_token ?? session.access_token;
+
       const response = await supabase.functions.invoke('padron-lookup', {
-        body: { cuit }
+        body: { cuit },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
       // #region agent log
       fetch('http://127.0.0.1:7505/ingest/ad0c39a8-614b-4c4e-ac91-2e1f9d2af1c1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'52b477'},body:JSON.stringify({sessionId:'52b477',runId:'pre-fix',hypothesisId:'H5',location:'src/app/features/configuracion/configuracion.component.ts:520',message:'Padron invoke response metadata',data:{hasError:!!response.error,hasData:!!response.data},timestamp:Date.now()})}).catch(()=>{});
