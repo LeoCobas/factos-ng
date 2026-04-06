@@ -12,6 +12,9 @@ export interface Database {
           iva_porcentaje: number;
           punto_venta: number;
           tipo_comprobante_default: string | null;
+          arca_cert: string | null;
+          arca_key: string | null;
+          arca_production: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -25,6 +28,9 @@ export interface Database {
           iva_porcentaje?: number;
           punto_venta?: number;
           tipo_comprobante_default?: string | null;
+          arca_cert?: string | null;
+          arca_key?: string | null;
+          arca_production?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -38,6 +44,9 @@ export interface Database {
           iva_porcentaje?: number;
           punto_venta?: number;
           tipo_comprobante_default?: string | null;
+          arca_cert?: string | null;
+          arca_key?: string | null;
+          arca_production?: boolean;
           created_at?: string;
           updated_at?: string;
         };

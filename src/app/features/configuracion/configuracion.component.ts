@@ -148,22 +148,134 @@ interface MensajeEstado {
             </div>
           </div>
 
-          <!-- Info sobre ARCA -->
+          <!-- Certificados ARCA -->
           <div class="card-surface">
             <div class="card-header">
-              <h3 class="card-title">Conexión con ARCA (AFIP)</h3>
-            </div>
-            <div class="p-6">
-              <div class="flex items-start gap-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
-                <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
                 </svg>
-                <div class="text-sm text-blue-700 dark:text-blue-300">
-                  <p class="font-medium mb-1">Facturación directa con ARCA/AFIP</p>
-                  <p>Los certificados de ARCA se configuran a nivel servidor como variables de entorno seguras. No es necesario ingresarlos aquí.</p>
-                  <p class="mt-1 text-blue-600 dark:text-blue-400">Powered by Arca SDK — Conexión directa a Web Services de ARCA</p>
-                </div>
+                <h3 class="card-title">Certificados ARCA (AFIP)</h3>
               </div>
+            </div>
+            <div class="p-6 space-y-4">
+
+              <div class="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-sm text-amber-700 dark:text-amber-300">
+                <p class="font-medium mb-1">⚠️ Estos archivos son sensibles</p>
+                <p>Los certificados se almacenan de forma segura asociados a tu cuenta. Nunca compartimos estos datos.</p>
+              </div>
+
+              <!-- Certificado .crt -->
+              <div class="space-y-2">
+                <label class="form-label">Certificado (.crt)</label>
+                <div class="flex items-center gap-3">
+                  <label 
+                    class="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-all duration-200"
+                    [class]="tieneCert() 
+                      ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' 
+                      : 'border-border hover:border-blue-400 dark:hover:border-blue-500 text-muted-foreground hover:text-foreground'">
+                    <input 
+                      type="file" 
+                      accept=".crt,.pem,.cer" 
+                      class="hidden" 
+                      (change)="onCertFileSelected($event)"
+                      id="cert-upload">
+                    @if (tieneCert()) {
+                      <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                      <span class="text-sm font-medium">Certificado cargado ✓</span>
+                    } @else {
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                      </svg>
+                      <span class="text-sm">Seleccionar archivo .crt</span>
+                    }
+                  </label>
+                  @if (tieneCert()) {
+                    <button type="button" (click)="borrarCert()"
+                      class="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      title="Eliminar certificado">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                      </svg>
+                    </button>
+                  }
+                </div>
+                @if (certFileName()) {
+                  <p class="text-xs text-muted-foreground">Archivo: {{ certFileName() }}</p>
+                }
+              </div>
+
+              <!-- Clave privada .key -->
+              <div class="space-y-2">
+                <label class="form-label">Clave Privada (.key)</label>
+                <div class="flex items-center gap-3">
+                  <label 
+                    class="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-all duration-200"
+                    [class]="tieneKey() 
+                      ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' 
+                      : 'border-border hover:border-blue-400 dark:hover:border-blue-500 text-muted-foreground hover:text-foreground'">
+                    <input 
+                      type="file" 
+                      accept=".key,.pem" 
+                      class="hidden" 
+                      (change)="onKeyFileSelected($event)"
+                      id="key-upload">
+                    @if (tieneKey()) {
+                      <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                      <span class="text-sm font-medium">Clave privada cargada ✓</span>
+                    } @else {
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                      </svg>
+                      <span class="text-sm">Seleccionar archivo .key</span>
+                    }
+                  </label>
+                  @if (tieneKey()) {
+                    <button type="button" (click)="borrarKey()"
+                      class="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      title="Eliminar clave privada">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                      </svg>
+                    </button>
+                  }
+                </div>
+                @if (keyFileName()) {
+                  <p class="text-xs text-muted-foreground">Archivo: {{ keyFileName() }}</p>
+                }
+              </div>
+
+              <!-- Entorno -->
+              <div class="space-y-2">
+                <label class="form-label">Entorno ARCA</label>
+                <select formControlName="arca_production" class="form-select">
+                  <option [ngValue]="false">🧪 Testing / Homologación</option>
+                  <option [ngValue]="true">🏭 Producción</option>
+                </select>
+                <p class="form-help">Usá Testing para probar antes de pasar a producción</p>
+              </div>
+
+              <!-- Estado de certificados -->
+              @if (tieneCert() && tieneKey()) {
+                <div class="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700">
+                  <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                  </svg>
+                  <span class="text-sm font-medium text-green-700 dark:text-green-300">Certificados configurados — Listo para facturar</span>
+                </div>
+              } @else {
+                <div class="flex items-center gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700">
+                  <svg class="w-5 h-5 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                  </svg>
+                  <span class="text-sm text-yellow-700 dark:text-yellow-300">Subí ambos archivos (certificado y clave) para poder facturar</span>
+                </div>
+              }
+
             </div>
           </div>
 
@@ -202,6 +314,20 @@ export class ConfiguracionComponent implements OnInit {
   readonly guardando = signal(false);
   readonly mensaje = signal<MensajeEstado | null>(null);
 
+  // State para archivos de certificados
+  readonly tieneCert = signal(false);
+  readonly tieneKey = signal(false);
+  readonly certFileName = signal<string | null>(null);
+  readonly keyFileName = signal<string | null>(null);
+
+  // Contenido de los archivos leídos (PEM text)
+  private certContent: string | null = null;
+  private keyContent: string | null = null;
+
+  // Flags para trackear si se subió un archivo nuevo en esta sesión
+  private certModified = false;
+  private keyModified = false;
+
   readonly configForm: FormGroup;
 
   constructor() {
@@ -213,6 +339,7 @@ export class ConfiguracionComponent implements OnInit {
       iva_porcentaje: ['', Validators.required],
       actividad: ['', Validators.required],
       tipo_comprobante_default: ['', Validators.required],
+      arca_production: [false],
     });
   }
 
@@ -224,7 +351,6 @@ export class ConfiguracionComponent implements OnInit {
     this.cargando.set(true);
 
     try {
-      // Esperar a que el contribuyente se cargue si aún no
       if (!this.contribuyenteService.inicializado()) {
         await this.contribuyenteService.cargarContribuyente();
       }
@@ -239,13 +365,78 @@ export class ConfiguracionComponent implements OnInit {
           iva_porcentaje: Number(contribuyente.iva_porcentaje).toFixed(2),
           actividad: contribuyente.actividad || 'servicios',
           tipo_comprobante_default: contribuyente.tipo_comprobante_default || 'FACTURA C',
+          arca_production: contribuyente.arca_production ?? false,
         });
+
+        // Check if certs already exist in DB
+        this.tieneCert.set(!!contribuyente.arca_cert);
+        this.tieneKey.set(!!contribuyente.arca_key);
+        if (contribuyente.arca_cert) {
+          this.certFileName.set('(certificado guardado)');
+        }
+        if (contribuyente.arca_key) {
+          this.keyFileName.set('(clave guardada)');
+        }
       }
     } catch (error) {
       this.mostrarMensaje('Ocurrió un error al cargar la configuración.', 'error');
     } finally {
       this.cargando.set(false);
     }
+  }
+
+  onCertFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.certFileName.set(file.name);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.certContent = reader.result as string;
+      this.tieneCert.set(true);
+      this.certModified = true;
+    };
+    reader.onerror = () => {
+      this.mostrarMensaje('Error al leer el archivo de certificado', 'error');
+      this.tieneCert.set(false);
+    };
+    reader.readAsText(file);
+  }
+
+  onKeyFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.keyFileName.set(file.name);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.keyContent = reader.result as string;
+      this.tieneKey.set(true);
+      this.keyModified = true;
+    };
+    reader.onerror = () => {
+      this.mostrarMensaje('Error al leer el archivo de clave privada', 'error');
+      this.tieneKey.set(false);
+    };
+    reader.readAsText(file);
+  }
+
+  borrarCert(): void {
+    this.certContent = null;
+    this.tieneCert.set(false);
+    this.certFileName.set(null);
+    this.certModified = true;
+  }
+
+  borrarKey(): void {
+    this.keyContent = null;
+    this.tieneKey.set(false);
+    this.keyFileName.set(null);
+    this.keyModified = true;
   }
 
   async onSubmit(): Promise<void> {
@@ -255,7 +446,7 @@ export class ConfiguracionComponent implements OnInit {
 
     try {
       const formData = this.configForm.value;
-      const payload = {
+      const payload: any = {
         cuit: formData.cuit,
         razon_social: formData.razon_social,
         punto_venta: parseInt(formData.punto_venta),
@@ -263,22 +454,33 @@ export class ConfiguracionComponent implements OnInit {
         iva_porcentaje: parseFloat(formData.iva_porcentaje),
         actividad: formData.actividad as 'bienes' | 'servicios',
         tipo_comprobante_default: formData.tipo_comprobante_default,
+        arca_production: formData.arca_production ?? false,
       };
+
+      // Solo incluir certs si fueron modificados en esta sesión
+      if (this.certModified) {
+        payload.arca_cert = this.certContent;
+      }
+      if (this.keyModified) {
+        payload.arca_key = this.keyContent;
+      }
 
       const contribuyente = this.contribuyenteService.contribuyente();
 
       if (contribuyente) {
-        // Actualizar existente
         const result = await this.contribuyenteService.actualizarContribuyente(payload);
         if (result.success) {
+          this.certModified = false;
+          this.keyModified = false;
           this.mostrarMensaje('Configuración guardada correctamente.', 'success');
         } else {
           this.mostrarMensaje(result.error || 'Error al guardar.', 'error');
         }
       } else {
-        // Crear nuevo contribuyente (primera vez)
         const result = await this.contribuyenteService.crearContribuyente(payload);
         if (result.success) {
+          this.certModified = false;
+          this.keyModified = false;
           this.mostrarMensaje('Contribuyente creado correctamente. ¡Ya podés facturar!', 'success');
         } else {
           this.mostrarMensaje(result.error || 'Error al crear.', 'error');
