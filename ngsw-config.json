@@ -31,7 +31,7 @@
     {
       "name": "api-supabase",
       "urls": [
-        "https://tejrdiwlgdzxsrqrqsbj.supabase.co/**"
+        "https://ifkfofyylfkxwtxvyewi.supabase.co/**"
       ],
       "cacheConfig": {
         "strategy": "freshness",
@@ -42,7 +42,7 @@
     {
       "name": "api-pdf-proxy",
       "urls": [
-        "https://tejrdiwlgdzxsrqrqsbj.supabase.co/functions/v1/pdf-proxy**"
+        "https://ifkfofyylfkxwtxvyewi.supabase.co/functions/v1/pdf-proxy**"
       ],
       "cacheConfig": {
         "strategy": "performance",
