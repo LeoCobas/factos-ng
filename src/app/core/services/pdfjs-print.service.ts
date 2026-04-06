@@ -205,10 +205,13 @@ export class PdfJsPrintService {
     }
   }
 
-  /**
-   * Descargar PDF usando el pdf-proxy de Supabase (reutiliza lógica existente)
-   */
   private async downloadPdfArrayBuffer(pdfUrl: string): Promise<ArrayBuffer> {
+    if (pdfUrl.startsWith('blob:')) {
+      console.log('🌐 [DEBUG] Fetching local blob directly:', pdfUrl);
+      const response = await fetch(pdfUrl);
+      return await response.arrayBuffer();
+    }
+
     // Obtener session token para autenticación
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
