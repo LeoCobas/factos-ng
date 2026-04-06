@@ -101,8 +101,48 @@ Deno.serve(async (req: Request) => {
     if (!cuit) throw new Error('CUIT requerido');
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Sesión inválida');
-    const { data: contribuyente } = await supabase.from('contribuyentes').select('*').eq('user_id', user.id).single();
-    if (!contribuyente) throw new Error('No se encontró configuración');
+
+    // Lectura con service role: evita falsos "no hay fila" si RLS/claims no aplican igual en el Edge,
+    // y permite localizar la fila por user_id validado arriba (seguro).
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const db =
+      serviceKey?.length
+        ? createClient(supabaseUrl, serviceKey)
+        : supabase;
+
+    const { data: contribuyente, error: contribErr } = await db
+      .from('contribuyentes')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (contribErr) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'No se pudo leer tu configuración. Intentá de nuevo.' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    if (!contribuyente) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error:
+            'No tenés perfil de contribuyente. En Facturación tocá «Guardar Datos de Facturación» al menos una vez (crea tu registro). Después podés buscar en el padrón.',
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    if (!String(contribuyente.arca_cert || '').trim() || !String(contribuyente.arca_key || '').trim()) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error:
+            'Faltan el certificado (.crt) o la clave (.key). Guardalos en Certificado ARCA y tocá Guardar antes de buscar en el padrón.',
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
 
     const arca = new Arca({
       key: contribuyente.arca_key, cert: contribuyente.arca_cert,

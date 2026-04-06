@@ -513,6 +513,16 @@ export class ConfiguracionComponent implements OnInit {
         return;
       }
 
+      await this.contribuyenteService.cargarContribuyente();
+      if (!this.contribuyenteService.contribuyente()) {
+        this.mensajePadron.set({
+          texto:
+            'Primero tocá «Guardar Datos de Facturación» para crear tu perfil. Sin ese registro no podemos usar tu certificado para consultar el padrón.',
+          tipo: 'error',
+        });
+        return;
+      }
+
       // Refrescar token y enviar Authorization explícita: evita 401 del gateway cuando el JWT
       // está al límite o el cliente no adjunta el header en functions.invoke.
       await supabase.auth.refreshSession();
@@ -525,9 +535,6 @@ export class ConfiguracionComponent implements OnInit {
           Authorization: `Bearer ${accessToken}`,
         },
       });
-      // #region agent log
-      fetch('http://127.0.0.1:7505/ingest/ad0c39a8-614b-4c4e-ac91-2e1f9d2af1c1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'52b477'},body:JSON.stringify({sessionId:'52b477',runId:'pre-fix',hypothesisId:'H5',location:'src/app/features/configuracion/configuracion.component.ts:520',message:'Padron invoke response metadata',data:{hasError:!!response.error,hasData:!!response.data},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
 
       if (response.error) {
         this.mensajePadron.set({ texto: response.error.message || 'Error de conexión con el padrón', tipo: 'error' });
@@ -535,9 +542,6 @@ export class ConfiguracionComponent implements OnInit {
       }
 
       const result = response.data;
-      // #region agent log
-      fetch('http://127.0.0.1:7505/ingest/ad0c39a8-614b-4c4e-ac91-2e1f9d2af1c1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'52b477'},body:JSON.stringify({sessionId:'52b477',runId:'pre-fix',hypothesisId:'H5',location:'src/app/features/configuracion/configuracion.component.ts:529',message:'Padron payload snapshot',data:{success:result?.success??null,hasRazonSocial:!!result?.data?.razon_social,domicilioValue:result?.data?.domicilio??null,domicilioDebug:result?.data?.__debug?.domicilio??null},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       if (result && result.success) {
         const datos = result.data;
         // Autocompletar campos
@@ -615,9 +619,39 @@ export class ConfiguracionComponent implements OnInit {
       if (this.certModified) payload.arca_cert = this.certContent;
       if (this.keyModified) payload.arca_key = this.keyContent;
 
-      const contribuyente = this.contribuyenteService.contribuyente();
+      let contribuyente = this.contribuyenteService.contribuyente();
       if (!contribuyente) {
-        this.mostrarMensaje('Primero completá los datos de facturación.', 'error');
+        if (this.facturacionForm.invalid) {
+          this.mostrarMensaje(
+            'Completá los datos obligatorios en Facturación (CUIT, razón social, punto de venta, concepto) o tocá «Guardar Datos de Facturación» antes de guardar el certificado.',
+            'error',
+          );
+          return;
+        }
+        const f = this.facturacionForm.value;
+        const createPayload: any = {
+          cuit: f.cuit,
+          razon_social: f.razon_social,
+          nombre_fantasia: f.nombre_fantasia || null,
+          domicilio: f.domicilio || null,
+          condicion_iva: f.condicion_iva || 'Responsable Monotributo',
+          ingresos_brutos: f.ingresos_brutos || null,
+          inicio_actividades: f.inicio_actividades || null,
+          punto_venta: parseInt(f.punto_venta, 10),
+          tipo_comprobante_default: f.tipo_comprobante_default,
+          concepto: f.concepto,
+          iva_porcentaje: parseFloat(f.iva_porcentaje),
+          actividad: f.actividad as 'bienes' | 'servicios',
+        };
+        const created = await this.contribuyenteService.crearContribuyente(createPayload);
+        if (!created.success) {
+          this.mostrarMensaje(created.error || 'No se pudo crear el perfil de contribuyente.', 'error');
+          return;
+        }
+        contribuyente = this.contribuyenteService.contribuyente();
+      }
+      if (!contribuyente) {
+        this.mostrarMensaje('No se pudo cargar el contribuyente.', 'error');
         return;
       }
 
