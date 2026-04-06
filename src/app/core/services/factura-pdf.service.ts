@@ -5,7 +5,7 @@ import { TDocumentDefinitions } from 'pdfmake/interfaces';
 import { Contribuyente, Comprobante } from '../types/database.types';
 
 // Inicializar fuentes virtuales de pdfMake
-(pdfMake as any).vfs = (pdfFonts as any)['pdfMake'].vfs;
+(pdfMake as any).vfs = (pdfFonts as any).vfs;
 
 @Injectable({
   providedIn: 'root'
