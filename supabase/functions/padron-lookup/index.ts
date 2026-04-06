@@ -50,14 +50,12 @@ Deno.serve(async (req: Request) => {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) throw new Error('Falta header de autorización');
-
     const supabase = getSupabaseClient(authHeader);
 
     const body = await req.json();
     const { cuit } = body;
     
-    if (!cuit) throw new Error('Falta CUIT en body');
+    if (!cuit) throw new Error('CUIT requerido');
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error('Sesión inválida');
@@ -70,46 +68,39 @@ Deno.serve(async (req: Request) => {
 
     if (dbError || !contribuyente) throw new Error('No se encontró la configuración del usuario');
 
-    const isProduction = contribuyente.arca_production === true;
-    
-    const arcaOptions = {
+    const arca = new Arca({
       key: contribuyente.arca_key,
       cert: contribuyente.arca_cert,
       cuit: parseInt(contribuyente.cuit, 10),
-      production: isProduction,
+      production: contribuyente.arca_production === true,
       handleTicket: true,
       useHttpsAgent: false,
       authRepository: new SupabaseAuthRepository(supabase, user.id, contribuyente.arca_ticket),
-    };
-    
-    const arca = new Arca(arcaOptions);
+    });
 
-    const cuitNum = parseInt(String(cuit), 10);
-    
-    let persona;
     try {
-      persona = await arca.registerScopeThirteen.getTaxpayerDetails(cuitNum);
+      const persona = await arca.registerScopeThirteenService.getTaxpayerDetails(parseInt(String(cuit), 10));
+      
+      if (!persona) {
+        return new Response(JSON.stringify({ success: false, error: 'CUIT no encontrado en el padrón' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const datosPersona = persona.datosGenerales || persona;
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          razon_social: datosPersona.razonSocial || `${datosPersona.apellido || ''} ${datosPersona.nombre || ''}`.trim(),
+          domicilio: 'Domicilio disponible en padrón', 
+          condicion_iva: 'Responsable Monotributo',
+        }
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
     } catch (afipErr: any) {
       console.error("AFIP ERROR:", afipErr);
-      return new Response(JSON.stringify({ error: `[AFIP]: ${afipErr.message}` }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ success: false, error: `AFIP: ${afipErr.message}` }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-
-    if (!persona) {
-      return new Response(JSON.stringify({ error: 'No se encontró el CUIT en el padrón' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
-    const datosPersona = persona.datosGenerales || persona;
-    const result = {
-      razon_social: datosPersona.razonSocial || `${datosPersona.apellido || ''} ${datosPersona.nombre || ''}`.trim(),
-      domicilio: 'Domicilio disponible en padrón', 
-      condicion_iva: 'Responsable Monotributo',
-      tipo_persona: datosPersona.tipoPersona || 'FISICA',
-    };
-
-    return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error: any) {
-    console.error('SERVER ERROR:', error);
-    return new Response(JSON.stringify({ error: error.message || 'Error técnico de sistema' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ success: false, error: error.message || 'Error técnico de sistema' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
