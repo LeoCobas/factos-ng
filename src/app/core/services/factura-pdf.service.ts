@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
-import { TDocumentDefinitions } from 'pdfmake/interfaces';
-import { Contribuyente, Comprobante } from '../types/database.types';
+import { TDocumentDefinitions, Content } from 'pdfmake/interfaces';
+import { Contribuyente } from '../types/database.types';
+import { importeEnLetras } from '../utils/numero-a-letras.util';
 
 // Inicializar fuentes virtuales de pdfMake
 (pdfMake as any).vfs = (pdfFonts as any).vfs;
@@ -17,163 +18,254 @@ export class FacturaPdfService {
   /**
    * Genera el PDF en memoria y devuelve un Blob
    */
-  async generarFacturaPdf(contribuyente: Contribuyente, comprobante: Comprobante): Promise<Blob> {
+  async generarFacturaPdf(contribuyente: Contribuyente, comprobante: any): Promise<Blob> {
     const docDefinition = this.crearDefinicionDocumento(contribuyente, comprobante);
     const pdfDocGenerator = pdfMake.createPdf(docDefinition);
     return await pdfDocGenerator.getBlob();
   }
 
   /**
-   * Crea el árbol de definición de objeto que entiende pdfmake para un formato Ticket 80mm
+   * Template completo de Ticket 80mm conforme a ARCA RG 1415
    */
   private crearDefinicionDocumento(contribuyente: Contribuyente, comprobante: any): TDocumentDefinitions {
     const tipo = comprobante.tipo_comprobante || 'FACTURA C';
+    const codigoTipo = this.getCbteTipoEnum(tipo);
     const esFacturaC = tipo.includes('C');
     const importe = Number(comprobante.total || comprobante.monto || 0);
     const numero = String(comprobante.numero_comprobante || comprobante.numero_factura || '0000-00000000');
-    const numComp = numero.padEnd(13, ' '); // Formato: 0004-00000012
     const fechaFormat = this.formatearFechaArg(comprobante.fecha || new Date().toISOString());
     
+    const condicionIva = contribuyente.condicion_iva || (esFacturaC ? 'Responsable Monotributo' : 'IVA Responsable Inscripto');
+    const iibb = contribuyente.ingresos_brutos || contribuyente.cuit;
+    const inicioAct = contribuyente.inicio_actividades ? this.formatearFechaArg(contribuyente.inicio_actividades) : '';
+
     // QR Code
     const qrData = this.generarQrData(contribuyente, comprobante);
     const qrUrl = `https://www.afip.gob.ar/fe/qr/?p=${btoa(JSON.stringify(qrData))}`;
 
-    return {
-      pageSize: { width: 226, height: 'auto' }, // 80mm = 226 pt aprox (80 / 25.4 * 72)
-      pageMargins: [10, 15, 10, 15],
-      defaultStyle: {
+    // Separador reutilizable
+    const separador: Content = { 
+      text: '─'.repeat(42), 
+      alignment: 'center', 
+      fontSize: 6,
+      color: '#999999',
+      margin: [0, 4, 0, 4] 
+    };
+
+    // ---- Construir header del emisor ----
+    const headerContent: Content[] = [];
+
+    // Leyenda ORIGINAL + tipo + código
+    headerContent.push({
+      text: `ORIGINAL - ${tipo} (COD. ${codigoTipo.toString().padStart(2, '0')})`,
+      alignment: 'center',
+      bold: true,
+      fontSize: 7,
+      margin: [0, 0, 0, 6]
+    });
+
+    headerContent.push({ ...separador });
+
+    // Nombre de fantasía (grande) o razón social (grande)
+    if (contribuyente.nombre_fantasia) {
+      headerContent.push({
+        text: contribuyente.nombre_fantasia.toUpperCase(),
+        alignment: 'center',
+        bold: true,
+        fontSize: 12,
+        margin: [0, 2, 0, 2]
+      });
+      headerContent.push({
+        text: `Razón social: ${contribuyente.razon_social}`,
+        alignment: 'center',
+        fontSize: 7
+      });
+    } else {
+      headerContent.push({
+        text: contribuyente.razon_social.toUpperCase(),
+        alignment: 'center',
+        bold: true,
+        fontSize: 11,
+        margin: [0, 2, 0, 2]
+      });
+    }
+
+    // Domicilio
+    if (contribuyente.domicilio) {
+      headerContent.push({
+        text: `Domicilio: ${contribuyente.domicilio}`,
+        alignment: 'center',
+        fontSize: 7
+      });
+    }
+
+    // Condición IVA
+    headerContent.push({
+      text: `Cond. frente al IVA: ${condicionIva}`,
+      alignment: 'center',
+      fontSize: 7
+    });
+
+    // CUIT
+    headerContent.push({
+      text: `CUIT: ${this.formatearCuit(contribuyente.cuit)}`,
+      alignment: 'center',
+      fontSize: 7
+    });
+
+    // IIBB + Inicio actividades en una línea
+    const lineaIibb = `Ingresos Brutos: ${iibb}`;
+    const lineaInicio = inicioAct ? ` - Inicio act.: ${inicioAct}` : '';
+    headerContent.push({
+      text: lineaIibb + lineaInicio,
+      alignment: 'center',
+      fontSize: 6.5
+    });
+
+    headerContent.push({ ...separador });
+
+    // ---- Datos del comprobante ----
+    const comprobanteContent: Content[] = [
+      {
+        text: `${tipo}  Nro.: ${numero}`,
+        bold: true,
+        fontSize: 9,
+        margin: [0, 0, 0, 2]
+      },
+      {
+        text: `Fecha: ${fechaFormat}`,
+        fontSize: 7,
+      },
+      { ...separador },
+    ];
+
+    // ---- Datos del receptor ----
+    const receptorContent: Content[] = [
+      {
+        text: 'A CONSUMIDOR FINAL',
+        bold: true,
         fontSize: 8,
+        alignment: 'center',
+        margin: [0, 0, 0, 2]
+      },
+      {
+        text: 'Domicilio: -',
+        fontSize: 7,
+      },
+      {
+        text: 'Cond. Venta: Contado',
+        fontSize: 7,
+      },
+      { ...separador },
+    ];
+
+    // ---- Detalle ----
+    const detalleContent: Content[] = [
+      {
+        table: {
+          widths: ['*', 'auto'],
+          body: [
+            [
+              { text: 'Concepto', bold: true, fontSize: 7 },
+              { text: 'Subtotal', bold: true, alignment: 'right' as const, fontSize: 7 }
+            ],
+            [
+              { text: comprobante.concepto || contribuyente.concepto || 'Varios', fontSize: 7 },
+              { text: `$ ${this.formatearMoneda(importe)}`, alignment: 'right' as const, fontSize: 7 }
+            ]
+          ]
+        },
+        layout: 'lightHorizontalLines'
+      } as Content,
+    ];
+
+    // ---- Total ----
+    const totalContent: Content[] = [
+      { text: ' ', margin: [0, 3, 0, 3] } as Content,
+      {
+        columns: [
+          { text: 'TOTAL:', bold: true, fontSize: 12 },
+          { text: `$ ${this.formatearMoneda(importe)}`, bold: true, fontSize: 12, alignment: 'right' }
+        ]
+      } as Content,
+      { ...separador },
+    ];
+
+    // ---- Pie ARCA ----
+    const arcaContent: Content[] = [
+      { text: `CAE N°: ${comprobante.cae || 'N/D'}`, fontSize: 7, alignment: 'center' },
+      { text: `Fecha vencimiento CAE: ${this.formatearFechaArg(comprobante.vencimiento_cae || comprobante.cae_vto) || 'N/D'}`, fontSize: 7, alignment: 'center' },
+      {
+        qr: qrUrl,
+        fit: 85,
+        alignment: 'center' as const,
+        margin: [0, 8, 0, 4]
+      } as Content,
+      {
+        text: 'ARCA',
+        alignment: 'center',
+        bold: true,
+        fontSize: 10,
+        margin: [0, 0, 0, 0]
+      },
+      {
+        text: 'Comprobante Autorizado',
+        alignment: 'center',
+        bold: true,
+        italics: true,
+        fontSize: 7,
+        margin: [0, 0, 0, 4]
+      },
+      {
+        text: 'Esta Administración Federal no se responsabiliza por los datos ingresados en el detalle de la operación.',
+        alignment: 'center',
+        fontSize: 5.5,
+        color: '#666666',
+        margin: [0, 0, 0, 0]
+      },
+    ];
+
+    return {
+      pageSize: { width: 226, height: 'auto' },
+      pageMargins: [8, 10, 8, 10],
+      defaultStyle: {
+        fontSize: 7,
         font: 'Roboto'
       },
       content: [
-        // ================= HEADER DEL TICKET =================
-        { 
-          text: contribuyente.razon_social.toUpperCase(), 
-          style: 'header',
-          alignment: 'center'
-        },
-        { 
-          text: '---------------------------------------------------------', 
-          alignment: 'center', 
-          margin: [0, 5, 0, 5] 
-        },
-        { text: `CUIT: ${this.formatearCuit(contribuyente.cuit)}`, alignment: 'center' },
-        { text: `Condición frente al IVA: ${esFacturaC ? 'Responsable Monotributo' : 'IVA Responsable Inscripto'}`, alignment: 'center' },
-        { 
-          text: '---------------------------------------------------------', 
-          alignment: 'center', 
-          margin: [0, 5, 0, 5] 
-        },
-        
-        // ================= TIPO COMPROBANTE =================
-        {
-          columns: [
-            {
-              width: '*',
-              text: tipo,
-              bold: true,
-              fontSize: 10
-            },
-            {
-              width: 'auto',
-              text: `Cod. ${this.getCbteTipoEnum(tipo).toString().padStart(3, '0')}`,
-              alignment: 'right'
-            }
-          ]
-        },
-        { text: `Nro: ${numComp}` },
-        { text: `Fecha: ${fechaFormat}` },
-        { 
-          text: '---------------------------------------------------------', 
-          alignment: 'center', 
-          margin: [0, 5, 0, 5] 
-        },
-
-        // ================= DATOS CLIENTE =================
-        { text: 'A C O N S U M I D O R  F I N A L', alignment: 'center', bold: true },
-        { 
-          text: '---------------------------------------------------------', 
-          alignment: 'center', 
-          margin: [0, 5, 0, 5] 
-        },
-
-        // ================= DETALLE =================
-        {
-          table: {
-            widths: ['*', 'auto'],
-            body: [
-              // Header tabla
-              [
-                { text: 'CONCEPTO', bold: true }, 
-                { text: 'SUBTOTAL', bold: true, alignment: 'right' }
-              ],
-              // Fila producto/servicio único
-              [
-                { text: comprobante.concepto || contribuyente.concepto || 'Varios' }, 
-                { text: `$${importe.toFixed(2)}`, alignment: 'right' }
-              ]
-            ]
-          },
-          layout: 'lightHorizontalLines'
-        },
-
-        { text: ' ', margin: [0, 5, 0, 5] }, // Espacio
-
-        // ================= TOTAL =================
-        {
-          columns: [
-            { text: 'TOTAL:', bold: true, fontSize: 12 },
-            { text: `$${importe.toFixed(2)}`, bold: true, fontSize: 12, alignment: 'right' }
-          ]
-        },
-
-        { 
-          text: '---------------------------------------------------------', 
-          alignment: 'center', 
-          margin: [0, 10, 0, 5] 
-        },
-
-        // ================= AFIP FOOTER =================
-        { text: 'Comprobante Autorizado por AFIP', alignment: 'center', italics: true, fontSize: 7 },
-        { text: `CAE: ${comprobante.cae || 'N/D'}`, alignment: 'center', fontSize: 7 },
-        { text: `Vto. CAE: ${this.formatearFechaArg(comprobante.vencimiento_cae) || 'N/D'}`, alignment: 'center', fontSize: 7 },
-        
-        {
-          qr: qrUrl,
-          fit: 90,
-          alignment: 'center',
-          margin: [0, 10, 0, 10] // top space
-        }
-      ],
-      styles: {
-        header: {
-          fontSize: 12,
-          bold: true
-        }
-      }
+        ...headerContent,
+        ...comprobanteContent,
+        ...receptorContent,
+        ...detalleContent,
+        ...totalContent,
+        ...arcaContent,
+      ]
     };
   }
 
+  // ==================== UTILIDADES ====================
+
   private formatearCuit(cuit: string): string {
-    if (!cuit || cuit.length !== 11) return cuit;
+    if (!cuit || cuit.length !== 11) return cuit || '';
     return `${cuit.substring(0, 2)}-${cuit.substring(2, 10)}-${cuit.substring(10, 11)}`;
   }
 
-  private formatearFechaArg(fechaIso: string | null): string {
+  private formatearFechaArg(fechaIso: string | null | undefined): string {
     if (!fechaIso) return '';
-    // if YYYYMMDD from AFIP (like Vto. CAE)
+    // YYYYMMDD from AFIP (Vto. CAE)
     if (fechaIso.length === 8 && !fechaIso.includes('-')) {
-      const year = fechaIso.substring(0, 4);
-      const month = fechaIso.substring(4, 6);
-      const day = fechaIso.substring(6, 8);
-      return `${day}/${month}/${year}`;
+      return `${fechaIso.substring(6, 8)}/${fechaIso.substring(4, 6)}/${fechaIso.substring(0, 4)}`;
     }
-    // if YYYY-MM-DD
+    // YYYY-MM-DD
     const match = fechaIso.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (match) {
       return `${match[3]}/${match[2]}/${match[1]}`;
     }
     return fechaIso;
+  }
+
+  private formatearMoneda(monto: number): string {
+    return monto.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   private getCbteTipoEnum(tipoComprobante: string): number {
@@ -192,9 +284,6 @@ export class FacturaPdfService {
   }
 
   private generarQrData(contribuyente: Contribuyente, comprobante: any): any {
-    // Requisito AFIP para el código QR
-    
-    // Parse nroCmp (ex: "0004-00000012" -> 12)
     const numero = String(comprobante.numero_comprobante || comprobante.numero_factura || '0');
     const nroCmpStr = numero.split('-').pop() || '1';
     const nroCmp = parseInt(nroCmpStr, 10);

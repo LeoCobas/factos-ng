@@ -7,6 +7,11 @@ export interface Database {
           user_id: string;
           cuit: string;
           razon_social: string;
+          nombre_fantasia: string | null;
+          domicilio: string | null;
+          condicion_iva: string | null;
+          ingresos_brutos: string | null;
+          inicio_actividades: string | null;
           concepto: string | null;
           actividad: 'bienes' | 'servicios' | null;
           iva_porcentaje: number;
@@ -23,6 +28,11 @@ export interface Database {
           user_id: string;
           cuit: string;
           razon_social: string;
+          nombre_fantasia?: string | null;
+          domicilio?: string | null;
+          condicion_iva?: string | null;
+          ingresos_brutos?: string | null;
+          inicio_actividades?: string | null;
           concepto?: string | null;
           actividad?: 'bienes' | 'servicios' | null;
           iva_porcentaje?: number;
@@ -39,6 +49,11 @@ export interface Database {
           user_id?: string;
           cuit?: string;
           razon_social?: string;
+          nombre_fantasia?: string | null;
+          domicilio?: string | null;
+          condicion_iva?: string | null;
+          ingresos_brutos?: string | null;
+          inicio_actividades?: string | null;
           concepto?: string | null;
           actividad?: 'bienes' | 'servicios' | null;
           iva_porcentaje?: number;
