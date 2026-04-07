@@ -1,27 +1,37 @@
-import { Component, signal, inject, effect } from '@angular/core';
-import { PdfViewerComponent, PdfViewerConfig } from '../../shared/components/ui/pdf-viewer.component';
+import { Component, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { PdfViewerComponent, PdfViewerConfig } from '../../shared/components/ui/pdf-viewer.component';
 import { FacturacionService } from '../../core/services/facturacion.service';
 import { PdfService } from '../../core/services/pdf.service';
 import { PdfJsPrintService } from '../../core/services/pdfjs-print.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
+import { supabase } from '../../core/services/supabase.service';
+
+interface FacturaReciente {
+  id: string;
+  fecha: string;
+  tipo_comprobante: string;
+  total: number;
+  numero_comprobante: string;
+  created_at?: string;
+}
 
 @Component({
   selector: 'app-facturar-nuevo',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, PdfViewerComponent],
   template: `
-    <div class="max-w-md mx-auto">
-      <div class="card-surface p-6">
-        
-        <form [formGroup]="formFactura" (ngSubmit)="emitirFactura()" class="space-y-4 sm:space-y-6">
-            <!-- Campo Monto -->
+    <div class="max-w-5xl mx-auto">
+      <div class="grid gap-4 lg:grid-cols-[minmax(0,28rem)_minmax(20rem,24rem)] lg:items-start lg:justify-center">
+        <section class="card-surface p-6">
+          <form [formGroup]="formFactura" (ngSubmit)="emitirFactura()" class="space-y-4 sm:space-y-6">
             <div>
               <label class="block text-sm font-medium text-foreground mb-4">
                 Monto Total
               </label>
               <input
+                id="monto"
                 type="text"
                 placeholder="0"
                 [value]="displayMonto()"
@@ -34,7 +44,6 @@ import { ContribuyenteService } from '../../core/services/contribuyente.service'
               }
             </div>
 
-            <!-- Campo Fecha -->
             <div>
               <label class="block text-sm font-medium text-foreground mb-4">
                 Fecha de Facturación
@@ -52,7 +61,6 @@ import { ContribuyenteService } from '../../core/services/contribuyente.service'
               }
             </div>
 
-            <!-- Botón Enviar -->
             <button
               type="submit"
               [disabled]="isSubmitting() || formFactura.invalid"
@@ -66,37 +74,28 @@ import { ContribuyenteService } from '../../core/services/contribuyente.service'
             </button>
           </form>
 
-          <!-- Card de Factura Emitida -->
           @if (facturaEmitida()) {
             <div class="mt-4 p-4 card-factura-emitida">
               <div class="text-center mb-4">
                 <h3 class="text-lg font-semibold mb-2">Factura emitida:</h3>
                 <div class="text-xl font-bold text-primary">
-                  {{ obtenerTipoComprobante(facturaEmitida()!) }} {{ obtenerNumeroSinCeros(obtenerNumeroComprobante(facturaEmitida()!)) }} {{ formatearMonto(obtenerMontoComprobante(facturaEmitida()!)) }}
+                  {{ obtenerTipoComprobante(facturaEmitida()!) }}
+                  {{ obtenerNumeroSinCeros(obtenerNumeroComprobante(facturaEmitida()!)) }}
+                  {{ formatearMonto(obtenerMontoComprobante(facturaEmitida()!)) }}
                 </div>
               </div>
-              <!-- Botones de acción - Grid completo con 4 botones -->
               <div class="grid grid-cols-2 gap-2 mb-3">
                 <button (click)="verPDF()" class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm">Ver</button>
                 <button (click)="compartir()" class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm">Compartir</button>
                 <button (click)="descargar()" class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm">Descargar</button>
                 <button (click)="imprimir()" class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm">Imprimir</button>
               </div>
-              <!-- Botón Volver -->
-              <button (click)="volver()" class="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 font-medium py-2 px-3 rounded-lg transition-colors text-sm">Volver</button>
+              <button (click)="volver()" class="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 font-medium py-2 px-3 rounded-lg transition-colors text-sm">
+                Volver
+              </button>
             </div>
           }
 
-          <!-- Modal visor PDF -->
-          @if (pdfViewing() && pdfViewingConfig()) {
-            <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" (click)="cerrarVisorPdf()">
-              <div class="bg-card rounded-lg w-full max-w-2xl h-full max-h-[95vh] flex flex-col shadow-2xl overflow-hidden" (click)="$event.stopPropagation()">
-                <app-pdf-viewer [config]="pdfViewingConfig()!" (closeRequested)="cerrarVisorPdf()"></app-pdf-viewer>
-              </div>
-            </div>
-          }
-
-          <!-- Mensaje de Error -->
           @if (mensaje() && !esExito()) {
             <div class="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
               <div class="text-destructive text-center">
@@ -104,8 +103,62 @@ import { ContribuyenteService } from '../../core/services/contribuyente.service'
               </div>
             </div>
           }
-        </div>
+        </section>
+
+        <aside class="card-surface p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 class="text-base font-semibold text-foreground">Últimas facturas</h3>
+              <p class="text-sm text-muted-foreground">Referencia rápida para continuar facturando</p>
+            </div>
+            <span class="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-full">3 recientes</span>
+          </div>
+
+          @if (cargandoFacturasRecientes()) {
+            <div class="space-y-2">
+              @for (skeleton of [1, 2, 3]; track skeleton) {
+                <div class="rounded-lg border border-border/60 bg-muted/30 p-3 animate-pulse">
+                  <div class="h-4 w-24 bg-muted rounded mb-2"></div>
+                  <div class="h-4 w-full bg-muted rounded"></div>
+                </div>
+              }
+            </div>
+          } @else if (facturasRecientes().length === 0) {
+            <div class="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+              Todavía no hay facturas recientes.
+            </div>
+          } @else {
+            <div class="space-y-2">
+              @for (factura of facturasRecientes(); track factura.id) {
+                <div class="rounded-lg border border-border bg-card/70 px-3 py-3">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <div class="text-sm font-medium text-foreground">
+                        {{ obtenerTipoComprobante(factura) }} {{ obtenerNumeroSinCeros(factura.numero_comprobante) }}
+                      </div>
+                      <div class="text-xs text-muted-foreground mt-1">
+                        {{ formatearFechaCorta(factura.fecha) }}
+                      </div>
+                    </div>
+                    <div class="text-sm font-semibold text-foreground text-right whitespace-nowrap">
+                      {{ formatearMonto(factura.total) }}
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </aside>
       </div>
+
+      @if (pdfViewing() && pdfViewingConfig()) {
+        <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" (click)="cerrarVisorPdf()">
+          <div class="bg-card rounded-lg w-full max-w-2xl h-full max-h-[95vh] flex flex-col shadow-2xl overflow-hidden" (click)="$event.stopPropagation()">
+            <app-pdf-viewer [config]="pdfViewingConfig()!" (closeRequested)="cerrarVisorPdf()"></app-pdf-viewer>
+          </div>
+        </div>
+      }
+    </div>
   `
 })
 export class FacturarNuevoComponent {
@@ -115,17 +168,16 @@ export class FacturarNuevoComponent {
   esExito = signal(false);
   facturaEmitida = signal<any>(null);
 
-  // Signals para visor PDF
   pdfViewing = signal<any>(null);
   pdfViewingConfig = signal<PdfViewerConfig | null>(null);
 
-  // Signals para actividad y límites de fecha
   actividad = signal<'bienes' | 'servicios' | null>(null);
   _minFecha = signal<string>('');
   _maxFecha = signal<string>('');
 
-  // Signal para display del monto formateado
   displayMonto = signal('');
+  facturasRecientes = signal<FacturaReciente[]>([]);
+  cargandoFacturasRecientes = signal(false);
 
   minFecha() { return this._minFecha(); }
   maxFecha() { return this._maxFecha(); }
@@ -138,17 +190,18 @@ export class FacturarNuevoComponent {
     private pdfService: PdfService,
     private pdfJsPrintService: PdfJsPrintService
   ) {
-    // Inicializar formulario
     this.formFactura = this.fb.group({
       monto: ['', [Validators.required, Validators.min(0.01)]],
       fecha: [this.obtenerFechaHoy(), Validators.required]
     });
 
-    // Reaccionar a cambios de contribuyente activo para actualizar límites de fecha
     effect(() => {
       const contribuyente = this.contribuyenteService.contribuyente();
       if (contribuyente) {
         this.actualizarLimitesFecha(contribuyente.actividad === 'bienes' ? 'bienes' : 'servicios');
+        this.cargarFacturasRecientes();
+      } else {
+        this.facturasRecientes.set([]);
       }
     });
   }
@@ -156,16 +209,14 @@ export class FacturarNuevoComponent {
   private actualizarLimitesFecha(actividad: 'bienes' | 'servicios') {
     this.actividad.set(actividad);
 
-    // Calcular límites
     const hoy = new Date();
     const max = this.formatDateInput(hoy);
-    let minDate = new Date(hoy);
+    const minDate = new Date(hoy);
     minDate.setDate(hoy.getDate() - (actividad === 'bienes' ? 5 : 10));
     const min = this.formatDateInput(minDate);
     this._maxFecha.set(max);
     this._minFecha.set(min);
 
-    // Si la fecha actual del form está fuera de rango, ajustarla
     const fechaActual = this.formFactura.get('fecha')?.value;
     if (fechaActual) {
       if (fechaActual > max) {
@@ -177,34 +228,27 @@ export class FacturarNuevoComponent {
   }
 
   private formatDateInput(date: Date): string {
-    const año = date.getFullYear();
+    const anio = date.getFullYear();
     const mes = String(date.getMonth() + 1).padStart(2, '0');
     const dia = String(date.getDate()).padStart(2, '0');
-    return `${año}-${mes}-${dia}`;
+    return `${anio}-${mes}-${dia}`;
   }
 
   private obtenerFechaHoy(): string {
-    // Obtener fecha actual en zona horaria local (Argentina)
     const hoy = new Date();
-    const año = hoy.getFullYear();
+    const anio = hoy.getFullYear();
     const mes = String(hoy.getMonth() + 1).padStart(2, '0');
     const dia = String(hoy.getDate()).padStart(2, '0');
-    return `${año}-${mes}-${dia}`; // formato YYYY-MM-DD para input date
+    return `${anio}-${mes}-${dia}`;
   }
 
   private convertirFechaADDMMYYYY(fechaISO: string): string {
-    // Crear fecha sin problemas de zona horaria
-    const [año, mes, dia] = fechaISO.split('-');
-    
-    // Validar que tenemos una fecha válida
-    const fecha = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia));
-    
-    // Formatear como DD/MM/YYYY
+    const [anio, mes, dia] = fechaISO.split('-');
+    const fecha = new Date(parseInt(anio, 10), parseInt(mes, 10) - 1, parseInt(dia, 10));
     const diaFormateado = String(fecha.getDate()).padStart(2, '0');
     const mesFormateado = String(fecha.getMonth() + 1).padStart(2, '0');
-    const añoFormateado = fecha.getFullYear();
-    
-    return `${diaFormateado}/${mesFormateado}/${añoFormateado}`;
+    const anioFormateado = fecha.getFullYear();
+    return `${diaFormateado}/${mesFormateado}/${anioFormateado}`;
   }
 
   async emitirFactura(): Promise<void> {
@@ -219,17 +263,17 @@ export class FacturarNuevoComponent {
 
     try {
       const { monto, fecha } = this.formFactura.value;
-      // Convertir fecha a formato DD/MM/YYYY que espera la API
       const fechaFormateada = this.convertirFechaADDMMYYYY(fecha);
       const resultado = await this.facturacionService.emitirFactura({
         monto: parseFloat(monto),
         fecha: fechaFormateada
       });
+
       if (resultado.success) {
         this.esExito.set(true);
         this.mensaje.set(`¡Factura emitida exitosamente! Número: ${resultado.comprobante.numero_comprobante}`);
         this.facturaEmitida.set(resultado.comprobante);
-        // Limpiar formulario
+        await this.cargarFacturasRecientes();
         this.formFactura.reset({
           monto: '',
           fecha: this.obtenerFechaHoy()
@@ -247,7 +291,6 @@ export class FacturarNuevoComponent {
     }
   }
 
-  // Métodos para formatear datos de la factura
   obtenerTipoComprobante(factura: any): string {
     if (factura.tipo_comprobante === 'FACTURA B') {
       return 'FC B';
@@ -282,9 +325,59 @@ export class FacturarNuevoComponent {
     }).format(monto);
   }
 
+  formatearFechaCorta(fechaISO: string): string {
+    if (!fechaISO) return '-';
+    const [anio, mes, dia] = fechaISO.split('-');
+    if (!anio || !mes || !dia) return fechaISO;
+    return `${dia}/${mes}/${anio}`;
+  }
+
+  async cargarFacturasRecientes(): Promise<void> {
+    const contribuyente = this.contribuyenteService.contribuyente();
+    if (!contribuyente) {
+      this.facturasRecientes.set([]);
+      return;
+    }
+
+    this.cargandoFacturasRecientes.set(true);
+
+    try {
+      const { data, error } = await supabase
+        .from('comprobantes')
+        .select('id, fecha, tipo_comprobante, total, numero_comprobante, created_at')
+        .eq('contribuyente_id', contribuyente.id)
+        .eq('estado', 'emitida')
+        .in('tipo_comprobante', ['FACTURA B', 'FACTURA C'])
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (error) {
+        console.error('Error al cargar facturas recientes:', error);
+        this.facturasRecientes.set([]);
+        return;
+      }
+
+      this.facturasRecientes.set(
+        (data || []).map((factura) => ({
+          id: factura.id,
+          fecha: factura.fecha,
+          tipo_comprobante: factura.tipo_comprobante,
+          total: Number(factura.total ?? 0),
+          numero_comprobante: factura.numero_comprobante,
+          created_at: factura.created_at
+        }))
+      );
+    } catch (error) {
+      console.error('Error inesperado al cargar facturas recientes:', error);
+      this.facturasRecientes.set([]);
+    } finally {
+      this.cargandoFacturasRecientes.set(false);
+    }
+  }
+
   onMontoInput(event: Event): void {
     const input = event.target as HTMLInputElement;
-    const rawValue = input.value.replace(/\D/g, ''); // solo dígitos
+    const rawValue = input.value.replace(/\D/g, '');
     const numValue = parseInt(rawValue, 10);
 
     if (!isNaN(numValue) && numValue > 0) {
@@ -296,7 +389,6 @@ export class FacturarNuevoComponent {
     }
   }
 
-  // Métodos para los botones de acción
   verPDF(): void {
     const factura = this.facturaEmitida();
     if (factura?.pdf_url) {
@@ -315,7 +407,6 @@ export class FacturarNuevoComponent {
     this.pdfViewing.set(null);
     this.pdfViewingConfig.set(null);
   }
-
 
   async compartir(): Promise<void> {
     const factura = this.facturaEmitida();
@@ -339,7 +430,7 @@ export class FacturarNuevoComponent {
       alert('PDF no disponible para imprimir');
       return;
     }
-    
+
     try {
       const printOptions = {
         url: factura.pdf_url,
@@ -348,7 +439,6 @@ export class FacturarNuevoComponent {
       };
       await this.pdfJsPrintService.printPdfDirect(printOptions);
     } catch (error) {
-      // Último recurso: abrir en nueva ventana
       window.open(factura.pdf_url, '_blank');
     }
   }
@@ -365,23 +455,18 @@ export class FacturarNuevoComponent {
       await this.pdfService.downloadPdf(pdfInfo);
     } catch (error) {
       console.error('❌ Error descargando:', error);
-      // Fallback - abrir URL original
       window.open(factura.pdf_url, '_blank');
     }
   }
 
   volver(): void {
-    // Ocultar la card de éxito
     this.facturaEmitida.set(null);
     this.mensaje.set(null);
     this.esExito.set(false);
-    
-    // Enfocar el campo monto para continuar facturando
+
     setTimeout(() => {
-      const montoInput = document.querySelector('#monto') as HTMLInputElement;
-      if (montoInput) {
-        montoInput.focus();
-      }
+      const montoInput = document.querySelector('#monto') as HTMLInputElement | null;
+      montoInput?.focus();
     }, 100);
   }
 }
