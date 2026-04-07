@@ -78,7 +78,19 @@ interface Factura {
             <svg class="w-12 h-12 text-muted-foreground mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
-            <p class="text-muted-foreground">No hay facturas para esta fecha</p>
+            <p class="text-muted-foreground">{{ mensajeEstadoVacio() }}</p>
+            @if (ultimaFechaConFacturasDisponible()) {
+              <p class="text-sm text-muted-foreground mt-2">
+                Último día facturado:
+                <span class="font-medium text-foreground">{{ formatearFechaParaVista(ultimaFechaConFacturas()!) }}</span>
+              </p>
+              <button
+                type="button"
+                (click)="irAUltimoDiaFacturado()"
+                class="mt-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+                Ir al último día facturado
+              </button>
+            }
           </div>
         } @else {
           <div class="space-y-2">
@@ -347,9 +359,11 @@ export class ListadoComponent {
   cargando = signal(false);
   facturaExpandida = signal<string | null>(null); // ID de factura expandida
   notaCreditoEmitida = signal<any>(null); // Nota de crédito recién emitida
+  ultimaFechaConFacturas = signal<string | null>(null);
 
   // Cache de facturas por fecha para evitar consultas repetidas
   private cacheFacturasPorFecha = new Map<string, Factura[]>();
+  private cacheUltimaFechaConFacturas = new Map<string, string | null>();
 
   // Signals para el visor PDF
   pdfViewing = signal<Factura | null>(null);
@@ -603,6 +617,17 @@ export class ListadoComponent {
     return `Facturas del ${format(fecha, 'dd/MM/yyyy', { locale: es })}`;
   });
 
+  mensajeEstadoVacio = computed(() => {
+    return this.ultimaFechaConFacturas()
+      ? 'No hay facturas para esta fecha'
+      : 'Todavía no hay facturas emitidas';
+  });
+
+  ultimaFechaConFacturasDisponible = computed(() => {
+    const ultimaFecha = this.ultimaFechaConFacturas();
+    return Boolean(ultimaFecha && ultimaFecha !== this.fechaSeleccionada());
+  });
+
   // Computed para facturas filtradas por fecha (ahora solo ordena, ya que vienen filtradas)
   facturasFiltradas = computed(() => {
     // Los datos ya vienen filtrados por fecha desde la base de datos
@@ -653,7 +678,9 @@ export class ListadoComponent {
 
     const cacheKey = `${contribuyente.id}:${fecha}`;
     if (this.cacheFacturasPorFecha.has(cacheKey)) {
-      this.facturas.set(this.cacheFacturasPorFecha.get(cacheKey)!);
+      const facturasCacheadas = this.cacheFacturasPorFecha.get(cacheKey)!;
+      this.facturas.set(facturasCacheadas);
+      await this.actualizarUltimaFechaConFacturas(fecha, facturasCacheadas);
       return;
     }
 
@@ -702,6 +729,7 @@ export class ListadoComponent {
       
       this.cacheFacturasPorFecha.set(cacheKey, comprobantesFormateados);
       this.facturas.set(comprobantesFormateados);
+      await this.actualizarUltimaFechaConFacturas(fecha, comprobantesFormateados);
 
     } catch (error) {
       console.error('Error inesperado al cargar comprobantes:', error);
@@ -717,6 +745,18 @@ export class ListadoComponent {
     
     // Cargar facturas de la nueva fecha si no están en caché
     await this.cargarFacturasPorFecha(nuevaFecha);
+  }
+
+  async irAUltimoDiaFacturado() {
+    const ultimaFecha = this.ultimaFechaConFacturas();
+    if (!ultimaFecha || ultimaFecha === this.fechaSeleccionada()) return;
+
+    this.fechaSeleccionada.set(ultimaFecha);
+    await this.cargarFacturasPorFecha(ultimaFecha);
+  }
+
+  formatearFechaParaVista(fecha: string): string {
+    return format(new Date(`${fecha}T00:00:00`), 'dd/MM/yyyy', { locale: es });
   }
 
   // Métodos helper para el template
@@ -773,6 +813,50 @@ export class ListadoComponent {
   // Método para limpiar todo el caché (útil para debugging o después de cambios masivos)
   limpiarTodoElCache() {
     this.cacheFacturasPorFecha.clear();
+    this.cacheUltimaFechaConFacturas.clear();
+    this.ultimaFechaConFacturas.set(null);
+  }
+
+  private async actualizarUltimaFechaConFacturas(fecha: string, comprobantes: Factura[]) {
+    const contribuyente = this.contribuyenteService.contribuyente();
+    if (!contribuyente) {
+      this.ultimaFechaConFacturas.set(null);
+      return;
+    }
+
+    if (comprobantes.length > 0) {
+      this.cacheUltimaFechaConFacturas.set(contribuyente.id, fecha);
+      this.ultimaFechaConFacturas.set(fecha);
+      return;
+    }
+
+    const cacheKey = contribuyente.id;
+    if (this.cacheUltimaFechaConFacturas.has(cacheKey)) {
+      this.ultimaFechaConFacturas.set(this.cacheUltimaFechaConFacturas.get(cacheKey) ?? null);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('comprobantes')
+        .select('fecha')
+        .eq('contribuyente_id', contribuyente.id)
+        .order('fecha', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.error('Error al buscar última fecha con facturas:', error);
+        this.ultimaFechaConFacturas.set(null);
+        return;
+      }
+
+      const ultimaFecha = data?.[0]?.fecha ?? null;
+      this.cacheUltimaFechaConFacturas.set(cacheKey, ultimaFecha);
+      this.ultimaFechaConFacturas.set(ultimaFecha);
+    } catch (error) {
+      console.error('Error inesperado al buscar última fecha con facturas:', error);
+      this.ultimaFechaConFacturas.set(null);
+    }
   }
 
   obtenerMontoMostrar(factura: Factura): number {
