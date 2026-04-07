@@ -107,6 +107,18 @@ function extractWsfeResult(result: any) {
   };
 }
 
+function summarizeUnknownResult(raw: any): string {
+  try {
+    const serialized = JSON.stringify(raw);
+    if (!serialized) {
+      return '';
+    }
+    return serialized.length > 500 ? `${serialized.slice(0, 500)}...` : serialized;
+  } catch {
+    return String(raw ?? '');
+  }
+}
+
 async function getUserArcaInstance(req: Request) {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) throw new Error('No autorizado');
@@ -256,17 +268,21 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
       const detalleObservaciones = parsed.observations
         .map((obs: any) => `[${obs.Code || obs.code}] ${obs.Msg || obs.msg}`)
         .join(' | ');
+      const rawSummary = summarizeUnknownResult(parsed.raw);
 
       const detalle = [detalleErrores, detalleObservaciones].filter(Boolean).join(' | ');
       const errorMessage = detalle
         ? `Error AFIP (${parsed.resultado || 'sin resultado'}): ${detalle}`
-        : `Error AFIP: La solicitud fue rechazada por AFIP (Resultado: ${parsed.resultado || 'sin resultado'})`;
+        : rawSummary
+          ? `Error AFIP: respuesta no reconocida (${parsed.resultado || 'sin resultado'}). Raw: ${rawSummary}`
+          : `Error AFIP: La solicitud fue rechazada por AFIP (Resultado: ${parsed.resultado || 'sin resultado'})`;
 
       console.error(`[handleCrearFactura] Error en respuesta AFIP:`, {
         resultado: parsed.resultado,
         errores: detalleErrores,
         observaciones: detalleObservaciones,
         errorCompleto: errorMessage,
+        rawSummary,
         raw: parsed.raw,
       });
 
@@ -277,6 +293,7 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
           afipResponse: parsed.resultado,
           errores: detalleErrores,
           observaciones: detalleObservaciones,
+          rawSummary,
           raw: parsed.raw,
         }
       }), {
