@@ -108,6 +108,24 @@ export class FacturacionService {
     return `${String(ptoVta).padStart(4, '0')}-${String(cbteNro).padStart(8, '0')}`;
   }
 
+  private async getFreshAccessToken(): Promise<string> {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error('No hay sesión activa');
+    }
+    await supabase.auth.refreshSession();
+
+    const { data: { session: freshSession } } = await supabase.auth.getSession();
+    const accessToken = freshSession?.access_token ?? session.access_token;
+
+    if (!accessToken) {
+      throw new Error('No se pudo obtener un token de sesión válido');
+    }
+
+    return accessToken;
+  }
+
   async emitirFactura(facturaData: FacturaRequestData): Promise<FacturaResult> {
     try {
       const contribuyente = this.getValidatedConfig();
@@ -177,11 +195,8 @@ export class FacturacionService {
     facturaData: FacturaRequestData
   ): Promise<{ success: boolean; data?: ArcaProxyResponse['data']; error?: string }> {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = await this.getFreshAccessToken();
       
-      if (!session) {
-        throw new Error('No hay sesión activa');
-      }
 
       const actividad = contribuyente.actividad === 'bienes' ? 'bienes' : 'servicios';
 
@@ -200,7 +215,7 @@ export class FacturacionService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
+            'Authorization': `Bearer ${accessToken}`,
           },
           body: JSON.stringify(requestBody),
         }
@@ -247,11 +262,8 @@ export class FacturacionService {
 
       // Convertir fecha del comprobante original a formato YYYYMMDD
       const fechaOriginal = comprobanteOriginal.fecha.replace(/-/g, '');
+      const accessToken = await this.getFreshAccessToken();
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No hay sesión activa');
-      }
 
       const requestBody = {
         punto_venta: contribuyente.punto_venta,
@@ -269,7 +281,7 @@ export class FacturacionService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
+            'Authorization': `Bearer ${accessToken}`,
           },
           body: JSON.stringify(requestBody),
         }
