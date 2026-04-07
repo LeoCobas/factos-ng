@@ -304,7 +304,7 @@ export class FacturarNuevoComponent {
       this.pdfViewingConfig.set({
         url: factura.pdf_url,
         filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(this.obtenerNumeroComprobante(factura))}.pdf`,
-        title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`
+        title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(this.obtenerNumeroComprobante(factura))}`
       });
     } else {
       alert('PDF no disponible');
@@ -343,8 +343,8 @@ export class FacturarNuevoComponent {
     try {
       const printOptions = {
         url: factura.pdf_url,
-        filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura)}.pdf`,
-        title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`
+        filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(this.obtenerNumeroComprobante(factura))}.pdf`,
+        title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(this.obtenerNumeroComprobante(factura))}`
       };
       await this.pdfJsPrintService.printPdfDirect(printOptions);
     } catch (error) {
