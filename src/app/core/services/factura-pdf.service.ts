@@ -1,9 +1,8 @@
 import { Injectable } from '@angular/core';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
-import { TDocumentDefinitions, Content } from 'pdfmake/interfaces';
+import { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
 import { Contribuyente } from '../types/database.types';
-import { importeEnLetras } from '../utils/numero-a-letras.util';
 
 // Inicializar fuentes virtuales de pdfMake
 (pdfMake as any).vfs = (pdfFonts as any).vfs;
@@ -12,11 +11,13 @@ import { importeEnLetras } from '../utils/numero-a-letras.util';
   providedIn: 'root'
 })
 export class FacturaPdfService {
+  private readonly pageWidth = 226;
+  private readonly pageMargins: [number, number, number, number] = [8, 10, 8, 10];
 
   constructor() {}
 
   /**
-   * Genera el PDF en memoria y devuelve un Blob
+   * Genera el PDF en memoria y devuelve un Blob.
    */
   async generarFacturaPdf(contribuyente: Contribuyente, comprobante: any): Promise<Blob> {
     const docDefinition = this.crearDefinicionDocumento(contribuyente, comprobante);
@@ -25,7 +26,7 @@ export class FacturaPdfService {
   }
 
   /**
-   * Template completo de Ticket 80mm conforme a ARCA RG 1415
+   * Template completo de ticket 80mm conforme a ARCA RG 1415.
    */
   private crearDefinicionDocumento(contribuyente: Contribuyente, comprobante: any): TDocumentDefinitions {
     const tipo = comprobante.tipo_comprobante || 'FACTURA C';
@@ -34,46 +35,37 @@ export class FacturaPdfService {
     const importe = Number(comprobante.total || comprobante.monto || 0);
     const numero = String(comprobante.numero_comprobante || comprobante.numero_factura || '0000-00000000');
     const fechaFormat = this.formatearFechaArg(comprobante.fecha || new Date().toISOString());
-    
-    const condicionIva = contribuyente.condicion_iva || (esFacturaC ? 'Responsable Monotributo' : 'IVA Responsable Inscripto');
-    const iibb = contribuyente.ingresos_brutos || contribuyente.cuit;
-    const inicioAct = contribuyente.inicio_actividades ? this.formatearFechaArg(contribuyente.inicio_actividades) : '';
 
-    // QR Code
+    const condicionIva =
+      contribuyente.condicion_iva ||
+      (esFacturaC ? 'Responsable Monotributo' : 'IVA Responsable Inscripto');
+    const iibb = contribuyente.ingresos_brutos || contribuyente.cuit;
+    const inicioAct = contribuyente.inicio_actividades
+      ? this.formatearFechaArg(contribuyente.inicio_actividades)
+      : '';
+
     const qrData = this.generarQrData(contribuyente, comprobante);
     const qrUrl = `https://www.afip.gob.ar/fe/qr/?p=${btoa(JSON.stringify(qrData))}`;
 
-    // Separador reutilizable
-    const separador: Content = { 
-      text: '─'.repeat(42), 
-      alignment: 'center', 
-      fontSize: 6,
-      color: '#999999',
-      margin: [0, 4, 0, 4] 
-    };
-
-    // ---- Construir header del emisor ----
     const headerContent: Content[] = [];
 
-    // Leyenda ORIGINAL + tipo + código
     headerContent.push({
       text: `ORIGINAL - ${tipo} (COD. ${codigoTipo.toString().padStart(2, '0')})`,
       alignment: 'center',
       bold: true,
       fontSize: 7,
-      margin: [0, 0, 0, 6]
+      margin: [0, 0, 0, 4]
     });
 
-    headerContent.push({ ...separador });
+    headerContent.push(this.crearSeparador());
 
-    // Nombre de fantasía (grande) o razón social (grande)
     if (contribuyente.nombre_fantasia) {
       headerContent.push({
         text: contribuyente.nombre_fantasia.toUpperCase(),
         alignment: 'center',
         bold: true,
-        fontSize: 12,
-        margin: [0, 2, 0, 2]
+        fontSize: 11,
+        margin: [0, 1, 0, 2]
       });
       headerContent.push({
         text: `Razón social: ${contribuyente.razon_social}`,
@@ -85,12 +77,11 @@ export class FacturaPdfService {
         text: contribuyente.razon_social.toUpperCase(),
         alignment: 'center',
         bold: true,
-        fontSize: 11,
-        margin: [0, 2, 0, 2]
+        fontSize: 10,
+        margin: [0, 1, 0, 2]
       });
     }
 
-    // Domicilio
     if (contribuyente.domicilio) {
       headerContent.push({
         text: `Domicilio: ${contribuyente.domicilio}`,
@@ -99,21 +90,18 @@ export class FacturaPdfService {
       });
     }
 
-    // Condición IVA
     headerContent.push({
       text: `Cond. frente al IVA: ${condicionIva}`,
       alignment: 'center',
       fontSize: 7
     });
 
-    // CUIT
     headerContent.push({
       text: `CUIT: ${this.formatearCuit(contribuyente.cuit)}`,
       alignment: 'center',
       fontSize: 7
     });
 
-    // IIBB + Inicio actividades en una línea
     const lineaIibb = `Ingresos Brutos: ${iibb}`;
     const lineaInicio = inicioAct ? ` - Inicio act.: ${inicioAct}` : '';
     headerContent.push({
@@ -122,24 +110,22 @@ export class FacturaPdfService {
       fontSize: 6.5
     });
 
-    headerContent.push({ ...separador });
+    headerContent.push(this.crearSeparador());
 
-    // ---- Datos del comprobante ----
     const comprobanteContent: Content[] = [
       {
         text: `${tipo}  Nro.: ${numero}`,
         bold: true,
-        fontSize: 9,
+        fontSize: 8.5,
         margin: [0, 0, 0, 2]
       },
       {
         text: `Fecha: ${fechaFormat}`,
-        fontSize: 7,
+        fontSize: 7
       },
-      { ...separador },
+      this.crearSeparador()
     ];
 
-    // ---- Datos del receptor ----
     const receptorContent: Content[] = [
       {
         text: 'A CONSUMIDOR FINAL',
@@ -150,16 +136,15 @@ export class FacturaPdfService {
       },
       {
         text: 'Domicilio: -',
-        fontSize: 7,
+        fontSize: 7
       },
       {
         text: 'Cond. Venta: Contado',
-        fontSize: 7,
+        fontSize: 7
       },
-      { ...separador },
+      this.crearSeparador()
     ];
 
-    // ---- Detalle ----
     const detalleContent: Content[] = [
       {
         table: {
@@ -176,25 +161,34 @@ export class FacturaPdfService {
           ]
         },
         layout: 'lightHorizontalLines'
-      } as Content,
+      } as Content
     ];
 
-    // ---- Total ----
     const totalContent: Content[] = [
-      { text: ' ', margin: [0, 3, 0, 3] } as Content,
       {
         columns: [
-          { text: 'TOTAL:', bold: true, fontSize: 12 },
-          { text: `$ ${this.formatearMoneda(importe)}`, bold: true, fontSize: 12, alignment: 'right' }
-        ]
+          { text: 'TOTAL:', bold: true, fontSize: 11 },
+          {
+            text: `$ ${this.formatearMoneda(importe)}`,
+            bold: true,
+            fontSize: 11,
+            alignment: 'right'
+          }
+        ],
+        margin: [0, 6, 0, 2]
       } as Content,
-      { ...separador },
+      this.crearSeparador()
     ];
 
-    // ---- Pie ARCA ----
     const arcaContent: Content[] = [
       { text: `CAE N°: ${comprobante.cae || 'N/D'}`, fontSize: 7, alignment: 'center' },
-      { text: `Fecha vencimiento CAE: ${this.formatearFechaArg(comprobante.vencimiento_cae || comprobante.cae_vto) || 'N/D'}`, fontSize: 7, alignment: 'center' },
+      {
+        text: `Fecha vencimiento CAE: ${
+          this.formatearFechaArg(comprobante.vencimiento_cae || comprobante.cae_vto) || 'N/D'
+        }`,
+        fontSize: 7,
+        alignment: 'center'
+      },
       {
         qr: qrUrl,
         fit: 85,
@@ -205,8 +199,7 @@ export class FacturaPdfService {
         text: 'ARCA',
         alignment: 'center',
         bold: true,
-        fontSize: 10,
-        margin: [0, 0, 0, 0]
+        fontSize: 10
       },
       {
         text: 'Comprobante Autorizado',
@@ -220,14 +213,13 @@ export class FacturaPdfService {
         text: 'Esta Administración Federal no se responsabiliza por los datos ingresados en el detalle de la operación.',
         alignment: 'center',
         fontSize: 5.5,
-        color: '#666666',
-        margin: [0, 0, 0, 0]
-      },
+        color: '#666666'
+      }
     ];
 
     return {
-      pageSize: { width: 226, height: 'auto' },
-      pageMargins: [8, 10, 8, 10],
+      pageSize: { width: this.pageWidth, height: 'auto' },
+      pageMargins: this.pageMargins,
       defaultStyle: {
         fontSize: 7,
         font: 'Roboto'
@@ -238,12 +230,28 @@ export class FacturaPdfService {
         ...receptorContent,
         ...detalleContent,
         ...totalContent,
-        ...arcaContent,
+        ...arcaContent
       ]
     };
   }
 
-  // ==================== UTILIDADES ====================
+  private crearSeparador(): Content {
+    const usableWidth = this.pageWidth - this.pageMargins[0] - this.pageMargins[2];
+    return {
+      canvas: [
+        {
+          type: 'line',
+          x1: 0,
+          y1: 0,
+          x2: usableWidth,
+          y2: 0,
+          lineWidth: 0.6,
+          lineColor: '#b5b5b5'
+        }
+      ],
+      margin: [0, 6, 0, 6]
+    } as Content;
+  }
 
   private formatearCuit(cuit: string): string {
     if (!cuit || cuit.length !== 11) return cuit || '';
@@ -252,11 +260,9 @@ export class FacturaPdfService {
 
   private formatearFechaArg(fechaIso: string | null | undefined): string {
     if (!fechaIso) return '';
-    // YYYYMMDD from AFIP (Vto. CAE)
     if (fechaIso.length === 8 && !fechaIso.includes('-')) {
       return `${fechaIso.substring(6, 8)}/${fechaIso.substring(4, 6)}/${fechaIso.substring(0, 4)}`;
     }
-    // YYYY-MM-DD
     const match = fechaIso.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (match) {
       return `${match[3]}/${match[2]}/${match[1]}`;
@@ -265,7 +271,10 @@ export class FacturaPdfService {
   }
 
   private formatearMoneda(monto: number): string {
-    return monto.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return monto.toLocaleString('es-AR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
   }
 
   private getCbteTipoEnum(tipoComprobante: string): number {
@@ -278,7 +287,7 @@ export class FacturaPdfService {
       'NOTA DE CREDITO B': 8,
       'FACTURA C': 11,
       'NOTA DE DEBITO C': 12,
-      'NOTA DE CREDITO C': 13,
+      'NOTA DE CREDITO C': 13
     };
     return tipos[tipoComprobante.toUpperCase()] || 11;
   }
@@ -287,7 +296,7 @@ export class FacturaPdfService {
     const numero = String(comprobante.numero_comprobante || comprobante.numero_factura || '0');
     const nroCmpStr = numero.split('-').pop() || '1';
     const nroCmp = parseInt(nroCmpStr, 10);
-    
+
     const tipo = comprobante.tipo_comprobante || 'FACTURA C';
     const importe = Number(comprobante.total || comprobante.monto || 0);
 
@@ -297,8 +306,8 @@ export class FacturaPdfService {
       cuit: parseInt(contribuyente.cuit, 10),
       ptoVta: Number(comprobante.punto_venta) || Number(contribuyente.punto_venta),
       tipoCmp: this.getCbteTipoEnum(tipo),
-      nroCmp: nroCmp,
-      importe: importe,
+      nroCmp,
+      importe,
       moneda: 'PES',
       ctz: 1,
       tipoDocRec: 99,
