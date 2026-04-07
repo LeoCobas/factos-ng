@@ -72,7 +72,7 @@ import { ContribuyenteService } from '../../core/services/contribuyente.service'
               <div class="text-center mb-4">
                 <h3 class="text-lg font-semibold mb-2">Factura emitida:</h3>
                 <div class="text-xl font-bold text-primary">
-                  {{ obtenerTipoComprobante(facturaEmitida()!) }} {{ obtenerNumeroSinCeros(facturaEmitida()!.numero_factura) }} {{ formatearMonto(facturaEmitida()!.monto) }}
+                  {{ obtenerTipoComprobante(facturaEmitida()!) }} {{ obtenerNumeroSinCeros(obtenerNumeroComprobante(facturaEmitida()!)) }} {{ formatearMonto(obtenerMontoComprobante(facturaEmitida()!)) }}
                 </div>
               </div>
               <!-- Botones de acción - Grid completo con 4 botones -->
@@ -265,6 +265,14 @@ export class FacturarNuevoComponent {
     return numeroCompleto?.replace(/^0+/, '') || '0';
   }
 
+  obtenerNumeroComprobante(factura: any): string {
+    return factura?.numero_comprobante || factura?.numero_factura || '0000-00000000';
+  }
+
+  obtenerMontoComprobante(factura: any): number {
+    return Number(factura?.total ?? factura?.monto ?? 0);
+  }
+
   formatearMonto(monto: number): string {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
@@ -295,7 +303,7 @@ export class FacturarNuevoComponent {
       this.pdfViewing.set(factura);
       this.pdfViewingConfig.set({
         url: factura.pdf_url,
-        filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura)}.pdf`,
+        filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(this.obtenerNumeroComprobante(factura))}.pdf`,
         title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura)}`
       });
     } else {

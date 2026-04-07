@@ -72,28 +72,41 @@ function getIvaId(porcentaje: number): number {
   return mapping[porcentaje] || 5; 
 }
 
-function extractWsfeResult(result: any) {
-  const detail =
-    result?.FECAESolicitarResult?.FeDetResp?.FECAEDetResponse?.[0] ??
-    result?.FeCabResp?.FECAEDetResponse?.[0] ??
-    result?.detail ??
-    result;
+function getCondicionIvaReceptorId(docTipo: number): number {
+  if (docTipo === 99) {
+    return 5;
+  }
 
-  const header = result?.FECAESolicitarResult?.FeCabResp ?? result?.FeCabResp ?? {};
+  return 5;
+}
+
+function extractWsfeResult(result: any) {
+  const payload = result?.response ?? result;
+  const detail =
+    payload?.FECAESolicitarResult?.FeDetResp?.FECAEDetResponse?.[0] ??
+    payload?.FeDetResp?.FECAEDetResponse?.[0] ??
+    payload?.detail ??
+    payload;
+
+  const header = payload?.FECAESolicitarResult?.FeCabResp ?? payload?.FeCabResp ?? {};
   const errors =
-    result?.FECAESolicitarResult?.Errors?.Err ??
-    result?.Errors?.Err ??
-    result?.errors ??
+    payload?.FECAESolicitarResult?.Errors?.Err ??
+    payload?.Errors?.Err ??
+    payload?.errors ??
     [];
   const observations =
     detail?.Observaciones?.Obs ??
-    result?.FECAESolicitarResult?.FeDetResp?.FECAEDetResponse?.[0]?.Observaciones?.Obs ??
-    result?.observaciones?.obs ??
-    result?.Observaciones?.Obs ??
+    payload?.FECAESolicitarResult?.FeDetResp?.FECAEDetResponse?.[0]?.Observaciones?.Obs ??
+    payload?.observaciones?.obs ??
+    payload?.Observaciones?.Obs ??
+    [];
+  const events =
+    payload?.FECAESolicitarResult?.Events?.Evt ??
+    payload?.Events?.Evt ??
     [];
 
   return {
-    raw: result,
+    raw: payload,
     detail,
     header,
     resultado: detail?.Resultado ?? detail?.resultado ?? header?.Resultado ?? header?.resultado,
@@ -104,6 +117,7 @@ function extractWsfeResult(result: any) {
     ptoVta: detail?.PtoVta ?? detail?.ptoVta,
     errors: Array.isArray(errors) ? errors : [errors].filter(Boolean),
     observations: Array.isArray(observations) ? observations : [observations].filter(Boolean),
+    events: Array.isArray(events) ? events : [events].filter(Boolean),
   };
 }
 
@@ -228,6 +242,7 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
       Concepto: conceptoNum,
       DocTipo: 99,
       DocNro: 0,
+      CondicionIVAReceptorId: getCondicionIvaReceptorId(99),
       CbteDesde: cbteNro,
       CbteHasta: cbteNro,
       CbteFch: fechaNum,
@@ -268,9 +283,12 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
       const detalleObservaciones = parsed.observations
         .map((obs: any) => `[${obs.Code || obs.code}] ${obs.Msg || obs.msg}`)
         .join(' | ');
+      const detalleEventos = parsed.events
+        .map((evt: any) => `[${evt.Code || evt.code}] ${evt.Msg || evt.msg}`)
+        .join(' | ');
       const rawSummary = summarizeUnknownResult(parsed.raw);
 
-      const detalle = [detalleErrores, detalleObservaciones].filter(Boolean).join(' | ');
+      const detalle = [detalleErrores, detalleObservaciones, detalleEventos].filter(Boolean).join(' | ');
       const errorMessage = detalle
         ? `Error AFIP (${parsed.resultado || 'sin resultado'}): ${detalle}`
         : rawSummary
@@ -281,6 +299,7 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
         resultado: parsed.resultado,
         errores: detalleErrores,
         observaciones: detalleObservaciones,
+        eventos: detalleEventos,
         errorCompleto: errorMessage,
         rawSummary,
         raw: parsed.raw,
@@ -293,6 +312,7 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
           afipResponse: parsed.resultado,
           errores: detalleErrores,
           observaciones: detalleObservaciones,
+          eventos: detalleEventos,
           rawSummary,
           raw: parsed.raw,
         }
