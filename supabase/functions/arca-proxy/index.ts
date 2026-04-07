@@ -96,35 +96,88 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
   const { punto_venta, tipo_comprobante, monto, fecha, concepto_afip, iva_porcentaje } = body;
 
   try {
+    // ========== VALIDACIONES PREVIAS ==========
+    if (!punto_venta || !Number.isInteger(punto_venta) || punto_venta <= 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Validación fallida: punto_venta debe ser un número entero positivo'
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (!tipo_comprobante || typeof tipo_comprobante !== 'string') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Validación fallida: tipo_comprobante es requerido'
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const montoTotal = parseFloat(monto);
+    if (!monto || isNaN(montoTotal) || montoTotal <= 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Validación fallida: monto debe ser un número positivo'
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(String(fecha))) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Validación fallida: fecha debe estar en formato YYYY-MM-DD'
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // ========== OBTENER INSTANCIA ARCA ==========
     const { arca } = await getUserArcaInstance(req);
     const cbteTipo = getCbteTipo(tipo_comprobante);
 
+    console.log(`[handleCrearFactura] Iniciando creación de factura - PtoVta: ${punto_venta}, Tipo: ${tipo_comprobante}, Monto: ${montoTotal}`);
+
+    // ========== OBTENER NÚMERO SECUENCIAL ==========
     const lastVoucher: any = await arca.electronicBillingService.getLastVoucher(punto_venta, cbteTipo);
     const vNumber = typeof lastVoucher === 'number' ? lastVoucher : (lastVoucher?.cbteNro || lastVoucher?.CbteNro || 0);
     const cbteNro = vNumber + 1;
 
+    console.log(`[handleCrearFactura] Último comprobante: ${vNumber}, Nuevo número: ${cbteNro}`);
+
+    // ========== CALCULAR MONTOS ==========
     const isFacturaC = String(tipo_comprobante).toUpperCase().includes(' C');
     const ivaPct = iva_porcentaje || 21;
-    const montoTotal = parseFloat(monto);
 
     let impNeto, impIVA, iva;
     if (isFacturaC) {
-      impNeto = montoTotal; impIVA = 0; iva = undefined;
+      impNeto = montoTotal;
+      impIVA = 0;
+      iva = undefined;
+      console.log(`[handleCrearFactura] Factura C - Sin IVA`);
     } else {
       impNeto = parseFloat((montoTotal / (1 + ivaPct / 100)).toFixed(2));
       impIVA = parseFloat((montoTotal - impNeto).toFixed(2));
       iva = [{ Id: getIvaId(ivaPct), BaseImp: impNeto, Importe: impIVA }];
+      console.log(`[handleCrearFactura] Cálculo de IVA - Neto: ${impNeto}, IVA: ${impIVA} (${ivaPct}%)`);
     }
 
-    const conceptoNum = concepto_afip || 2; 
+    const conceptoNum = concepto_afip || 2;
     const fechaNum = parseInt(String(fecha).replace(/-/g, ''), 10);
 
+    // ========== CONSTRUIR PAYLOAD ==========
     const voucherPayload: any = {
-      CantReg: 1, PtoVta: punto_venta, CbteTipo: cbteTipo,
-      Concepto: conceptoNum, DocTipo: 99, DocNro: 0,
-      CbteDesde: cbteNro, CbteHasta: cbteNro, CbteFch: fechaNum,
-      ImpTotal: montoTotal, ImpTotConc: 0, ImpNeto: impNeto,
-      ImpOpEx: 0, ImpIVA: impIVA, ImpTrib: 0, MonId: 'PES', MonCotiz: 1,
+      CantReg: 1,
+      PtoVta: punto_venta,
+      CbteTipo: cbteTipo,
+      Concepto: conceptoNum,
+      DocTipo: 99,
+      DocNro: 0,
+      CbteDesde: cbteNro,
+      CbteHasta: cbteNro,
+      CbteFch: fechaNum,
+      ImpTotal: montoTotal,
+      ImpTotConc: 0,
+      ImpNeto: impNeto,
+      ImpOpEx: 0,
+      ImpIVA: impIVA,
+      ImpTrib: 0,
+      MonId: 'PES',
+      MonCotiz: 1,
     };
 
     if (iva) voucherPayload.Iva = iva;
@@ -135,29 +188,84 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
       voucherPayload.FchVtoPago = fechaNum;
     }
 
+    console.log(`[handleCrearFactura] Payload enviado a AFIP:`, JSON.stringify(voucherPayload, null, 2));
+
+    // ========== ENVIAR A AFIP ==========
     const response = await arca.electronicBillingService.createVoucher(voucherPayload);
     const result: any = response;
 
-    if (result.resultado !== 'A' && result.Resultado !== 'A') {
-      const obs = result.observaciones?.obs?.map((o: any) => `${o.code}: ${o.msg}`).join('; ') || 
-                  result.Observaciones?.Obs?.map((o: any) => `${o.Code}: ${o.Msg}`).join('; ') || 'Error AFIP';
-      return new Response(JSON.stringify({ success: false, error: obs }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    console.log(`[handleCrearFactura] Response de AFIP:`, JSON.stringify(result, null, 2));
+
+    // ========== VALIDAR RESPUESTA ==========
+    const isSuccess = result.resultado === 'A' || result.Resultado === 'A';
+
+    if (!isSuccess) {
+      // Extraer observaciones detalladas
+      const observaciones = result.observaciones?.obs || result.Observaciones?.Obs || [];
+      const detalleObservaciones = observaciones
+        .map((obs: any) => `[${obs.code || obs.Code}] ${obs.msg || obs.Msg}`)
+        .join(' | ');
+
+      const errorMessage = detalleObservaciones
+        ? `Error AFIP (${result.resultado || result.Resultado}): ${detalleObservaciones}`
+        : `Error AFIP: La solicitud fue rechazada por AFIP (Resultado: ${result.resultado || result.Resultado})`;
+
+      console.error(`[handleCrearFactura] Error en respuesta AFIP:`, {
+        resultado: result.resultado || result.Resultado,
+        observaciones: detalleObservaciones,
+        errorCompleto: errorMessage,
+      });
+
+      return new Response(JSON.stringify({
+        success: false,
+        error: errorMessage,
+        debug: {
+          afipResponse: result.resultado || result.Resultado,
+          observaciones: detalleObservaciones,
+        }
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    return new Response(JSON.stringify({
+    // ========== RESPUESTA EXITOSA ==========
+    const successResponse = {
       success: true,
-      data: { 
-        CAE: result.cae || result.CAE, 
-        CAEFchVto: result.caeFchVto || result.CAEFchVto, 
-        CbteDesde: result.cbteDesde || result.CbteDesde || cbteNro, 
-        CbteTipo: cbteTipo, 
-        PtoVta: punto_venta, 
-        Resultado: result.resultado || result.Resultado 
-      }
-    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      data: {
+        CAE: result.cae || result.CAE,
+        CAEFchVto: result.caeFchVto || result.CAEFchVto,
+        CbteDesde: result.cbteDesde || result.CbteDesde || cbteNro,
+        CbteTipo: cbteTipo,
+        PtoVta: punto_venta,
+        Resultado: result.resultado || result.Resultado,
+      },
+    };
+
+    console.log(`[handleCrearFactura] Factura creada exitosamente - CAE: ${successResponse.data.CAE}, Número: ${successResponse.data.CbteDesde}`);
+
+    return new Response(JSON.stringify(successResponse), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
 
   } catch (err: any) {
-    return new Response(JSON.stringify({ success: false, error: err.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    console.error(`[handleCrearFactura] Error durante creación de factura:`, {
+      mensaje: err.message,
+      stack: err.stack,
+      detalles: err,
+    });
+
+    return new Response(JSON.stringify({
+      success: false,
+      error: `Error del servidor: ${err.message}`,
+      debug: {
+        detalle: err.message,
+      }
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 }
 
