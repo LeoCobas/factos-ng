@@ -106,12 +106,8 @@ interface FacturaReciente {
         </section>
 
         <aside class="card-surface p-4 sm:p-5">
-          <div class="flex items-center justify-between gap-3 mb-4">
-            <div>
-              <h3 class="text-base font-semibold text-foreground">Últimas facturas</h3>
-              <p class="text-sm text-muted-foreground">Referencia rápida para continuar facturando</p>
-            </div>
-            <span class="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-full">3 recientes</span>
+          <div class="mb-4">
+            <h3 class="text-base font-semibold text-foreground">Últimas facturas</h3>
           </div>
 
           @if (cargandoFacturasRecientes()) {

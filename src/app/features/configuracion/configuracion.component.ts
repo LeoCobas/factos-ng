@@ -23,8 +23,8 @@ interface MensajeEstado {
             class="config-tab"
             [class.config-tab-active]="tabActiva() === 'facturacion'"
             [class.config-tab-inactive]="tabActiva() !== 'facturacion'">
-            <span class="config-tab-eyebrow">ConfiguraciÃ³n</span>
-            <span class="config-tab-label">FacturaciÃ³n</span>
+            <span class="config-tab-eyebrow">Configuraci&oacute;n</span>
+            <span class="config-tab-label">Facturaci&oacute;n</span>
           </button>
           <button
             type="button"
@@ -50,7 +50,7 @@ interface MensajeEstado {
       @if (cargando()) {
         <div class="flex items-center justify-center py-12">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <p class="text-muted-foreground ml-4">Cargando configuraciÃ³n...</p>
+          <p class="text-muted-foreground ml-4">Cargando configuraci&oacute;n...</p>
         </div>
       } @else {
         @if (tabActiva() === 'facturacion') {
@@ -75,9 +75,9 @@ interface MensajeEstado {
                       {{ buscandoCuit() ? 'Buscando...' : 'Buscar CUIT' }}
                     </button>
                   </div>
-                  <p class="form-help">UsÃ¡ el padrÃ³n ARCA para autocompletar razÃ³n social, domicilio y condiciÃ³n frente al IVA.</p>
+                  <p class="form-help">Us&aacute; el padr&oacute;n ARCA para autocompletar raz&oacute;n social, domicilio y condici&oacute;n frente al IVA.</p>
                   @if (facturacionForm.get('cuit')?.invalid && facturacionForm.get('cuit')?.touched) {
-                    <p class="form-error">El CUIT debe tener 11 dÃ­gitos.</p>
+                    <p class="form-error">El CUIT debe tener 11 d&iacute;gitos.</p>
                   }
                   @if (mensajePadron()) {
                     <p class="form-help" [class]="mensajePadron()!.tipo === 'success' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'">
@@ -88,7 +88,7 @@ interface MensajeEstado {
 
                 <div class="form-field">
                   <div class="form-label-row">
-                    <label class="form-label">RazÃ³n Social</label>
+                    <label class="form-label">Raz&oacute;n Social</label>
                     <span class="form-required-badge">Obligatorio</span>
                   </div>
                   <input type="text" formControlName="razon_social" placeholder="APELLIDO NOMBRE" class="form-input">
@@ -96,11 +96,11 @@ interface MensajeEstado {
 
                 <div class="form-field">
                   <div class="form-label-row">
-                    <label class="form-label">Nombre de FantasÃ­a</label>
+                    <label class="form-label">Nombre de Fantas&iacute;a</label>
                     <span class="form-optional-text">Opcional</span>
                   </div>
                   <input type="text" formControlName="nombre_fantasia" placeholder="Mi Negocio" class="form-input">
-                  <p class="form-help">Si se completa, aparece destacado en el ticket con mayor tamaÃ±o visual.</p>
+                  <p class="form-help">Si se completa, aparece destacado en el ticket con mayor tama&ntilde;o visual.</p>
                 </div>
 
                 <div class="form-field">
@@ -108,13 +108,13 @@ interface MensajeEstado {
                     <label class="form-label">Domicilio Comercial</label>
                   </div>
                   <input type="text" formControlName="domicilio" placeholder="Av. Siempre Viva 742, Springfield" class="form-input">
-                  <p class="form-help">Obligatorio en el comprobante. PodÃ©s modificarlo si tenÃ©s varios puntos de venta.</p>
+                  <p class="form-help">Obligatorio en el comprobante. Pod&eacute;s modificarlo si ten&eacute;s varios puntos de venta.</p>
                 </div>
 
                 <div class="grid gap-5 lg:grid-cols-2">
                   <div class="form-field">
                     <div class="form-label-row">
-                      <label class="form-label">CondiciÃ³n frente al IVA</label>
+                      <label class="form-label">Condici&oacute;n frente al IVA</label>
                     </div>
                     <select formControlName="condicion_iva" class="form-select">
                       <option value="Responsable Monotributo">Responsable Monotributo</option>
@@ -143,8 +143,8 @@ interface MensajeEstado {
 
             <div class="card-surface">
               <div class="card-header">
-                <h3 class="card-title">Preferencias de FacturaciÃ³n</h3>
-                <p class="form-section-description">DefinÃ­ cÃ³mo se completa cada comprobante por defecto.</p>
+                <h3 class="card-title">Preferencias de Facturaci&oacute;n</h3>
+                <p class="form-section-description">Defin&iacute; c&oacute;mo se completa cada comprobante por defecto.</p>
               </div>
               <div class="p-4 sm:p-6 space-y-5">
                 <div class="grid gap-5 lg:grid-cols-2">
@@ -174,7 +174,7 @@ interface MensajeEstado {
                     <span class="form-required-badge">Obligatorio</span>
                   </div>
                   <input type="text" formControlName="concepto" placeholder="Honorarios Profesionales" class="form-input">
-                  <p class="form-help">Se propone automÃ¡ticamente al iniciar una nueva factura.</p>
+                  <p class="form-help">Se propone autom&aacute;ticamente al iniciar una nueva factura.</p>
                 </div>
 
                 <div class="grid gap-5 lg:grid-cols-2">
@@ -193,10 +193,10 @@ interface MensajeEstado {
                       <label class="form-label">Actividad</label>
                     </div>
                     <select formControlName="actividad" class="form-select">
-                      <option value="bienes">Bienes (-5 dÃ­as)</option>
-                      <option value="servicios">Servicios (-10 dÃ­as)</option>
+                      <option value="bienes">Bienes (-5 d&iacute;as)</option>
+                      <option value="servicios">Servicios (-10 d&iacute;as)</option>
                     </select>
-                    <p class="form-help">Define cuÃ¡ntos dÃ­as hacia atrÃ¡s se pueden emitir facturas.</p>
+                    <p class="form-help">Define cu&aacute;ntos d&iacute;as hacia atr&aacute;s se pueden emitir facturas.</p>
                   </div>
                 </div>
               </div>
@@ -211,7 +211,7 @@ interface MensajeEstado {
 
             <button type="submit" [disabled]="facturacionForm.invalid || guardando()"
               class="btn-primary w-full rounded-lg px-4 py-3 font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-              {{ guardando() ? 'Guardando...' : 'Guardar Datos de FacturaciÃ³n' }}
+              {{ guardando() ? 'Guardando...' : 'Guardar Datos de Facturaci&oacute;n' }}
             </button>
           </form>
         }
@@ -226,7 +226,7 @@ interface MensajeEstado {
                   </svg>
                   <div>
                     <h3 class="card-title">Certificados ARCA (AFIP)</h3>
-                    <p class="form-section-description">Necesarios para emitir comprobantes electrÃ³nicos desde tu cuenta.</p>
+                    <p class="form-section-description">Necesarios para emitir comprobantes electr&oacute;nicos desde tu cuenta.</p>
                   </div>
                 </div>
               </div>
@@ -255,11 +255,11 @@ interface MensajeEstado {
                     </label>
                     @if (tieneCert()) {
                       <button type="button" (click)="borrarCert()" class="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Eliminar">
-                        Ã—
+                        &times;
                       </button>
                     }
                   </div>
-                  <p class="form-help">SubÃ­ el certificado pÃºblico emitido para tu CUIT.</p>
+                  <p class="form-help">Sub&iacute; el certificado p&uacute;blico emitido para tu CUIT.</p>
                   @if (certFileName()) {
                     <p class="form-help">{{ certFileName() }}</p>
                   }
@@ -284,11 +284,11 @@ interface MensajeEstado {
                     </label>
                     @if (tieneKey()) {
                       <button type="button" (click)="borrarKey()" class="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Eliminar">
-                        Ã—
+                        &times;
                       </button>
                     }
                   </div>
-                  <p class="form-help">SubÃ­ la clave privada asociada al certificado anterior.</p>
+                  <p class="form-help">Sub&iacute; la clave privada asociada al certificado anterior.</p>
                   @if (keyFileName()) {
                     <p class="form-help">{{ keyFileName() }}</p>
                   }
@@ -299,19 +299,19 @@ interface MensajeEstado {
                     <label class="form-label">Entorno ARCA</label>
                   </div>
                   <select formControlName="arca_production" class="form-select">
-                    <option [ngValue]="false">Testing / HomologaciÃ³n</option>
-                    <option [ngValue]="true">ProducciÃ³n</option>
+                    <option [ngValue]="false">Testing / Homologaci&oacute;n</option>
+                    <option [ngValue]="true">Producci&oacute;n</option>
                   </select>
-                  <p class="form-help">UsÃ¡ Testing para validar la integraciÃ³n antes de pasar a producciÃ³n.</p>
+                  <p class="form-help">Us&aacute; Testing para validar la integraci&oacute;n antes de pasar a producci&oacute;n.</p>
                 </div>
 
                 @if (tieneCert() && tieneKey()) {
                   <div class="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700">
-                    <span class="text-sm font-medium text-green-700 dark:text-green-300">Certificados configurados. Ya podÃ©s facturar.</span>
+                    <span class="text-sm font-medium text-green-700 dark:text-green-300">Certificados configurados. Ya pod&eacute;s facturar.</span>
                   </div>
                 } @else {
                   <div class="flex items-center gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700">
-                    <span class="text-sm text-yellow-700 dark:text-yellow-300">SubÃ­ ambos archivos para poder facturar.</span>
+                    <span class="text-sm text-yellow-700 dark:text-yellow-300">Sub&iacute; ambos archivos para poder facturar.</span>
                   </div>
                 }
               </div>
@@ -336,7 +336,7 @@ interface MensajeEstado {
             <div class="card-surface">
               <div class="card-header">
                 <h3 class="card-title">Apariencia</h3>
-                <p class="form-section-description">ElegÃ­ cÃ³mo querÃ©s ver la aplicaciÃ³n en este dispositivo.</p>
+                <p class="form-section-description">Eleg&iacute; c&oacute;mo quer&eacute;s ver la aplicaci&oacute;n en este dispositivo.</p>
               </div>
               <div class="p-4 sm:p-6">
                 <div class="flex flex-col gap-2 rounded-xl bg-muted/60 p-2 sm:flex-row">
@@ -362,7 +362,7 @@ interface MensajeEstado {
             <div class="card-surface">
               <div class="card-header">
                 <h3 class="card-title">Cambiar Email</h3>
-                <p class="form-section-description">ActualizÃ¡ el correo principal asociado a tu cuenta.</p>
+                <p class="form-section-description">Actualiz&aacute; el correo principal asociado a tu cuenta.</p>
               </div>
               <div class="p-4 sm:p-6 space-y-5">
                 <div class="form-field">
@@ -370,14 +370,14 @@ interface MensajeEstado {
                     <label class="form-label">Email actual</label>
                   </div>
                   <input type="email" [value]="emailActual()" readonly class="form-input bg-muted/50 cursor-not-allowed">
-                  <p class="form-help">Este valor es sÃ³lo lectura hasta confirmar el cambio.</p>
+                  <p class="form-help">Este valor es s&oacute;lo lectura hasta confirmar el cambio.</p>
                 </div>
                 <div class="form-field">
                   <div class="form-label-row">
                     <label class="form-label">Nuevo email</label>
                   </div>
                   <input type="email" [(ngModel)]="nuevoEmail" placeholder="nuevo@email.com" class="form-input">
-                  <p class="form-help">Se enviarÃ¡ un correo de confirmaciÃ³n a ambas direcciones.</p>
+                  <p class="form-help">Se enviar&aacute; un correo de confirmaci&oacute;n a ambas direcciones.</p>
                 </div>
                 <button type="button" (click)="cambiarEmail()"
                   [disabled]="!nuevoEmail || guardando()"
@@ -389,27 +389,27 @@ interface MensajeEstado {
 
             <div class="card-surface">
               <div class="card-header">
-                <h3 class="card-title">Cambiar ContraseÃ±a</h3>
-                <p class="form-section-description">ElegÃ­ una contraseÃ±a nueva para el acceso a tu cuenta.</p>
+                <h3 class="card-title">Cambiar Contrase&ntilde;a</h3>
+                <p class="form-section-description">Eleg&iacute; una contrase&ntilde;a nueva para el acceso a tu cuenta.</p>
               </div>
               <div class="p-4 sm:p-6 space-y-5">
                 <div class="form-field">
                   <div class="form-label-row">
-                    <label class="form-label">Nueva contraseÃ±a</label>
+                    <label class="form-label">Nueva contrase&ntilde;a</label>
                   </div>
-                  <input type="password" [(ngModel)]="nuevaPassword" placeholder="MÃ­nimo 6 caracteres" class="form-input">
-                  <p class="form-help">UsÃ¡ al menos 6 caracteres para continuar.</p>
+                  <input type="password" [(ngModel)]="nuevaPassword" placeholder="M&iacute;nimo 6 caracteres" class="form-input">
+                  <p class="form-help">Us&aacute; al menos 6 caracteres para continuar.</p>
                 </div>
                 <div class="form-field">
                   <div class="form-label-row">
-                    <label class="form-label">Confirmar contraseÃ±a</label>
+                    <label class="form-label">Confirmar contrase&ntilde;a</label>
                   </div>
-                  <input type="password" [(ngModel)]="confirmarPassword" placeholder="Repetir contraseÃ±a" class="form-input">
+                  <input type="password" [(ngModel)]="confirmarPassword" placeholder="Repetir contrase&ntilde;a" class="form-input">
                 </div>
                 <button type="button" (click)="cambiarPassword()"
                   [disabled]="!nuevaPassword || !confirmarPassword || guardando()"
                   class="btn-primary w-full rounded-lg px-4 py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
-                  {{ guardando() ? 'Cambiando...' : 'Cambiar ContraseÃ±a' }}
+                  {{ guardando() ? 'Cambiando...' : 'Cambiar Contrase&ntilde;a' }}
                 </button>
               </div>
             </div>
@@ -527,7 +527,7 @@ export class ConfiguracionComponent implements OnInit {
         if (c.arca_key) this.keyFileName.set('(clave guardada)');
       }
     } catch (error) {
-      this.mostrarMensaje('Error al cargar la configuraciÃ³n.', 'error');
+      this.mostrarMensaje('Error al cargar la configuraci\u00f3n.', 'error');
     } finally {
       this.cargando.set(false);
     }
@@ -544,7 +544,7 @@ export class ConfiguracionComponent implements OnInit {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        this.mensajePadron.set({ texto: 'SesiÃ³n no activa', tipo: 'error' });
+        this.mensajePadron.set({ texto: 'Sesi\u00f3n no activa', tipo: 'error' });
         return;
       }
 
@@ -552,14 +552,14 @@ export class ConfiguracionComponent implements OnInit {
       if (!this.contribuyenteService.contribuyente()) {
         this.mensajePadron.set({
           texto:
-            'Primero tocÃ¡ Â«Guardar Datos de FacturaciÃ³nÂ» para crear tu perfil. Sin ese registro no podemos usar tu certificado para consultar el padrÃ³n.',
+            'Primero toc\u00e1 "Guardar Datos de Facturaci\u00f3n" para crear tu perfil. Sin ese registro no podemos usar tu certificado para consultar el padr\u00f3n.',
           tipo: 'error',
         });
         return;
       }
 
-      // Refrescar token y enviar Authorization explÃ­cita: evita 401 del gateway cuando el JWT
-      // estÃ¡ al lÃ­mite o el cliente no adjunta el header en functions.invoke.
+      // Refrescar token y enviar Authorization expl\u00edcita: evita 401 del gateway cuando el JWT
+      // est\u00e1 al l\u00edmite o el cliente no adjunta el header en functions.invoke.
       await supabase.auth.refreshSession();
       const { data: { session: fresh } } = await supabase.auth.getSession();
       const accessToken = fresh?.access_token ?? session.access_token;
@@ -572,7 +572,7 @@ export class ConfiguracionComponent implements OnInit {
       });
 
       if (response.error) {
-        this.mensajePadron.set({ texto: response.error.message || 'Error de conexiÃ³n con el padrÃ³n', tipo: 'error' });
+        this.mensajePadron.set({ texto: response.error.message || 'Error de conexi\u00f3n con el padr\u00f3n', tipo: 'error' });
         return;
       }
 
@@ -594,18 +594,18 @@ export class ConfiguracionComponent implements OnInit {
           this.facturacionForm.patchValue({ ingresos_brutos: cuit });
         }
 
-        this.mensajePadron.set({ texto: 'âœ… Datos obtenidos del padrÃ³n ARCA', tipo: 'success' });
+        this.mensajePadron.set({ texto: '\u2714 Datos obtenidos del padr\u00f3n ARCA', tipo: 'success' });
       } else {
         this.mensajePadron.set({ texto: result?.error || 'No se pudo obtener datos del CUIT', tipo: 'error' });
       }
     } catch (error: any) {
-      this.mensajePadron.set({ texto: error.message || 'Error al consultar el padrÃ³n', tipo: 'error' });
+      this.mensajePadron.set({ texto: error.message || 'Error al consultar el padr\u00f3n', tipo: 'error' });
     } finally {
       this.buscandoCuit.set(false);
     }
   }
 
-  // ==================== GUARDAR FACTURACIÃ“N ====================
+  // ==================== GUARDAR FACTURACION ====================
   async guardarFacturacion() {
     if (this.facturacionForm.invalid) return;
     this.guardando.set(true);
@@ -631,10 +631,10 @@ export class ConfiguracionComponent implements OnInit {
 
       if (contribuyente) {
         const result = await this.contribuyenteService.actualizarContribuyente(payload);
-        this.mostrarMensaje(result.success ? 'âœ… Datos de facturaciÃ³n guardados.' : (result.error || 'Error al guardar.'), result.success ? 'success' : 'error');
+        this.mostrarMensaje(result.success ? '\u2714 Datos de facturaci\u00f3n guardados.' : (result.error || 'Error al guardar.'), result.success ? 'success' : 'error');
       } else {
         const result = await this.contribuyenteService.crearContribuyente(payload);
-        this.mostrarMensaje(result.success ? 'âœ… Contribuyente creado correctamente.' : (result.error || 'Error al crear.'), result.success ? 'success' : 'error');
+        this.mostrarMensaje(result.success ? '\u2714 Contribuyente creado correctamente.' : (result.error || 'Error al crear.'), result.success ? 'success' : 'error');
       }
     } catch (error) {
       this.mostrarMensaje('Error inesperado al guardar.', 'error');
@@ -658,7 +658,7 @@ export class ConfiguracionComponent implements OnInit {
       if (!contribuyente) {
         if (this.facturacionForm.invalid) {
           this.mostrarMensaje(
-            'CompletÃ¡ los datos obligatorios en FacturaciÃ³n (CUIT, razÃ³n social, punto de venta, concepto) o tocÃ¡ Â«Guardar Datos de FacturaciÃ³nÂ» antes de guardar el certificado.',
+            'Complet\u00e1 los datos obligatorios en Facturaci\u00f3n (CUIT, raz\u00f3n social, punto de venta, concepto) o toc\u00e1 "Guardar Datos de Facturaci\u00f3n" antes de guardar el certificado.',
             'error',
           );
           return;
@@ -694,7 +694,7 @@ export class ConfiguracionComponent implements OnInit {
       if (result.success) {
         this.certModified = false;
         this.keyModified = false;
-        this.mostrarMensaje('âœ… Certificado guardado correctamente.', 'success');
+        this.mostrarMensaje('\u2714 Certificado guardado correctamente.', 'success');
       } else {
         this.mostrarMensaje(result.error || 'Error al guardar certificado.', 'error');
       }
@@ -715,7 +715,7 @@ export class ConfiguracionComponent implements OnInit {
       if (error) {
         this.mostrarMensaje(error.message, 'error');
       } else {
-        this.mostrarMensaje('âœ… Se enviÃ³ un email de confirmaciÃ³n a ambas direcciones.', 'success');
+        this.mostrarMensaje('\u2714 Se envi\u00f3 un email de confirmaci\u00f3n a ambas direcciones.', 'success');
         this.nuevoEmail = '';
       }
     } catch (err) {
@@ -728,11 +728,11 @@ export class ConfiguracionComponent implements OnInit {
   async cambiarPassword() {
     if (!this.nuevaPassword || !this.confirmarPassword) return;
     if (this.nuevaPassword !== this.confirmarPassword) {
-      this.mostrarMensaje('Las contraseÃ±as no coinciden.', 'error');
+      this.mostrarMensaje('Las contrase\u00f1as no coinciden.', 'error');
       return;
     }
     if (this.nuevaPassword.length < 6) {
-      this.mostrarMensaje('La contraseÃ±a debe tener al menos 6 caracteres.', 'error');
+      this.mostrarMensaje('La contrase\u00f1a debe tener al menos 6 caracteres.', 'error');
       return;
     }
 
@@ -742,12 +742,12 @@ export class ConfiguracionComponent implements OnInit {
       if (error) {
         this.mostrarMensaje(error.message, 'error');
       } else {
-        this.mostrarMensaje('âœ… ContraseÃ±a cambiada correctamente.', 'success');
+        this.mostrarMensaje('\u2714 Contrase\u00f1a cambiada correctamente.', 'success');
         this.nuevaPassword = '';
         this.confirmarPassword = '';
       }
     } catch (err) {
-      this.mostrarMensaje('Error al cambiar contraseÃ±a.', 'error');
+      this.mostrarMensaje('Error al cambiar contrase\u00f1a.', 'error');
     } finally {
       this.guardando.set(false);
     }
