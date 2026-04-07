@@ -72,6 +72,41 @@ function getIvaId(porcentaje: number): number {
   return mapping[porcentaje] || 5; 
 }
 
+function extractWsfeResult(result: any) {
+  const detail =
+    result?.FECAESolicitarResult?.FeDetResp?.FECAEDetResponse?.[0] ??
+    result?.FeCabResp?.FECAEDetResponse?.[0] ??
+    result?.detail ??
+    result;
+
+  const header = result?.FECAESolicitarResult?.FeCabResp ?? result?.FeCabResp ?? {};
+  const errors =
+    result?.FECAESolicitarResult?.Errors?.Err ??
+    result?.Errors?.Err ??
+    result?.errors ??
+    [];
+  const observations =
+    detail?.Observaciones?.Obs ??
+    result?.FECAESolicitarResult?.FeDetResp?.FECAEDetResponse?.[0]?.Observaciones?.Obs ??
+    result?.observaciones?.obs ??
+    result?.Observaciones?.Obs ??
+    [];
+
+  return {
+    raw: result,
+    detail,
+    header,
+    resultado: detail?.Resultado ?? detail?.resultado ?? header?.Resultado ?? header?.resultado,
+    cae: detail?.CAE ?? detail?.cae,
+    caeFchVto: detail?.CAEFchVto ?? detail?.caeFchVto,
+    cbteDesde: detail?.CbteDesde ?? detail?.cbteDesde,
+    cbteTipo: detail?.CbteTipo ?? detail?.cbteTipo,
+    ptoVta: detail?.PtoVta ?? detail?.ptoVta,
+    errors: Array.isArray(errors) ? errors : [errors].filter(Boolean),
+    observations: Array.isArray(observations) ? observations : [observations].filter(Boolean),
+  };
+}
+
 async function getUserArcaInstance(req: Request) {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) throw new Error('No autorizado');
@@ -207,35 +242,42 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
     // ========== ENVIAR A AFIP ==========
     const response = await arca.electronicBillingService.createVoucher(voucherPayload);
     const result: any = response;
+    const parsed = extractWsfeResult(result);
 
-    console.log(`[handleCrearFactura] Response de AFIP:`, JSON.stringify(result, null, 2));
+    console.log(`[handleCrearFactura] Response de AFIP:`, JSON.stringify(parsed.raw, null, 2));
 
     // ========== VALIDAR RESPUESTA ==========
-    const isSuccess = result.resultado === 'A' || result.Resultado === 'A';
+    const isSuccess = parsed.resultado === 'A';
 
     if (!isSuccess) {
-      // Extraer observaciones detalladas
-      const observaciones = result.observaciones?.obs || result.Observaciones?.Obs || [];
-      const detalleObservaciones = observaciones
-        .map((obs: any) => `[${obs.code || obs.Code}] ${obs.msg || obs.Msg}`)
+      const detalleErrores = parsed.errors
+        .map((err: any) => `[${err.Code || err.code}] ${err.Msg || err.msg}`)
+        .join(' | ');
+      const detalleObservaciones = parsed.observations
+        .map((obs: any) => `[${obs.Code || obs.code}] ${obs.Msg || obs.msg}`)
         .join(' | ');
 
-      const errorMessage = detalleObservaciones
-        ? `Error AFIP (${result.resultado || result.Resultado}): ${detalleObservaciones}`
-        : `Error AFIP: La solicitud fue rechazada por AFIP (Resultado: ${result.resultado || result.Resultado})`;
+      const detalle = [detalleErrores, detalleObservaciones].filter(Boolean).join(' | ');
+      const errorMessage = detalle
+        ? `Error AFIP (${parsed.resultado || 'sin resultado'}): ${detalle}`
+        : `Error AFIP: La solicitud fue rechazada por AFIP (Resultado: ${parsed.resultado || 'sin resultado'})`;
 
       console.error(`[handleCrearFactura] Error en respuesta AFIP:`, {
-        resultado: result.resultado || result.Resultado,
+        resultado: parsed.resultado,
+        errores: detalleErrores,
         observaciones: detalleObservaciones,
         errorCompleto: errorMessage,
+        raw: parsed.raw,
       });
 
       return new Response(JSON.stringify({
         success: false,
         error: errorMessage,
         debug: {
-          afipResponse: result.resultado || result.Resultado,
+          afipResponse: parsed.resultado,
+          errores: detalleErrores,
           observaciones: detalleObservaciones,
+          raw: parsed.raw,
         }
       }), {
         status: 400,
@@ -247,12 +289,12 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
     const successResponse = {
       success: true,
       data: {
-        CAE: result.cae || result.CAE,
-        CAEFchVto: result.caeFchVto || result.CAEFchVto,
-        CbteDesde: result.cbteDesde || result.CbteDesde || cbteNro,
+        CAE: parsed.cae,
+        CAEFchVto: parsed.caeFchVto,
+        CbteDesde: parsed.cbteDesde || cbteNro,
         CbteTipo: cbteTipo,
         PtoVta: punto_venta,
-        Resultado: result.resultado || result.Resultado,
+        Resultado: parsed.resultado,
       },
     };
 
