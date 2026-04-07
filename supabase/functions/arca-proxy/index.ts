@@ -43,6 +43,17 @@ function getSupabaseClient(authHeader: string | null) {
   return createClient(supabaseUrl, supabaseKey);
 }
 
+function getServiceRoleClient() {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+  if (!serviceRoleKey) {
+    return null;
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey);
+}
+
 function getCbteTipo(tipoComprobante: string): number {
   const tipos: Record<string, number> = {
     'FACTURA A': 1, 'NOTA DE DEBITO A': 2, 'NOTA DE CREDITO A': 3,
@@ -66,11 +77,14 @@ async function getUserArcaInstance(req: Request) {
   if (!authHeader) throw new Error('No autorizado');
 
   const supabaseUser = getSupabaseClient(authHeader);
+  const supabaseAdmin = getServiceRoleClient();
   
   const { data: { user } } = await supabaseUser.auth.getUser();
   if (!user) throw new Error('Token inválido');
 
-  const { data: contribuyente } = await supabaseUser
+  const db = supabaseAdmin ?? supabaseUser;
+
+  const { data: contribuyente } = await db
     .from('contribuyentes')
     .select('cuit, arca_cert, arca_key, arca_production, arca_ticket')
     .eq('user_id', user.id)
@@ -86,7 +100,7 @@ async function getUserArcaInstance(req: Request) {
     production: contribuyente.arca_production === true,
     handleTicket: true,
     useHttpsAgent: false,
-    authRepository: new SupabaseAuthRepository(supabaseUser, user.id, contribuyente.arca_ticket),
+    authRepository: new SupabaseAuthRepository(db, user.id, contribuyente.arca_ticket),
   });
 
   return { arca, userId: user.id };

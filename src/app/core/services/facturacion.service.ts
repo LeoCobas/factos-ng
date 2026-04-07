@@ -204,7 +204,7 @@ export class FacturacionService {
         punto_venta: contribuyente.punto_venta,
         tipo_comprobante: contribuyente.tipo_comprobante_default || 'FACTURA C',
         monto: facturaData.monto,
-        fecha: this.fechaDDMMYYYYtoAfip(facturaData.fecha),
+        fecha: this.fechaDDMMYYYYtoISO(facturaData.fecha),
         concepto_afip: this.getConceptoAfip(actividad),
         iva_porcentaje: contribuyente.iva_porcentaje,
       };
