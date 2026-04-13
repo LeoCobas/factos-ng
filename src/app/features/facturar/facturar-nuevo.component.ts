@@ -166,6 +166,7 @@ export class FacturarNuevoComponent {
 
   pdfViewing = signal<any>(null);
   pdfViewingConfig = signal<PdfViewerConfig | null>(null);
+  pdfViewingBlobUrl = signal<string | null>(null);
 
   actividad = signal<'bienes' | 'servicios' | null>(null);
   _minFecha = signal<string>('');
@@ -385,29 +386,49 @@ export class FacturarNuevoComponent {
     }
   }
 
-  verPDF(): void {
+  async verPDF(): Promise<void> {
     const factura = this.facturaEmitida();
-    if (factura?.pdf_url) {
+    if (!factura) {
+      return;
+    }
+
+    try {
+      const pdfBlob = await this.pdfService.getPdfBlob(factura);
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const oldBlobUrl = this.pdfViewingBlobUrl();
+
+      if (oldBlobUrl) {
+        URL.revokeObjectURL(oldBlobUrl);
+      }
+
       this.pdfViewing.set(factura);
+      this.pdfViewingBlobUrl.set(blobUrl);
       this.pdfViewingConfig.set({
-        url: factura.pdf_url,
+        url: blobUrl,
         filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(this.obtenerNumeroComprobante(factura))}.pdf`,
         title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(this.obtenerNumeroComprobante(factura))}`
       });
-    } else {
-      alert('PDF no disponible');
+    } catch (error) {
+      console.error('Error al generar PDF para visualizaciÃ³n:', error);
+      this.cerrarVisorPdf();
+      alert('Hubo un error al generar el ticket.');
     }
   }
 
   cerrarVisorPdf() {
+    const blobUrl = this.pdfViewingBlobUrl();
+    if (blobUrl) {
+      URL.revokeObjectURL(blobUrl);
+    }
+
     this.pdfViewing.set(null);
+    this.pdfViewingBlobUrl.set(null);
     this.pdfViewingConfig.set(null);
   }
 
   async compartir(): Promise<void> {
     const factura = this.facturaEmitida();
-    if (!factura?.pdf_url) {
-      alert('PDF no disponible para compartir');
+    if (!factura) {
       return;
     }
 
@@ -422,27 +443,30 @@ export class FacturarNuevoComponent {
 
   async imprimir(): Promise<void> {
     const factura = this.facturaEmitida();
-    if (!factura?.pdf_url) {
-      alert('PDF no disponible para imprimir');
+    if (!factura) {
       return;
     }
 
     try {
+      const pdfBlob = await this.pdfService.getPdfBlob(factura);
+      const blobUrl = URL.createObjectURL(pdfBlob);
+
       const printOptions = {
-        url: factura.pdf_url,
+        url: blobUrl,
         filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(this.obtenerNumeroComprobante(factura))}.pdf`,
         title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(this.obtenerNumeroComprobante(factura))}`
       };
       await this.pdfJsPrintService.printPdfDirect(printOptions);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
     } catch (error) {
-      window.open(factura.pdf_url, '_blank');
+      console.error('âŒ Error imprimiendo:', error);
+      alert('Hubo un error enviando a imprimir');
     }
   }
 
   async descargar(): Promise<void> {
     const factura = this.facturaEmitida();
-    if (!factura?.pdf_url) {
-      alert('PDF no disponible');
+    if (!factura) {
       return;
     }
 
@@ -451,7 +475,7 @@ export class FacturarNuevoComponent {
       await this.pdfService.downloadPdf(pdfInfo);
     } catch (error) {
       console.error('❌ Error descargando:', error);
-      window.open(factura.pdf_url, '_blank');
+      alert('Error al generar el PDF del ticket');
     }
   }
 
