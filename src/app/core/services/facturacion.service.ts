@@ -91,6 +91,14 @@ export class FacturacionService {
     return actividad === 'bienes' ? 1 : 2;
   }
 
+  private getFechaLocalISO(): string {
+    const hoy = new Date();
+    const anio = hoy.getFullYear();
+    const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoy.getDate()).padStart(2, '0');
+    return `${anio}-${mes}-${dia}`;
+  }
+
   /** Convierte fecha DD/MM/YYYY a YYYY-MM-DD */
   private fechaDDMMYYYYtoISO(fecha: string): string {
     const [dia, mes, año] = fecha.split('/');
@@ -244,6 +252,7 @@ export class FacturacionService {
   async crearNotaCredito(comprobanteId: string, numeroComprobante: string, monto: number): Promise<NotaCreditoResult> {
     try {
       const contribuyente = this.getValidatedConfig();
+      const actividad = contribuyente.actividad === 'bienes' ? 'bienes' : 'servicios';
 
       // Obtener datos del comprobante original
       const { data: comprobanteOriginal, error: fetchError } = await supabase
@@ -269,10 +278,11 @@ export class FacturacionService {
         punto_venta: contribuyente.punto_venta,
         tipo_comprobante_original: comprobanteOriginal.tipo_comprobante,
         monto: monto,
+        concepto_afip: this.getConceptoAfip(actividad),
         iva_porcentaje: contribuyente.iva_porcentaje,
         cbte_asociado_nro: cbteNro,
         cbte_asociado_fecha: fechaOriginal,
-        cuit_asociado: contribuyente.cuit,
+        fecha: this.getFechaLocalISO(),
       };
 
       const response = await fetch(
@@ -310,7 +320,7 @@ export class FacturacionService {
           tipo_comprobante: tipoNC,
           numero_comprobante: ncNumero,
           punto_venta: contribuyente.punto_venta,
-          fecha: new Date().toISOString().split('T')[0],
+          fecha: this.getFechaLocalISO(),
           total: monto,
           cae: responseData.data.CAE,
           vencimiento_cae: responseData.data.CAEFchVto,

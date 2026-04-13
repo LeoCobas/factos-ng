@@ -80,6 +80,17 @@ function getCondicionIvaReceptorId(docTipo: number): number {
   return 5;
 }
 
+function getTodayInArgentina(): string {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  return formatter.format(new Date());
+}
+
 function extractWsfeResult(result: any) {
   const payload = result?.response ?? result;
   const detail =
@@ -365,9 +376,56 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
 async function handleCrearNotaCredito(req: Request, body: any): Promise<Response> {
   try {
     const { arca } = await getUserArcaInstance(req);
-    const { punto_venta, tipo_comprobante_original, monto, iva_porcentaje, cbte_asociado_nro, cbte_asociado_fecha, cuit_asociado } = body;
+    const {
+      punto_venta,
+      tipo_comprobante_original,
+      monto,
+      concepto_afip,
+      iva_porcentaje,
+      cbte_asociado_nro,
+      cbte_asociado_fecha,
+      fecha,
+    } = body;
 
-    const tipoNC = String(tipo_comprobante_original).toUpperCase().includes('C') ? 'NOTA DE CREDITO C' : 'NOTA DE CREDITO B';
+    if (!punto_venta || !Number.isInteger(punto_venta) || punto_venta <= 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Validación fallida: punto_venta debe ser un número entero positivo'
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (!tipo_comprobante_original || typeof tipo_comprobante_original !== 'string') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Validación fallida: tipo_comprobante_original es requerido'
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const montoTotal = parseFloat(monto);
+    if (!monto || isNaN(montoTotal) || montoTotal <= 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Validación fallida: monto debe ser un número positivo'
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (!cbte_asociado_nro || !Number.isInteger(cbte_asociado_nro) || cbte_asociado_nro <= 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Validación fallida: cbte_asociado_nro debe ser un número entero positivo'
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (!cbte_asociado_fecha || !/^\d{8}$/.test(String(cbte_asociado_fecha))) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Validación fallida: cbte_asociado_fecha debe estar en formato YYYYMMDD'
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const tipoNC = String(tipo_comprobante_original).toUpperCase().includes(' C')
+      ? 'NOTA DE CREDITO C'
+      : 'NOTA DE CREDITO B';
     const cbteTipo = getCbteTipo(tipoNC);
     const cbteTipoOriginal = getCbteTipo(tipo_comprobante_original);
 
@@ -375,40 +433,135 @@ async function handleCrearNotaCredito(req: Request, body: any): Promise<Response
     const vNumber = typeof lastVoucher === 'number' ? lastVoucher : (lastVoucher?.cbteNro || lastVoucher?.CbteNro || 0);
     const cbteNro = vNumber + 1;
 
+    const isNC_C = tipoNC === 'NOTA DE CREDITO C';
     const ivaPct = iva_porcentaje || 21;
-    const montoTotal = parseFloat(monto);
-    const impNeto = parseFloat((montoTotal / (1 + ivaPct / 100)).toFixed(2));
-    const impIVA = parseFloat((montoTotal - impNeto).toFixed(2));
-    const iva = [{ Id: getIvaId(ivaPct), BaseImp: impNeto, Importe: impIVA }];
+    let impNeto, impIVA, iva;
 
-    const fechaHoy = parseInt(new Date().toISOString().split('T')[0].replace(/-/g, ''), 10);
+    if (isNC_C) {
+      impNeto = montoTotal;
+      impIVA = 0;
+      iva = undefined;
+    } else {
+      impNeto = parseFloat((montoTotal / (1 + ivaPct / 100)).toFixed(2));
+      impIVA = parseFloat((montoTotal - impNeto).toFixed(2));
+      iva = [{ Id: getIvaId(ivaPct), BaseImp: impNeto, Importe: impIVA }];
+    }
+
+    const conceptoNum = concepto_afip || 2;
+    const fechaComprobante = String(fecha || getTodayInArgentina());
+    const fechaHoy = parseInt(fechaComprobante.replace(/-/g, ''), 10);
 
     const voucherPayload: any = {
-      CantReg: 1, PtoVta: punto_venta, CbteTipo: cbteTipo,
-      Concepto: 2, DocTipo: 99, DocNro: 0,
-      CbteDesde: cbteNro, CbteHasta: cbteNro, CbteFch: fechaHoy,
-      ImpTotal: montoTotal, ImpTotConc: 0, ImpNeto: impNeto,
-      ImpOpEx: 0, ImpIVA: impIVA, ImpTrib: 0, MonId: 'PES', MonCotiz: 1,
-      FchServDesde: fechaHoy, FchServHasta: fechaHoy, FchVtoPago: fechaHoy,
+      CantReg: 1,
+      PtoVta: punto_venta,
+      CbteTipo: cbteTipo,
+      Concepto: conceptoNum,
+      DocTipo: 99,
+      DocNro: 0,
+      CondicionIVAReceptorId: getCondicionIvaReceptorId(99),
+      CbteDesde: cbteNro,
+      CbteHasta: cbteNro,
+      CbteFch: fechaHoy,
+      ImpTotal: montoTotal,
+      ImpTotConc: 0,
+      ImpNeto: impNeto,
+      ImpOpEx: 0,
+      ImpIVA: impIVA,
+      ImpTrib: 0,
+      MonId: 'PES',
+      MonCotiz: 1,
       CbtesAsoc: [{
-        Tipo: cbteTipoOriginal, PtoVta: punto_venta, Nro: cbte_asociado_nro || 1,
-        Cuit: cuit_asociado ? parseInt(cuit_asociado, 10) : undefined, CbteFch: cbte_asociado_fecha || fechaHoy,
+        Tipo: cbteTipoOriginal,
+        PtoVta: punto_venta,
+        Nro: cbte_asociado_nro,
+        CbteFch: parseInt(String(cbte_asociado_fecha), 10),
       }],
     };
-    if (iva) voucherPayload.Iva = iva;
+
+    if (iva) {
+      voucherPayload.Iva = iva;
+    }
+
+    if (conceptoNum >= 2) {
+      voucherPayload.FchServDesde = fechaHoy;
+      voucherPayload.FchServHasta = fechaHoy;
+      voucherPayload.FchVtoPago = fechaHoy;
+    }
+
+    console.log(`[handleCrearNotaCredito] Payload enviado a AFIP:`, JSON.stringify(voucherPayload, null, 2));
 
     const response = await arca.electronicBillingService.createVoucher(voucherPayload);
     const result: any = response;
+    const parsed = extractWsfeResult(result);
 
-    if (result.resultado !== 'A' && result.Resultado !== 'A') {
-      const obs = result.observaciones?.obs?.map((o: any) => `${o.code}: ${o.msg}`).join('; ') || 
-                  result.Observaciones?.Obs?.map((o: any) => `${o.Code}: ${o.Msg}`).join('; ') || 'Error AFIP';
-      return new Response(JSON.stringify({ success: false, error: obs }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    console.log(`[handleCrearNotaCredito] Response de AFIP:`, JSON.stringify(parsed.raw, null, 2));
+
+    if (parsed.resultado !== 'A') {
+      const detalleErrores = parsed.errors
+        .map((err: any) => `[${err.Code || err.code}] ${err.Msg || err.msg}`)
+        .join(' | ');
+      const detalleObservaciones = parsed.observations
+        .map((obs: any) => `[${obs.Code || obs.code}] ${obs.Msg || obs.msg}`)
+        .join(' | ');
+      const detalleEventos = parsed.events
+        .map((evt: any) => `[${evt.Code || evt.code}] ${evt.Msg || evt.msg}`)
+        .join(' | ');
+      const rawSummary = summarizeUnknownResult(parsed.raw);
+
+      const detalle = [detalleErrores, detalleObservaciones, detalleEventos].filter(Boolean).join(' | ');
+      const errorMessage = detalle
+        ? `Error AFIP (${parsed.resultado || 'sin resultado'}): ${detalle}`
+        : rawSummary
+          ? `Error AFIP: respuesta no reconocida (${parsed.resultado || 'sin resultado'}). Raw: ${rawSummary}`
+          : `Error AFIP: La solicitud fue rechazada por AFIP (Resultado: ${parsed.resultado || 'sin resultado'})`;
+
+      return new Response(JSON.stringify({
+        success: false,
+        error: errorMessage,
+        debug: {
+          afipResponse: parsed.resultado,
+          errores: detalleErrores,
+          observaciones: detalleObservaciones,
+          eventos: detalleEventos,
+          rawSummary,
+          raw: parsed.raw,
+        }
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    return new Response(JSON.stringify({ success: true, data: result }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({
+      success: true,
+      data: {
+        CAE: parsed.cae,
+        CAEFchVto: parsed.caeFchVto,
+        CbteDesde: parsed.cbteDesde || cbteNro,
+        CbteTipo: cbteTipo,
+        PtoVta: punto_venta,
+        Resultado: parsed.resultado,
+      }
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   } catch (err: any) {
-    return new Response(JSON.stringify({ success: false, error: err.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    console.error(`[handleCrearNotaCredito] Error durante creación de nota de crédito:`, {
+      mensaje: err.message,
+      stack: err.stack,
+      detalles: err,
+    });
+
+    return new Response(JSON.stringify({
+      success: false,
+      error: `Error del servidor: ${err.message}`,
+      debug: {
+        detalle: err.message,
+      }
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 }
 
