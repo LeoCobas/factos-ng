@@ -4,7 +4,6 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { PdfViewerComponent, PdfViewerConfig } from '../../shared/components/ui/pdf-viewer.component';
 import { FacturacionService } from '../../core/services/facturacion.service';
 import { PdfService } from '../../core/services/pdf.service';
-import { PdfJsPrintService } from '../../core/services/pdfjs-print.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import { supabase } from '../../core/services/supabase.service';
 
@@ -184,8 +183,7 @@ export class FacturarNuevoComponent {
   constructor(
     private fb: FormBuilder,
     private facturacionService: FacturacionService,
-    private pdfService: PdfService,
-    private pdfJsPrintService: PdfJsPrintService
+    private pdfService: PdfService
   ) {
     this.formFactura = this.fb.group({
       monto: ['', [Validators.required, Validators.min(0.01)]],
@@ -393,19 +391,16 @@ export class FacturarNuevoComponent {
     }
 
     try {
-      const pdfBlob = await this.pdfService.getPdfBlob(factura);
-      const blobUrl = URL.createObjectURL(pdfBlob);
+      const asset = await this.pdfService.createPdfAsset(factura);
       const oldBlobUrl = this.pdfViewingBlobUrl();
 
-      if (oldBlobUrl) {
-        URL.revokeObjectURL(oldBlobUrl);
-      }
+      this.pdfService.revokeBlobUrl(oldBlobUrl);
 
       this.pdfViewing.set(factura);
-      this.pdfViewingBlobUrl.set(blobUrl);
+      this.pdfViewingBlobUrl.set(asset.blobUrl);
       this.pdfViewingConfig.set({
-        url: blobUrl,
-        filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(this.obtenerNumeroComprobante(factura))}.pdf`,
+        url: asset.blobUrl,
+        filename: asset.info.filename,
         title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(this.obtenerNumeroComprobante(factura))}`
       });
     } catch (error) {
@@ -416,10 +411,7 @@ export class FacturarNuevoComponent {
   }
 
   cerrarVisorPdf() {
-    const blobUrl = this.pdfViewingBlobUrl();
-    if (blobUrl) {
-      URL.revokeObjectURL(blobUrl);
-    }
+    this.pdfService.revokeBlobUrl(this.pdfViewingBlobUrl());
 
     this.pdfViewing.set(null);
     this.pdfViewingBlobUrl.set(null);
@@ -448,18 +440,9 @@ export class FacturarNuevoComponent {
     }
 
     try {
-      const pdfBlob = await this.pdfService.getPdfBlob(factura);
-      const blobUrl = URL.createObjectURL(pdfBlob);
-
-      const printOptions = {
-        url: blobUrl,
-        filename: `Factura_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(this.obtenerNumeroComprobante(factura))}.pdf`,
-        title: `Factura ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(this.obtenerNumeroComprobante(factura))}`
-      };
-      await this.pdfJsPrintService.printPdfDirect(printOptions);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      await this.pdfService.printFactura(factura);
     } catch (error) {
-      console.error('âŒ Error imprimiendo:', error);
+      console.error('Error imprimiendo:', error);
       alert('Hubo un error enviando a imprimir');
     }
   }
@@ -490,3 +473,4 @@ export class FacturarNuevoComponent {
     }, 100);
   }
 }
+

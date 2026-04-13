@@ -1,12 +1,19 @@
 import { Injectable, inject } from '@angular/core';
 import { FacturaPdfService } from './factura-pdf.service';
 import { ContribuyenteService } from './contribuyente.service';
+import { PdfJsPrintService } from './pdfjs-print.service';
 
 export interface PdfInfo {
   filename: string;
   title: string;
   text: string;
   factura: any; // Se pasa el objeto factura completo para generarlo en tiempo real
+}
+
+export interface PdfAsset {
+  blob: Blob;
+  blobUrl: string;
+  info: PdfInfo;
 }
 
 @Injectable({
@@ -16,6 +23,7 @@ export class PdfService {
 
   private facturaPdfService = inject(FacturaPdfService);
   private contribuyenteService = inject(ContribuyenteService);
+  private pdfJsPrintService = inject(PdfJsPrintService);
 
   constructor() {}
 
@@ -41,6 +49,20 @@ export class PdfService {
       throw new Error('Configuración de contribuyente no disponible');
     }
     return await this.facturaPdfService.generarFacturaPdf(contribuyente, factura);
+  }
+
+  async createPdfAsset(factura: any): Promise<PdfAsset> {
+    const info = this.createPdfInfo(factura);
+    const blob = await this.getPdfBlob(factura);
+    const blobUrl = URL.createObjectURL(blob);
+
+    return { blob, blobUrl, info };
+  }
+
+  revokeBlobUrl(blobUrl?: string | null): void {
+    if (blobUrl) {
+      URL.revokeObjectURL(blobUrl);
+    }
   }
 
   /**
@@ -202,6 +224,20 @@ export class PdfService {
       title: 'Ticket de Venta Emitido',
       text: `Ticket ${tipoComprobante} ${numeroSinCeros} - ${montoFormateado}`
     };
+  }
+
+  async printFactura(factura: any): Promise<void> {
+    const asset = await this.createPdfAsset(factura);
+
+    try {
+      await this.pdfJsPrintService.printPdfDirect({
+        url: asset.blobUrl,
+        filename: asset.info.filename,
+        title: asset.info.title
+      });
+    } finally {
+      setTimeout(() => this.revokeBlobUrl(asset.blobUrl), 10000);
+    }
   }
 
   /**

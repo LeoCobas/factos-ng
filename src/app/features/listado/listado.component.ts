@@ -14,7 +14,6 @@ import { CurrencyPipe } from '@angular/common';
 import { supabase } from '../../core/services/supabase.service';
 import { PdfService } from '../../core/services/pdf.service';
 import { FacturacionService } from '../../core/services/facturacion.service';
-import { PdfJsPrintService } from '../../core/services/pdfjs-print.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 
 import { PdfViewerComponent, PdfViewerConfig } from '../../shared/components/ui/pdf-viewer.component';
@@ -389,7 +388,6 @@ export class ListadoComponent {
   constructor(
     private pdfService: PdfService,
     private facturacionService: FacturacionService,
-    private pdfJsPrintService: PdfJsPrintService,
     private sanitizer: DomSanitizer
   ) {
     // Cargar facturas iniciales
@@ -431,24 +429,18 @@ export class ListadoComponent {
     }
     
     try {
-      // Descargar PDF usando el servicio centralizado (se genera al vuelo)
-      const pdfBlob = await this.pdfService.getPdfBlob(factura);
-      const blobUrl = URL.createObjectURL(pdfBlob);
+      const asset = await this.pdfService.createPdfAsset(factura);
 
-      // Establecer la información básica del modal
       this.pdfViewing.set(factura);
       this.pdfViewingInfo.set({
-        title: `Ticket ${this.obtenerTipoComprobante(factura)} ${this.obtenerNumeroSinCeros(factura.numero_factura || factura.numero_comprobante || '0')}`,
-        url: blobUrl,
-        filename: `Ticket_${this.obtenerTipoComprobante(factura).toLowerCase().replace(' ', '-')}-${factura.numero_factura || factura.numero_comprobante || '0'}.pdf`
+        title: asset.info.title,
+        url: asset.blobUrl,
+        filename: asset.info.filename
       });
-      // Limpiar blob URL anterior si existe
+
       const oldBlobUrl = this.pdfViewingBlobUrl();
-      if (oldBlobUrl) {
-        URL.revokeObjectURL(oldBlobUrl);
-      }
-      
-      this.pdfViewingBlobUrl.set(blobUrl);
+      this.pdfService.revokeBlobUrl(oldBlobUrl);
+      this.pdfViewingBlobUrl.set(asset.blobUrl);
     } catch (error) {
       console.error('❌ Error al cargar PDF en modal:', error);
       this.cerrarVisorPdf();
@@ -491,19 +483,7 @@ export class ListadoComponent {
     }
     
     try {
-      // Obtenemos el Blob (Ticket) generado al vuelo
-      const pdfBlob = await this.pdfService.getPdfBlob(factura);
-      const blobUrl = URL.createObjectURL(pdfBlob);
-
-      const printOptions = {
-        url: blobUrl,
-        filename: `Ticket_${this.obtenerTipoComprobante(factura).replace(' ', '')}_${this.obtenerNumeroSinCeros(factura.numero_factura || factura.numero_comprobante || '0')}.pdf`,
-        title: `Ticket ${this.obtenerTipoComprobante(factura)} N° ${this.obtenerNumeroSinCeros(factura.numero_factura || factura.numero_comprobante || '0')}`
-      };
-      await this.pdfJsPrintService.printPdfDirect(printOptions);
-      
-      // Cleanup de url para que no quede ocupando la memoria del browser
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      await this.pdfService.printFactura(factura);
     } catch (error) {
       console.error('Error al imprimir:', error);
       alert('Hubo un error enviando a imprimir');
@@ -590,19 +570,10 @@ export class ListadoComponent {
         vencimiento_cae: notaCredito.vencimiento_cae
       };
       
-      const pdfBlob = await this.pdfService.getPdfBlob(notaCreditoTemporal);
-      const blobUrl = URL.createObjectURL(pdfBlob);
-
-      const printOptions = {
-        url: blobUrl,
-        filename: `NotaCredito_${notaCredito.numero}.pdf`,
-        title: `Nota de Crédito N° ${notaCredito.numero}`
-      };
-      await this.pdfJsPrintService.printPdfDirect(printOptions);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      await this.pdfService.printFactura(notaCreditoTemporal);
     } catch (error) {
-      console.error('Error al imprimir nota de crédito:', error);
-      alert('Hubo un error al intentar imprimir la nota de crédito');
+      console.error('Error al imprimir nota de credito:', error);
+      alert('Hubo un error al intentar imprimir la nota de credito');
     }
   }
 
@@ -1049,3 +1020,4 @@ export class ListadoComponent {
     this.pdfViewingBlobUrl.set(null);
   }
 }
+
