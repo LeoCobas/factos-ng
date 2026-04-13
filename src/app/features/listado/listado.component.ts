@@ -36,6 +36,7 @@ interface Factura {
   // Para notas de crédito: número del comprobante que anula
   factura_anulada?: string;
   comprobante_asociado_id?: string;
+  nota_credito_anuladora?: string;
 }
 
 @Component({
@@ -676,6 +677,35 @@ export class ListadoComponent {
         return;
       }
 
+      const idsFacturasAnuladas = (comprobantes || [])
+        .filter(
+          c => c.estado === 'anulada' && !String(c.tipo_comprobante).includes('NOTA DE CREDITO')
+        )
+        .map(c => c.id);
+
+      const mapaNotasCreditoPorAsociado = new Map<string, string>();
+
+      if (idsFacturasAnuladas.length > 0) {
+        const { data: notasCreditoAsociadas, error: notasError } = await supabase
+          .from('comprobantes')
+          .select('comprobante_asociado_id, numero_comprobante, created_at')
+          .eq('contribuyente_id', contribuyente.id)
+          .in('comprobante_asociado_id', idsFacturasAnuladas)
+          .like('tipo_comprobante', 'NOTA DE CREDITO%')
+          .order('created_at', { ascending: false });
+
+        if (notasError) {
+          console.error('Error al cargar notas de crédito asociadas:', notasError);
+        } else {
+          for (const nc of notasCreditoAsociadas || []) {
+            if (!nc.comprobante_asociado_id || !nc.numero_comprobante) continue;
+            if (!mapaNotasCreditoPorAsociado.has(nc.comprobante_asociado_id)) {
+              mapaNotasCreditoPorAsociado.set(nc.comprobante_asociado_id, nc.numero_comprobante);
+            }
+          }
+        }
+      }
+
       // Convertir al formato esperado por el template
       const comprobantesFormateados: Factura[] = (comprobantes || []).map(c => {
         const esNC = c.tipo_comprobante.includes('NOTA DE CREDITO');
@@ -694,7 +724,8 @@ export class ListadoComponent {
           created_at: c.created_at,
           updated_at: c.updated_at,
           comprobante_asociado_id: c.comprobante_asociado_id || undefined,
-          factura_anulada: esNC ? (c as any).comprobante_asociado?.numero_comprobante : undefined
+          factura_anulada: esNC ? (c as any).comprobante_asociado?.numero_comprobante : undefined,
+          nota_credito_anuladora: !esNC ? mapaNotasCreditoPorAsociado.get(c.id) : undefined
         };
       });
       
@@ -766,8 +797,12 @@ export class ListadoComponent {
   obtenerNotaCreditoQueAnula(factura: Factura): string | null {
     // Solo para facturas anuladas
     if (factura.estado !== 'anulada') return null;
-    
-    // Usar el mapa para búsqueda O(1)
+
+    if (factura.nota_credito_anuladora) {
+      return this.obtenerNumeroSinCeros(factura.nota_credito_anuladora);
+    }
+
+    // Fallback cuando la NC está cargada en la fecha visible
     return this.mapaFacturasAnuladas().get(factura.numero_factura) || null;
   }
 
