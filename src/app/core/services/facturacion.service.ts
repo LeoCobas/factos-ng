@@ -265,8 +265,10 @@ export class FacturacionService {
         throw new Error('No se pudo obtener el comprobante original');
       }
 
-      // Extraer número del comprobante (parte después del guión)
-      const cbteNroStr = numeroComprobante.split('-').pop() || '1';
+      const numeroComprobanteOriginal = comprobanteOriginal.numero_comprobante || numeroComprobante;
+
+      // Extraer número del comprobante original desde BD
+      const cbteNroStr = numeroComprobanteOriginal.split('-').pop() || '1';
       const cbteNro = parseInt(cbteNroStr);
 
       // Convertir fecha del comprobante original a formato YYYYMMDD
@@ -276,6 +278,7 @@ export class FacturacionService {
 
       const requestBody = {
         punto_venta: contribuyente.punto_venta,
+        punto_venta_original: comprobanteOriginal.punto_venta ?? contribuyente.punto_venta,
         tipo_comprobante_original: comprobanteOriginal.tipo_comprobante,
         monto: monto,
         concepto_afip: this.getConceptoAfip(actividad),
@@ -325,7 +328,7 @@ export class FacturacionService {
           cae: responseData.data.CAE,
           vencimiento_cae: responseData.data.CAEFchVto,
           estado: 'emitida',
-          concepto: `Anulación de ${numeroComprobante}`,
+          concepto: `Anulación de ${numeroComprobanteOriginal}`,
           pdf_url: null,
           comprobante_asociado_id: comprobanteId
         })

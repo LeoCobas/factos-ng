@@ -378,6 +378,7 @@ async function handleCrearNotaCredito(req: Request, body: any): Promise<Response
     const { arca } = await getUserArcaInstance(req);
     const {
       punto_venta,
+      punto_venta_original,
       tipo_comprobante_original,
       monto,
       concepto_afip,
@@ -422,6 +423,10 @@ async function handleCrearNotaCredito(req: Request, body: any): Promise<Response
         error: 'Validación fallida: cbte_asociado_fecha debe estar en formato YYYYMMDD'
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+
+    const puntoVentaOriginal = Number.isInteger(punto_venta_original) && punto_venta_original > 0
+      ? punto_venta_original
+      : punto_venta;
 
     const tipoNC = String(tipo_comprobante_original).toUpperCase().includes(' C')
       ? 'NOTA DE CREDITO C'
@@ -472,7 +477,7 @@ async function handleCrearNotaCredito(req: Request, body: any): Promise<Response
       MonCotiz: 1,
       CbtesAsoc: [{
         Tipo: cbteTipoOriginal,
-        PtoVta: punto_venta,
+        PtoVta: puntoVentaOriginal,
         Nro: cbte_asociado_nro,
         CbteFch: parseInt(String(cbte_asociado_fecha), 10),
       }],
