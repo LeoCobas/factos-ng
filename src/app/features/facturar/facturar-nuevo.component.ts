@@ -268,7 +268,7 @@ export class FacturarNuevoComponent {
         this.esExito.set(true);
         this.mensaje.set(`¡Factura emitida exitosamente! Número: ${resultado.comprobante.numero_comprobante}`);
         this.facturaEmitida.set(resultado.comprobante);
-        await this.cargarFacturasRecientes();
+        void this.cargarFacturasRecientes();
         this.formFactura.reset({
           monto: '',
           fecha: this.obtenerFechaHoy()

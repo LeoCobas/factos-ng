@@ -122,10 +122,22 @@ export class FacturacionService {
     if (!session) {
       throw new Error('No hay sesión activa');
     }
-    await supabase.auth.refreshSession();
+    const expiresAtMs = session.expires_at ? session.expires_at * 1000 : null;
+    const shouldRefresh = expiresAtMs !== null && (expiresAtMs - Date.now()) < 60_000;
 
-    const { data: { session: freshSession } } = await supabase.auth.getSession();
-    const accessToken = freshSession?.access_token ?? session.access_token;
+    if (shouldRefresh) {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error) {
+        throw new Error('No se pudo refrescar la sesiÃ³n');
+      }
+
+      const refreshedToken = data.session?.access_token;
+      if (refreshedToken) {
+        return refreshedToken;
+      }
+    }
+
+    const accessToken = session.access_token;
 
     if (!accessToken) {
       throw new Error('No se pudo obtener un token de sesión válido');
