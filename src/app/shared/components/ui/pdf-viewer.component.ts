@@ -1,12 +1,11 @@
 import { Component, input, signal, AfterViewInit, ViewChild, ElementRef, OnDestroy, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { supabase } from '../../../core/services/supabase.service';
 
 // PDF.js tipos usando el archivo centralizado
 /// <reference path="../../../../types/pdfjs.d.ts" />
 
 export interface PdfViewerConfig {
-  url: string;           // URL del PDF (blob URL local o URL externa)
+  url: string;           // Blob URL del PDF generado localmente
   title: string;         // Título para mostrar
   filename: string;      // Nombre del archivo
 }
@@ -257,37 +256,6 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
     console.log('✅ Worker configurado:', workerSrc);
   }
 
-  /**
-   * Descargar PDF usando el pdf-proxy de Supabase (reutiliza lógica del servicio de impresión)
-   */
-  private async downloadPdfArrayBuffer(pdfUrl: string): Promise<ArrayBuffer> {
-    // Obtener session token para autenticación
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw new Error('No hay sesión activa');
-    }
-
-    // Usar el mismo pdf-proxy que ya existe en el sistema
-    const proxyUrl = `https://ifkfofyylfkxwtxvyewi.supabase.co/functions/v1/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
-    console.log('🌐 [DEBUG] PDF Viewer usando pdf-proxy:', proxyUrl);
-    
-    const response = await fetch(proxyUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error del pdf-proxy: ${response.status} ${response.statusText}`);
-    }
-    
-    const arrayBuffer = await response.arrayBuffer();
-    console.log('✅ [DEBUG] PDF descargado exitosamente del proxy para el visor');
-    
-    return arrayBuffer;
-  }
-  
   private async loadPdf() {
     try {
       this.loading.set(true);
@@ -296,28 +264,10 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
       const pdfUrl = this.config().url;
       console.log('📄 Cargando PDF:', pdfUrl);
       
-      let loadingTask: any;
-      
-      // Detectar si es una blob URL local o una URL externa
-      if (pdfUrl.startsWith('blob:')) {
-        console.log('🔗 [DEBUG] Detectada blob URL local, cargando directamente...');
-        // Para blob URLs locales, cargar directamente sin proxy
-        loadingTask = window.pdfjsLib.getDocument({
-          url: pdfUrl,
-          verbosity: 0
-        });
-      } else {
-        console.log('🌐 [DEBUG] Detectada URL externa, usando pdf-proxy de Supabase...');
-        // Para URLs externas, usar el pdf-proxy de Supabase
-        const arrayBuffer = await this.downloadPdfArrayBuffer(pdfUrl);
-        console.log('✅ [DEBUG] ArrayBuffer obtenido del proxy, tamaño:', arrayBuffer.byteLength, 'bytes');
-        
-        // Cargar PDF desde ArrayBuffer (evita CORS)
-        loadingTask = window.pdfjsLib.getDocument({
-          data: arrayBuffer,
-          verbosity: 0
-        });
-      }
+      const loadingTask = window.pdfjsLib.getDocument({
+        url: pdfUrl,
+        verbosity: 0
+      });
       
       this.pdfDocument = await loadingTask.promise;
       this.totalPages.set(this.pdfDocument.numPages);

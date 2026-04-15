@@ -1,11 +1,10 @@
 import { Injectable } from '@angular/core';
-import { supabase } from './supabase.service';
 
 // PDF.js tipos usando el archivo centralizado
 /// <reference path="../../../types/pdfjs.d.ts" />
 
 export interface DirectPrintOptions {
-  url: string;           // URL del PDF
+  url: string;           // Blob URL del PDF generado localmente
   filename: string;      // Nombre del archivo (para logs)
   title?: string;        // Título (para logs)
 }
@@ -150,46 +149,27 @@ export class PdfJsPrintService {
       console.error('❌ [ERROR] Error en impresión directa:', error);
       console.error('❌ [ERROR] Stack trace:', error instanceof Error ? error.stack : 'No stack available');
       
-      // Determinar tipo de error para mejor debugging
-      if (error instanceof Error) {
-        if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
-          console.error('❌ [ERROR] Problema CORS detectado - PDF externo no accesible');
-        } else if (error.message.includes('HTTP Error')) {
-          console.error('❌ [ERROR] Problema de red o servidor');
-        } else {
-          console.error('❌ [ERROR] Error de PDF.js o rendering');
-        }
-      }
-      
-      // Fallback: abrir PDF original
-      console.log('🔄 [FALLBACK] Abriendo PDF original en nueva ventana');
-      window.open(options.url, '_blank');
+      console.error('❌ [ERROR] Error de PDF.js o rendering');
       
       throw error;
     }
   }
 
   /**
-   * Cargar documento PDF usando el pdf-proxy de Supabase (evita CORS + reutiliza código)
+   * Cargar documento PDF desde el blob generado localmente.
    */
   private async loadPdf(pdfUrl: string): Promise<any> {
     try {
       console.log('📄 [DEBUG] Cargando PDF:', pdfUrl);
       console.log('📄 [DEBUG] window.pdfjsLib disponible:', !!window.pdfjsLib);
       console.log('📄 [DEBUG] getDocument disponible:', !!window.pdfjsLib?.getDocument);
-      
-      // SOLUCIÓN ELEGANTE: Usar el pdf-proxy existente de Supabase
-      console.log('🔄 [DEBUG] Descargando PDF usando pdf-proxy de Supabase...');
-      const arrayBuffer = await this.downloadPdfArrayBuffer(pdfUrl);
-      console.log('✅ [DEBUG] ArrayBuffer obtenido del proxy, tamaño:', arrayBuffer.byteLength, 'bytes');
-      
-      // Cargar PDF desde ArrayBuffer en lugar de URL
+
       const loadingTask = window.pdfjsLib.getDocument({
-        data: arrayBuffer,
+        url: pdfUrl,
         verbosity: 0 // Reducir logs de PDF.js
       });
-      
-      console.log('📄 [DEBUG] LoadingTask creado desde ArrayBuffer:', !!loadingTask);
+
+      console.log('📄 [DEBUG] LoadingTask creado desde blob URL:', !!loadingTask);
       
       const pdfDocument = await loadingTask.promise;
       console.log(`✅ [DEBUG] PDF cargado exitosamente: ${pdfDocument.numPages} páginas`);
@@ -199,44 +179,9 @@ export class PdfJsPrintService {
     } catch (error) {
       console.error('❌ [ERROR] Error cargando PDF:', error);
       console.error('❌ [ERROR] URL que falló:', pdfUrl);
-      console.error('❌ [ERROR] Tipo de error:', error instanceof TypeError ? 'TypeError (posible CORS)' : 'Otro error');
       console.error('❌ [ERROR] window.pdfjsLib:', window.pdfjsLib);
       throw new Error(`No se pudo cargar el PDF: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
-  }
-
-  private async downloadPdfArrayBuffer(pdfUrl: string): Promise<ArrayBuffer> {
-    if (pdfUrl.startsWith('blob:')) {
-      console.log('🌐 [DEBUG] Fetching local blob directly:', pdfUrl);
-      const response = await fetch(pdfUrl);
-      return await response.arrayBuffer();
-    }
-
-    // Obtener session token para autenticación
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw new Error('No hay sesión activa');
-    }
-
-    // Usar el mismo pdf-proxy que ya existe en el sistema
-    const proxyUrl = `https://ifkfofyylfkxwtxvyewi.supabase.co/functions/v1/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
-    console.log('🌐 [DEBUG] Usando pdf-proxy:', proxyUrl);
-    
-    const response = await fetch(proxyUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error del pdf-proxy: ${response.status} ${response.statusText}`);
-    }
-    
-    const arrayBuffer = await response.arrayBuffer();
-    console.log('✅ [DEBUG] PDF descargado exitosamente del proxy');
-    
-    return arrayBuffer;
   }
 
   /**
