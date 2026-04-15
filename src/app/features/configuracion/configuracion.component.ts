@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } 
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import { ThemeService, ThemeMode } from '../../core/services/theme.service';
 import { supabase } from '../../core/services/supabase.service';
+import { environment } from '../../../environments/environment';
 
 type TabId = 'facturacion' | 'certificado' | 'cuenta';
 
@@ -430,6 +431,7 @@ interface MensajeEstado {
 })
 export class ConfiguracionComponent implements OnInit {
   private fb = inject(FormBuilder);
+  private readonly supabaseUrl = environment.supabase.url;
   readonly themeService = inject(ThemeService);
   readonly contribuyenteService = inject(ContribuyenteService);
 
@@ -493,6 +495,35 @@ export class ConfiguracionComponent implements OnInit {
     }
   }
 
+  private async getFreshAccessToken(): Promise<string> {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error('Sesion no activa');
+    }
+
+    const expiresAtMs = session.expires_at ? session.expires_at * 1000 : null;
+    const shouldRefresh = expiresAtMs !== null && (expiresAtMs - Date.now()) < 60_000;
+
+    if (shouldRefresh) {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error) {
+        throw new Error('No se pudo refrescar la sesion');
+      }
+
+      const refreshedToken = data.session?.access_token;
+      if (refreshedToken) {
+        return refreshedToken;
+      }
+    }
+
+    if (!session.access_token) {
+      throw new Error('No se pudo obtener un token valido');
+    }
+
+    return session.access_token;
+  }
+
   async cargarConfiguracion(): Promise<void> {
     this.cargando.set(true);
     try {
@@ -542,11 +573,7 @@ export class ConfiguracionComponent implements OnInit {
     this.mensajePadron.set(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        this.mensajePadron.set({ texto: 'Sesi\u00f3n no activa', tipo: 'error' });
-        return;
-      }
+      const accessToken = await this.getFreshAccessToken();
 
       await this.contribuyenteService.cargarContribuyente();
       if (!this.contribuyenteService.contribuyente()) {
@@ -558,25 +585,16 @@ export class ConfiguracionComponent implements OnInit {
         return;
       }
 
-      // Refrescar token y enviar Authorization expl\u00edcita: evita 401 del gateway cuando el JWT
-      // est\u00e1 al l\u00edmite o el cliente no adjunta el header en functions.invoke.
-      await supabase.auth.refreshSession();
-      const { data: { session: fresh } } = await supabase.auth.getSession();
-      const accessToken = fresh?.access_token ?? session.access_token;
-
-      const response = await supabase.functions.invoke('padron-lookup', {
-        body: { cuit },
+      const response = await fetch(`${this.supabaseUrl}/functions/v1/padron-lookup`, {
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,
         },
+        body: JSON.stringify({ cuit }),
       });
 
-      if (response.error) {
-        this.mensajePadron.set({ texto: response.error.message || 'Error de conexi\u00f3n con el padr\u00f3n', tipo: 'error' });
-        return;
-      }
-
-      const result = response.data;
+      const result = await response.json();
       if (result && result.success) {
         const datos = result.data;
         // Autocompletar campos
