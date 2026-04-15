@@ -37,6 +37,7 @@ interface FacturaReciente {
                 autocomplete="off"
                 placeholder="0"
                 [value]="displayMonto()"
+                (beforeinput)="onMontoBeforeInput($event)"
                 (input)="onMontoInput($event)"
                 class="form-input w-full text-2xl sm:text-3xl text-center py-2 sm:py-4 px-3"
                 [class.border-red-500]="formFactura.get('monto')?.invalid && formFactura.get('monto')?.touched"
@@ -389,6 +390,22 @@ export class FacturarNuevoComponent {
       const cursorPosition = this.displayMonto().length;
       input.setSelectionRange(cursorPosition, cursorPosition);
     });
+  }
+
+  onMontoBeforeInput(event: InputEvent): void {
+    if (event.inputType !== 'insertText') {
+      return;
+    }
+
+    const inputData = event.data || '';
+    if (!/\d/.test(inputData)) {
+      return;
+    }
+
+    const [, decimalPart = ''] = this.rawMonto().split('.');
+    if (this.rawMonto().includes('.') && decimalPart.length >= 2) {
+      event.preventDefault();
+    }
   }
 
   private getNextMontoValue(currentValue: string, inputEvent: InputEvent, fallbackValue: string): string {
