@@ -28,14 +28,14 @@
   },
   "private": true,
   "dependencies": {
-    "@angular/cdk": "^20.1.6",
-    "@angular/common": "^20.1.0",
-    "@angular/compiler": "^20.1.0",
-    "@angular/core": "^20.1.0",
-    "@angular/forms": "^20.1.0",
-    "@angular/platform-browser": "^20.1.0",
-    "@angular/router": "^20.1.0",
-    "@angular/service-worker": "^20.1.0",
+    "@angular/cdk": "^20.2.14",
+    "@angular/common": "^20.3.18",
+    "@angular/compiler": "^20.3.18",
+    "@angular/core": "^20.3.18",
+    "@angular/forms": "^20.3.18",
+    "@angular/platform-browser": "^20.3.18",
+    "@angular/router": "^20.3.18",
+    "@angular/service-worker": "^20.3.18",
     "@supabase/supabase-js": "^2.55.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -48,9 +48,9 @@
     "zone.js": "~0.15.0"
   },
   "devDependencies": {
-    "@angular/build": "^20.1.6",
-    "@angular/cli": "^20.1.6",
-    "@angular/compiler-cli": "^20.1.0",
+    "@angular/build": "^20.3.23",
+    "@angular/cli": "^20.3.23",
+    "@angular/compiler-cli": "^20.3.18",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/postcss": "^4.1.12",
     "@tailwindcss/typography": "^0.5.16",
@@ -69,6 +69,7 @@
     "karma-jasmine-html-reporter": "~2.1.0",
     "postcss": "^8.5.6",
     "prettier": "^3.6.2",
+    "supabase": "^2.91.1",
     "tailwindcss": "^4.1.12",
     "typescript": "~5.8.2"
   }
