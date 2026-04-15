@@ -235,6 +235,7 @@ export class FacturacionService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'apikey': environment.supabase.anonKey,
             'Authorization': `Bearer ${accessToken}`,
           },
           body: JSON.stringify(requestBody),
@@ -306,6 +307,7 @@ export class FacturacionService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'apikey': environment.supabase.anonKey,
             'Authorization': `Bearer ${accessToken}`,
           },
           body: JSON.stringify(requestBody),

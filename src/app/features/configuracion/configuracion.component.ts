@@ -589,6 +589,7 @@ export class ConfiguracionComponent implements OnInit {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          apikey: environment.supabase.anonKey,
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ cuit }),
