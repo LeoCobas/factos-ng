@@ -174,6 +174,7 @@ export class FacturarNuevoComponent {
   _minFecha = signal<string>('');
   _maxFecha = signal<string>('');
 
+  rawMonto = signal('');
   displayMonto = signal('');
   facturasRecientes = signal<FacturaReciente[]>([]);
   cargandoFacturasRecientes = signal(false);
@@ -276,6 +277,7 @@ export class FacturarNuevoComponent {
           monto: '',
           fecha: this.obtenerFechaHoy()
         });
+        this.rawMonto.set('');
         this.displayMonto.set('');
       } else {
         throw new Error('Error al emitir factura');
@@ -374,12 +376,56 @@ export class FacturarNuevoComponent {
   }
 
   onMontoInput(event: Event): void {
+    const inputEvent = event as InputEvent;
     const input = event.target as HTMLInputElement;
-    const sanitizedValue = this.sanitizeMontoInput(input.value);
-    const parsedValue = this.parseMontoInput(sanitizedValue);
+    const nextRawValue = this.getNextMontoValue(this.rawMonto(), inputEvent, input.value);
+    const parsedValue = this.parseMontoInput(nextRawValue);
 
-    this.displayMonto.set(this.formatMontoInput(sanitizedValue));
+    this.rawMonto.set(nextRawValue);
+    this.displayMonto.set(this.formatMontoInput(nextRawValue));
     this.formFactura.get('monto')?.setValue(parsedValue ?? '');
+
+    queueMicrotask(() => {
+      const cursorPosition = this.displayMonto().length;
+      input.setSelectionRange(cursorPosition, cursorPosition);
+    });
+  }
+
+  private getNextMontoValue(currentValue: string, inputEvent: InputEvent, fallbackValue: string): string {
+    const inputType = inputEvent.inputType || '';
+    const inputData = inputEvent.data || '';
+
+    if (inputType === 'deleteContentBackward' || inputType === 'deleteContentForward') {
+      return currentValue.slice(0, -1);
+    }
+
+    if (inputType === 'insertText') {
+      return this.applyMontoInputCharacter(currentValue, inputData);
+    }
+
+    return this.sanitizeMontoInput(fallbackValue);
+  }
+
+  private applyMontoInputCharacter(currentValue: string, character: string): string {
+    if (/\d/.test(character)) {
+      if (!currentValue.includes('.')) {
+        const integerPart = (currentValue + character).replace(/^0+(?=\d)/, '');
+        return integerPart || '0';
+      }
+
+      const [integerPart, decimalPart = ''] = currentValue.split('.');
+      if (decimalPart.length >= 2) {
+        return currentValue;
+      }
+
+      return `${integerPart}.${decimalPart}${character}`;
+    }
+
+    if ((character === '.' || character === ',') && !currentValue.includes('.')) {
+      return currentValue ? `${currentValue}.` : '0.';
+    }
+
+    return currentValue;
   }
 
   private sanitizeMontoInput(value: string): string {
@@ -389,7 +435,7 @@ export class FacturarNuevoComponent {
     const decimalSeparatorIndex = Math.max(lastCommaIndex, lastDotIndex);
 
     if (decimalSeparatorIndex === -1) {
-      return cleanedValue.replace(/[.,]/g, '');
+      return cleanedValue.replace(/[.,]/g, '').replace(/^0+(?=\d)/, '');
     }
 
     const rawIntegerPart = cleanedValue.slice(0, decimalSeparatorIndex).replace(/[.,]/g, '');
