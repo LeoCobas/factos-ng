@@ -43,6 +43,18 @@ function getSupabaseClient(authHeader: string | null) {
   return createClient(supabaseUrl, supabaseKey);
 }
 
+async function getAuthenticatedUser(req: Request) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) throw new Error('No autorizado');
+
+  const supabase = getSupabaseClient(authHeader);
+  const token = authHeader.replace('Bearer ', '').trim();
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+
+  if (error || !user) throw new Error('Sesion invalida');
+  return { supabase, user, authHeader };
+}
+
 function getCbteTipo(tipoComprobante: string): number {
   const tipos: Record<string, number> = {
     'FACTURA A': 1, 'NOTA DE DEBITO A': 2, 'NOTA DE CREDITO A': 3,
@@ -134,14 +146,12 @@ function summarizeUnknownResult(raw: any): string {
 }
 
 async function getUserArcaInstance(req: Request) {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) throw new Error('No autorizado');
-
-  const supabaseUser = getSupabaseClient(authHeader);
+  const { supabase: supabaseUser, user } = await getAuthenticatedUser(req);
 
   const { data: contribuyente, error } = await supabaseUser
     .from('contribuyentes')
     .select('id, cuit, arca_cert, arca_key, arca_production, arca_ticket')
+    .eq('user_id', user.id)
     .single();
 
   if (error) throw new Error(error.message || 'No se pudo obtener el contribuyente');

@@ -1,5 +1,1 @@
-[functions.arca-proxy]
-verify_jwt = false
-
-[functions.padron-lookup]
-verify_jwt = false
+# Edge Functions use Supabase's default JWT verification.
