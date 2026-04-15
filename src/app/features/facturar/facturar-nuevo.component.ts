@@ -32,6 +32,9 @@ interface FacturaReciente {
               <input
                 id="monto"
                 type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                autocomplete="off"
                 placeholder="0"
                 [value]="displayMonto()"
                 (input)="onMontoInput($event)"
