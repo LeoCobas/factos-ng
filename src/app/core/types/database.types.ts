@@ -1,3 +1,11 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
 export interface Database {
   public: {
     Tables: {
@@ -13,15 +21,16 @@ export interface Database {
           ingresos_brutos: string | null;
           inicio_actividades: string | null;
           concepto: string | null;
-          actividad: 'bienes' | 'servicios' | null;
-          iva_porcentaje: number;
-          punto_venta: number;
+          actividad: string | null;
+          iva_porcentaje: number | null;
+          punto_venta: number | null;
           tipo_comprobante_default: string | null;
           arca_cert: string | null;
           arca_key: string | null;
-          arca_production: boolean;
-          created_at: string;
-          updated_at: string;
+          arca_production: boolean | null;
+          arca_ticket: Json | null;
+          created_at: string | null;
+          updated_at: string | null;
         };
         Insert: {
           id?: string;
@@ -34,15 +43,16 @@ export interface Database {
           ingresos_brutos?: string | null;
           inicio_actividades?: string | null;
           concepto?: string | null;
-          actividad?: 'bienes' | 'servicios' | null;
-          iva_porcentaje?: number;
-          punto_venta?: number;
+          actividad?: string | null;
+          iva_porcentaje?: number | null;
+          punto_venta?: number | null;
           tipo_comprobante_default?: string | null;
           arca_cert?: string | null;
           arca_key?: string | null;
-          arca_production?: boolean;
-          created_at?: string;
-          updated_at?: string;
+          arca_production?: boolean | null;
+          arca_ticket?: Json | null;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
         Update: {
           id?: string;
@@ -55,15 +65,16 @@ export interface Database {
           ingresos_brutos?: string | null;
           inicio_actividades?: string | null;
           concepto?: string | null;
-          actividad?: 'bienes' | 'servicios' | null;
-          iva_porcentaje?: number;
-          punto_venta?: number;
+          actividad?: string | null;
+          iva_porcentaje?: number | null;
+          punto_venta?: number | null;
           tipo_comprobante_default?: string | null;
           arca_cert?: string | null;
           arca_key?: string | null;
-          arca_production?: boolean;
-          created_at?: string;
-          updated_at?: string;
+          arca_production?: boolean | null;
+          arca_ticket?: Json | null;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
       };
       comprobantes: {
@@ -77,13 +88,13 @@ export interface Database {
           total: number;
           cae: string | null;
           vencimiento_cae: string | null;
-          estado: 'emitida' | 'anulada';
+          estado: string | null;
           concepto: string | null;
           pdf_url: string | null;
           afip_id: number | null;
           comprobante_asociado_id: string | null;
-          created_at: string;
-          updated_at: string;
+          created_at: string | null;
+          updated_at: string | null;
         };
         Insert: {
           id?: string;
@@ -95,13 +106,13 @@ export interface Database {
           total: number;
           cae?: string | null;
           vencimiento_cae?: string | null;
-          estado?: 'emitida' | 'anulada';
+          estado?: string | null;
           concepto?: string | null;
           pdf_url?: string | null;
           afip_id?: number | null;
           comprobante_asociado_id?: string | null;
-          created_at?: string;
-          updated_at?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
         Update: {
           id?: string;
@@ -113,20 +124,19 @@ export interface Database {
           total?: number;
           cae?: string | null;
           vencimiento_cae?: string | null;
-          estado?: 'emitida' | 'anulada';
+          estado?: string | null;
           concepto?: string | null;
           pdf_url?: string | null;
           afip_id?: number | null;
           comprobante_asociado_id?: string | null;
-          created_at?: string;
-          updated_at?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
       };
     };
   };
 }
 
-// Tipos de conveniencia
 export type Contribuyente = Database['public']['Tables']['contribuyentes']['Row'];
 export type ContribuyenteInsert = Database['public']['Tables']['contribuyentes']['Insert'];
 export type ContribuyenteUpdate = Database['public']['Tables']['contribuyentes']['Update'];

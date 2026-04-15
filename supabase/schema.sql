@@ -1,8 +1,8 @@
 -- ============================================================
--- FACTOS-NG Multi-Tenant Schema v3 (Arca SDK)
+-- FACTOS-NG Schema real alineado con app + Edge Functions
 -- 1 usuario = 1 contribuyente
--- Tabla única "comprobantes" (facturas + notas de crédito)
--- Facturación directa con ARCA/AFIP via Arca SDK
+-- Tickets WSAA persistidos en contribuyentes.arca_ticket
+-- Tabla unica "comprobantes" (facturas + notas de credito)
 -- ============================================================
 
 -- =========================
@@ -13,12 +13,22 @@ CREATE TABLE contribuyentes (
   user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
   cuit TEXT NOT NULL,
   razon_social TEXT NOT NULL,
-  -- Config de facturación
+  nombre_fantasia TEXT,
+  domicilio TEXT,
+  ingresos_brutos TEXT,
+  inicio_actividades DATE,
+  -- Config de facturacion
   concepto TEXT DEFAULT 'Servicios profesionales',
   actividad TEXT DEFAULT 'servicios' CHECK (actividad IN ('bienes', 'servicios')),
   iva_porcentaje NUMERIC DEFAULT 21.00,
   punto_venta INTEGER DEFAULT 4,
   tipo_comprobante_default TEXT DEFAULT 'FACTURA C',
+  -- Credenciales ARCA + cache de ticket WSAA
+  arca_cert TEXT,
+  arca_key TEXT,
+  arca_production BOOLEAN DEFAULT false,
+  arca_ticket JSONB,
+  condicion_iva TEXT DEFAULT 'Responsable Monotributo',
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
@@ -27,7 +37,7 @@ CREATE TABLE contribuyentes (
 CREATE INDEX idx_contribuyentes_user_id ON contribuyentes(user_id);
 
 -- =========================
--- 2. TABLA: comprobantes (Facturas + Notas de Crédito unificadas)
+-- 2. TABLA: comprobantes (Facturas + Notas de Credito unificadas)
 -- =========================
 CREATE TABLE comprobantes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -56,25 +66,11 @@ CREATE INDEX idx_comprobantes_contribuyente_fecha ON comprobantes(contribuyente_
 CREATE INDEX idx_comprobantes_asociado ON comprobantes(comprobante_asociado_id);
 
 -- =========================
--- 3. TABLA: wsaa_tickets (Cache de tickets de autenticación WSAA)
--- =========================
-CREATE TABLE wsaa_tickets (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  cuit TEXT NOT NULL,
-  service_name TEXT NOT NULL, -- 'wsfe', 'ws_sr_padron_a4', etc.
-  credentials JSONB NOT NULL, -- { header: {...}, credentials: {...} }
-  expires_at TIMESTAMPTZ NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(cuit, service_name)
-);
-
--- =========================
--- 4. ROW LEVEL SECURITY
+-- 3. ROW LEVEL SECURITY
 -- =========================
 
 ALTER TABLE contribuyentes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comprobantes ENABLE ROW LEVEL SECURITY;
--- wsaa_tickets: NO RLS (solo Edge Functions con service_role acceden)
 
 -- Contribuyentes: solo acceder al propio
 CREATE POLICY "contribuyentes_select_own"
@@ -133,7 +129,7 @@ CREATE POLICY "comprobantes_delete_own"
   );
 
 -- =========================
--- 5. TRIGGER: auto-update updated_at
+-- 4. TRIGGER: auto-update updated_at
 -- =========================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

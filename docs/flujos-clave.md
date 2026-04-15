@@ -39,7 +39,7 @@
 
 ### Supuesto operativo
 
-La app presupone RLS coherente con el usuario autenticado, pero el `schema.sql` incluido no está alineado con todos los campos que hoy se usan.
+La app presupone RLS coherente con el usuario autenticado y el `schema.sql` del repo refleja el modelo efectivo usado por frontend y Edge Functions.
 
 ## 3. Edge Functions
 
@@ -110,7 +110,7 @@ Supuesto según el código actual:
 - el SDK usa `handleTicket: true`
 - la implementación de `AuthRepository` guarda el ticket en `contribuyentes.arca_ticket`
 
-Esto contradice el `schema.sql`, que todavía define una tabla `wsaa_tickets`.
+El ticket se guarda en la misma fila de `contribuyentes`, no en una tabla separada.
 
 ## 5. Emisión de factura en la app
 

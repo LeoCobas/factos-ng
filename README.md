@@ -70,8 +70,6 @@ docs/
 ## Inconsistencias detectadas
 
 - `src/environments/environment*.ts` todavía conserva una sección `tusFacturas`, pero el flujo actual usa ARCA vía `arca-proxy`.
-- `supabase/schema.sql` define `wsaa_tickets`, pero las Edge Functions actuales guardan el ticket en `contribuyentes.arca_ticket`.
-- `supabase/schema.sql` no refleja varios campos tipados y usados por la app (`nombre_fantasia`, `domicilio`, `condicion_iva`, `arca_cert`, `arca_key`, `arca_production`, entre otros).
 - `supabase/config.toml` tiene `verify_jwt = false`, aunque las funciones igualmente dependen del header `Authorization` y del usuario autenticado para resolver el contribuyente.
 
 ## Puesta en marcha local
