@@ -384,34 +384,19 @@ export class FacturarNuevoComponent {
 
   private sanitizeMontoInput(value: string): string {
     const cleanedValue = value.replace(/[^\d.,]/g, '');
-    let integerPart = '';
-    let decimalPart = '';
-    let hasDecimalSeparator = false;
+    const lastCommaIndex = cleanedValue.lastIndexOf(',');
+    const lastDotIndex = cleanedValue.lastIndexOf('.');
+    const decimalSeparatorIndex = Math.max(lastCommaIndex, lastDotIndex);
 
-    for (const character of cleanedValue) {
-      if (/\d/.test(character)) {
-        if (hasDecimalSeparator) {
-          if (decimalPart.length < 2) {
-            decimalPart += character;
-          }
-        } else {
-          integerPart += character;
-        }
-        continue;
-      }
-
-      if (!hasDecimalSeparator) {
-        hasDecimalSeparator = true;
-      }
+    if (decimalSeparatorIndex === -1) {
+      return cleanedValue.replace(/[.,]/g, '');
     }
 
-    if (hasDecimalSeparator && integerPart === '') {
-      integerPart = '0';
-    }
+    const rawIntegerPart = cleanedValue.slice(0, decimalSeparatorIndex).replace(/[.,]/g, '');
+    const rawDecimalPart = cleanedValue.slice(decimalSeparatorIndex + 1).replace(/[.,]/g, '');
 
-    if (!hasDecimalSeparator) {
-      return integerPart;
-    }
+    const integerPart = rawIntegerPart || '0';
+    const decimalPart = rawDecimalPart.slice(0, 2);
 
     return `${integerPart}.${decimalPart}`;
   }
