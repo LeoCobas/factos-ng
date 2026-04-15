@@ -32,8 +32,8 @@ interface FacturaReciente {
               <input
                 id="monto"
                 type="text"
-                inputmode="numeric"
-                pattern="[0-9]*"
+                inputmode="decimal"
+                pattern="[0-9]+([.,][0-9]{0,2})?"
                 autocomplete="off"
                 placeholder="0"
                 [value]="displayMonto()"
@@ -263,7 +263,7 @@ export class FacturarNuevoComponent {
       const { monto, fecha } = this.formFactura.value;
       const fechaFormateada = this.convertirFechaADDMMYYYY(fecha);
       const resultado = await this.facturacionService.emitirFactura({
-        monto: parseFloat(monto),
+        monto: Number(monto),
         fecha: fechaFormateada
       });
 
@@ -375,16 +375,70 @@ export class FacturarNuevoComponent {
 
   onMontoInput(event: Event): void {
     const input = event.target as HTMLInputElement;
-    const rawValue = input.value.replace(/\D/g, '');
-    const numValue = parseInt(rawValue, 10);
+    const sanitizedValue = this.sanitizeMontoInput(input.value);
+    const parsedValue = this.parseMontoInput(sanitizedValue);
 
-    if (!isNaN(numValue) && numValue > 0) {
-      this.displayMonto.set(numValue.toLocaleString('es-AR'));
-      this.formFactura.get('monto')?.setValue(numValue);
-    } else {
-      this.displayMonto.set('');
-      this.formFactura.get('monto')?.setValue('');
+    this.displayMonto.set(this.formatMontoInput(sanitizedValue));
+    this.formFactura.get('monto')?.setValue(parsedValue ?? '');
+  }
+
+  private sanitizeMontoInput(value: string): string {
+    const cleanedValue = value.replace(/[^\d.,]/g, '');
+    let integerPart = '';
+    let decimalPart = '';
+    let hasDecimalSeparator = false;
+
+    for (const character of cleanedValue) {
+      if (/\d/.test(character)) {
+        if (hasDecimalSeparator) {
+          if (decimalPart.length < 2) {
+            decimalPart += character;
+          }
+        } else {
+          integerPart += character;
+        }
+        continue;
+      }
+
+      if (!hasDecimalSeparator) {
+        hasDecimalSeparator = true;
+      }
     }
+
+    if (hasDecimalSeparator && integerPart === '') {
+      integerPart = '0';
+    }
+
+    if (!hasDecimalSeparator) {
+      return integerPart;
+    }
+
+    return `${integerPart}.${decimalPart}`;
+  }
+
+  private parseMontoInput(value: string): number | null {
+    if (!value) {
+      return null;
+    }
+
+    const parsedValue = Number(value);
+    return Number.isFinite(parsedValue) ? parsedValue : null;
+  }
+
+  private formatMontoInput(value: string): string {
+    if (!value) {
+      return '';
+    }
+
+    const hasDecimalSeparator = value.includes('.');
+    const [integerPart = '0', decimalPart = ''] = value.split('.');
+    const formattedIntegerPart = Number(integerPart || '0').toLocaleString('es-AR');
+
+    if (!hasDecimalSeparator) {
+      return formattedIntegerPart;
+    }
+
+    return `${formattedIntegerPart},${decimalPart}`;
   }
 
   async verPDF(): Promise<void> {
