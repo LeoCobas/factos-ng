@@ -31,6 +31,12 @@ interface Factura {
   pdf_url?: string;
   concepto?: string;
   punto_venta?: number;
+  cliente_cuit?: string;
+  cliente_nombre?: string;
+  cliente_domicilio?: string;
+  cliente_condicion_iva?: string;
+  cliente_doc_tipo?: number;
+  cliente_doc_nro?: number;
   created_at?: string;
   updated_at?: string;
   // Para notas de crédito: número del comprobante que anula
@@ -106,7 +112,7 @@ interface Factura {
                   <div class="flex items-center justify-between gap-3">
                     <!-- Tipo de comprobante -->
                     <div class="text-xs font-medium text-foreground min-w-0 flex-shrink-0 text-left">
-                      {{ obtenerTipoComprobante(factura) }}
+                      {{ obtenerTipoComprobanteVista(factura) }}
                     </div>
                     <!-- Número de factura -->
                     <div class="font-mono text-sm min-w-0 flex-shrink-0 text-right text-foreground">
@@ -207,6 +213,18 @@ interface Factura {
                     
                     <!-- Información adicional -->
                     <div class="text-xs text-muted-foreground space-y-1">
+                      @if (factura.cliente_nombre) {
+                        <div>Cliente: {{ factura.cliente_nombre }}</div>
+                      }
+                      @if (factura.cliente_cuit) {
+                        <div>CUIT: {{ formatearCuitVista(factura.cliente_cuit) }}</div>
+                      }
+                      @if (factura.cliente_condicion_iva) {
+                        <div>CondiciÃ³n IVA: {{ factura.cliente_condicion_iva }}</div>
+                      }
+                      @if (factura.cliente_domicilio) {
+                        <div>Domicilio: {{ factura.cliente_domicilio }}</div>
+                      }
                       @if (esNotaCredito(factura) && factura.factura_anulada) {
                         <div class="font-medium text-orange-600">Anula factura: {{ obtenerNumeroSinCeros(factura.factura_anulada) }}</div>
                       }
@@ -721,6 +739,12 @@ export class ListadoComponent {
           pdf_url: c.pdf_url || undefined,
           concepto: c.concepto,
           punto_venta: c.punto_venta,
+          cliente_cuit: (c as any).cliente_cuit || undefined,
+          cliente_nombre: (c as any).cliente_nombre || undefined,
+          cliente_domicilio: (c as any).cliente_domicilio || undefined,
+          cliente_condicion_iva: (c as any).cliente_condicion_iva || undefined,
+          cliente_doc_tipo: (c as any).cliente_doc_tipo || undefined,
+          cliente_doc_nro: (c as any).cliente_doc_nro || undefined,
           created_at: c.created_at,
           updated_at: c.updated_at,
           comprobante_asociado_id: c.comprobante_asociado_id || undefined,
@@ -923,6 +947,21 @@ export class ListadoComponent {
 
   obtenerTextoEstado(estado: string): string {
     return estado === 'emitida' ? 'Emitida' : 'Anulada';
+  }
+
+  obtenerTipoComprobanteVista(factura: Factura): string {
+    if (factura.tipo_comprobante === 'NOTA DE CREDITO A') return 'NC A';
+    if (factura.tipo_comprobante === 'NOTA DE CREDITO B') return 'NC B';
+    if (factura.tipo_comprobante === 'NOTA DE CREDITO C') return 'NC C';
+    if (factura.tipo_comprobante === 'FACTURA A') return 'FC A';
+    if (factura.tipo_comprobante === 'FACTURA B') return 'FC B';
+    if (factura.tipo_comprobante === 'FACTURA C') return 'FC C';
+    return factura.tipo_comprobante || 'FC B';
+  }
+
+  formatearCuitVista(cuit?: string): string {
+    if (!cuit || cuit.length !== 11) return cuit || '';
+    return `${cuit.substring(0, 2)}-${cuit.substring(2, 10)}-${cuit.substring(10)}`;
   }
 
   async anularFactura(factura: Factura, event?: Event) {

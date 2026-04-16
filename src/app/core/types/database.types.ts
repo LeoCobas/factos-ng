@@ -92,6 +92,12 @@ export interface Database {
           concepto: string | null;
           pdf_url: string | null;
           afip_id: number | null;
+          cliente_cuit: string | null;
+          cliente_doc_tipo: number | null;
+          cliente_doc_nro: number | null;
+          cliente_nombre: string | null;
+          cliente_domicilio: string | null;
+          cliente_condicion_iva: string | null;
           comprobante_asociado_id: string | null;
           created_at: string | null;
           updated_at: string | null;
@@ -110,6 +116,12 @@ export interface Database {
           concepto?: string | null;
           pdf_url?: string | null;
           afip_id?: number | null;
+          cliente_cuit?: string | null;
+          cliente_doc_tipo?: number | null;
+          cliente_doc_nro?: number | null;
+          cliente_nombre?: string | null;
+          cliente_domicilio?: string | null;
+          cliente_condicion_iva?: string | null;
           comprobante_asociado_id?: string | null;
           created_at?: string | null;
           updated_at?: string | null;
@@ -128,6 +140,12 @@ export interface Database {
           concepto?: string | null;
           pdf_url?: string | null;
           afip_id?: number | null;
+          cliente_cuit?: string | null;
+          cliente_doc_tipo?: number | null;
+          cliente_doc_nro?: number | null;
+          cliente_nombre?: string | null;
+          cliente_domicilio?: string | null;
+          cliente_condicion_iva?: string | null;
           comprobante_asociado_id?: string | null;
           created_at?: string | null;
           updated_at?: string | null;

@@ -54,6 +54,12 @@ CREATE TABLE comprobantes (
   concepto TEXT,
   pdf_url TEXT,
   afip_id INTEGER,
+  cliente_cuit TEXT,
+  cliente_doc_tipo INTEGER,
+  cliente_doc_nro BIGINT,
+  cliente_nombre TEXT,
+  cliente_domicilio TEXT,
+  cliente_condicion_iva TEXT,
   -- Self-reference: la NC apunta a la factura que anula
   comprobante_asociado_id UUID REFERENCES comprobantes(id),
   created_at TIMESTAMPTZ DEFAULT now(),

@@ -244,8 +244,10 @@ export class PdfService {
    * Obtener tipo de comprobante formateado
    */
   private getTipoComprobante(factura: any): string {
+    if (factura.tipo_comprobante === 'FACTURA A') return 'FC A';
     if (factura.tipo_comprobante === 'FACTURA B') return 'FC B';
     if (factura.tipo_comprobante === 'FACTURA C') return 'FC C';
+    if (factura.tipo_comprobante === 'NOTA DE CREDITO A') return 'NC A';
     if (factura.tipo_comprobante === 'NOTA DE CREDITO B') return 'NC B';
     if (factura.tipo_comprobante === 'NOTA DE CREDITO C') return 'NC C';
     return factura.tipo_comprobante || 'FC B';

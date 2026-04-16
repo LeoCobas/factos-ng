@@ -3,6 +3,7 @@ import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
 import { Contribuyente } from '../types/database.types';
+import { getClienteDocData, normalizeCondicionIva } from '../utils/factura-cliente.util';
 
 // Inicializar fuentes virtuales de pdfMake
 (pdfMake as any).vfs = (pdfFonts as any).vfs;
@@ -35,6 +36,14 @@ export class FacturaPdfService {
     const importe = Number(comprobante.total || comprobante.monto || 0);
     const numero = String(comprobante.numero_comprobante || comprobante.numero_factura || '0000-00000000');
     const fechaFormat = this.formatearFechaArg(comprobante.fecha || new Date().toISOString());
+    const clienteNombre = comprobante.cliente_nombre || 'A CONSUMIDOR FINAL';
+    const clienteDomicilio = comprobante.cliente_domicilio || '-';
+    const clienteCondicionIva = normalizeCondicionIva(comprobante.cliente_condicion_iva);
+    const clienteDocData = getClienteDocData({
+      cuit: comprobante.cliente_cuit,
+      doc_tipo: comprobante.cliente_doc_tipo,
+      doc_nro: comprobante.cliente_doc_nro,
+    });
 
     const condicionIva =
       contribuyente.condicion_iva ||
@@ -128,14 +137,22 @@ export class FacturaPdfService {
 
     const receptorContent: Content[] = [
       {
-        text: 'A CONSUMIDOR FINAL',
+        text: clienteNombre,
         bold: true,
         fontSize: 8,
         alignment: 'center',
         margin: [0, 0, 0, 2]
       },
       {
-        text: 'Domicilio: -',
+        text: `CUIT/DOC: ${comprobante.cliente_cuit || clienteDocData.docNro || '-'}`,
+        fontSize: 7
+      },
+      {
+        text: `Cond. frente al IVA: ${clienteCondicionIva}`,
+        fontSize: 7
+      },
+      {
+        text: `Domicilio: ${clienteDomicilio}`,
         fontSize: 7
       },
       {
@@ -296,6 +313,11 @@ export class FacturaPdfService {
     const numero = String(comprobante.numero_comprobante || comprobante.numero_factura || '0');
     const nroCmpStr = numero.split('-').pop() || '1';
     const nroCmp = parseInt(nroCmpStr, 10);
+    const clienteDocData = getClienteDocData({
+      cuit: comprobante.cliente_cuit,
+      doc_tipo: comprobante.cliente_doc_tipo,
+      doc_nro: comprobante.cliente_doc_nro,
+    });
 
     const tipo = comprobante.tipo_comprobante || 'FACTURA C';
     const importe = Number(comprobante.total || comprobante.monto || 0);
@@ -310,8 +332,8 @@ export class FacturaPdfService {
       importe,
       moneda: 'PES',
       ctz: 1,
-      tipoDocRec: 99,
-      nroDocRec: 0,
+      tipoDocRec: clienteDocData.docTipo,
+      nroDocRec: clienteDocData.docNro,
       tipoCodAut: 'E',
       codAut: parseInt(comprobante.cae || '0', 10)
     };
