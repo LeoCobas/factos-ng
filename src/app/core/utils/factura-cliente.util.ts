@@ -33,7 +33,12 @@ export function normalizeCondicionIva(value: string | null | undefined): Cliente
     return 'Responsable Monotributo';
   }
 
-  if (normalized.includes('inscripto') || normalized.includes('regimen general')) {
+  if (
+    normalized.includes('inscripto') ||
+    normalized.includes('regimen general') ||
+    normalized.includes('iva activo') ||
+    normalized.includes('impuesto al valor agregado')
+  ) {
     return 'IVA Responsable Inscripto';
   }
 

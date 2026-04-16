@@ -148,17 +148,36 @@ function collectNestedValues(node: unknown, maxDepth: number, acc: string[] = []
   return acc;
 }
 
+function hasNonEmptyCollection(value: unknown): boolean {
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.keys(value as Record<string, unknown>).length > 0;
+  }
+
+  return false;
+}
+
 function inferCondicionIva(persona: Record<string, unknown>): string {
   const normalizedDump = normalizeText(collectNestedValues(persona, 6).join(' '));
-
-  if (normalizedDump.includes('monotrib')) return 'Responsable Monotributo';
-  if (normalizedDump.includes('exento')) return 'Exento';
-
-  if (
+  const hasMonotributoData =
+    hasNonEmptyCollection(persona.datosMonotributo) ||
+    hasNonEmptyCollection(persona.categoriasMonotributo) ||
+    normalizedDump.includes('monotrib');
+  const hasRegimenGeneralData =
+    hasNonEmptyCollection(persona.datosRegimenGeneral) ||
+    hasNonEmptyCollection(persona.impuestos) ||
+    normalizedDump.includes('regimen general') ||
     normalizedDump.includes('responsable inscripto') ||
     normalizedDump.includes('iva activo') ||
-    normalizedDump.includes('regimen general')
-  ) {
+    normalizedDump.includes('impuesto al valor agregado');
+
+  if (hasMonotributoData) return 'Responsable Monotributo';
+  if (normalizedDump.includes('exento')) return 'Exento';
+
+  if (hasRegimenGeneralData) {
     return 'IVA Responsable Inscripto';
   }
 
