@@ -271,6 +271,7 @@ export class FacturarNuevoComponent {
   mensajeCliente = signal<string | null>(null);
   mensajeClienteTipo = signal<'success' | 'error'>('success');
   clienteSeleccionado = signal<ClienteLookupResult | null>(null);
+  clienteCuitIngresado = signal('');
   _minFecha = signal<string>('');
   _maxFecha = signal<string>('');
 
@@ -280,7 +281,7 @@ export class FacturarNuevoComponent {
   cargandoFacturasRecientes = signal(false);
 
   readonly clienteCuitValido = computed(
-    () => sanitizeCuit(this.formFactura.get('cliente_cuit')?.value).length === 11
+    () => sanitizeCuit(this.clienteCuitIngresado()).length === 11
   );
   readonly tipoComprobanteResuelto = computed(() => {
     const contribuyente = this.contribuyenteService.contribuyente();
@@ -317,6 +318,7 @@ export class FacturarNuevoComponent {
       fecha: [this.obtenerFechaHoy(), Validators.required],
       cliente_cuit: [''],
     });
+    this.clienteCuitIngresado.set(this.formFactura.get('cliente_cuit')?.value || '');
 
     effect(() => {
       const contribuyente = this.contribuyenteService.contribuyente();
@@ -347,6 +349,7 @@ export class FacturarNuevoComponent {
       const cliente = await this.facturacionService.buscarClientePorCuit(cuit);
       this.clienteSeleccionado.set(cliente);
       this.formFactura.patchValue({ cliente_cuit: cliente.cuit || cuit });
+      this.clienteCuitIngresado.set(cliente.cuit || cuit);
       this.setMensajeCliente('Datos obtenidos desde ARCA.', 'success');
     } catch (error) {
       this.clienteSeleccionado.set(null);
@@ -362,11 +365,14 @@ export class FacturarNuevoComponent {
   limpiarCliente() {
     this.clienteSeleccionado.set(null);
     this.formFactura.patchValue({ cliente_cuit: '' });
+    this.clienteCuitIngresado.set('');
     this.setMensajeCliente(null, 'success');
   }
 
   onClienteCuitInput() {
-    const cuitIngresado = sanitizeCuit(this.formFactura.get('cliente_cuit')?.value);
+    const rawValue = this.formFactura.get('cliente_cuit')?.value || '';
+    this.clienteCuitIngresado.set(rawValue);
+    const cuitIngresado = sanitizeCuit(rawValue);
     if (cuitIngresado !== (this.clienteSeleccionado()?.cuit || '')) {
       this.clienteSeleccionado.set(null);
     }
@@ -451,6 +457,7 @@ export class FacturarNuevoComponent {
           fecha: this.obtenerFechaHoy(),
           cliente_cuit: '',
         });
+        this.clienteCuitIngresado.set('');
         this.rawMonto.set('');
         this.displayMonto.set('');
         this.clienteSeleccionado.set(null);
