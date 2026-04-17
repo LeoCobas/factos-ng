@@ -160,15 +160,34 @@ function hasNonEmptyCollection(value: unknown): boolean {
   return false;
 }
 
+function getNestedCollection(node: Record<string, unknown>, key: string): unknown {
+  if (key in node) {
+    return node[key];
+  }
+
+  const datosRegimenGeneral = node.datosRegimenGeneral;
+  if (datosRegimenGeneral && typeof datosRegimenGeneral === 'object') {
+    const nested = datosRegimenGeneral as Record<string, unknown>;
+    if (key in nested) {
+      return nested[key];
+    }
+  }
+
+  return null;
+}
+
 function inferCondicionIva(persona: Record<string, unknown>): string {
   const normalizedDump = normalizeText(collectNestedValues(persona, 6).join(' '));
   const hasMonotributoData =
     hasNonEmptyCollection(persona.datosMonotributo) ||
     hasNonEmptyCollection(persona.categoriasMonotributo) ||
     normalizedDump.includes('monotrib');
+  const regimenGeneralImpuestos =
+    getNestedCollection(persona, 'impuesto') ?? getNestedCollection(persona, 'impuestos');
   const hasRegimenGeneralData =
     hasNonEmptyCollection(persona.datosRegimenGeneral) ||
     hasNonEmptyCollection(persona.impuestos) ||
+    hasNonEmptyCollection(regimenGeneralImpuestos) ||
     normalizedDump.includes('regimen general') ||
     normalizedDump.includes('responsable inscripto') ||
     normalizedDump.includes('iva activo') ||
