@@ -30,18 +30,14 @@ interface FacturaReciente {
   template: `
     <div class="max-w-5xl mx-auto">
       <div class="grid gap-4 lg:grid-cols-[minmax(0,28rem)_minmax(20rem,24rem)] lg:items-start lg:justify-center">
-        <section class="card-surface p-6">
-          <form [formGroup]="formFactura" (ngSubmit)="emitirFactura()" class="space-y-4 sm:space-y-6">
-            <div class="flex items-center justify-between gap-3">
-              <div>
-                <h2 class="text-base font-semibold text-foreground">Nueva factura</h2>
-                <p class="text-sm text-muted-foreground">Completá el monto y, si hace falta, identificá al cliente.</p>
-              </div>
+        <section class="card-surface px-4 pb-5 pt-4 sm:p-6">
+          <form [formGroup]="formFactura" (ngSubmit)="emitirFactura()" class="space-y-3 sm:space-y-5">
+            <div class="flex items-center justify-end gap-3">
               <button
                 type="button"
                 (click)="toggleCliente()"
                 class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">
-                <span>{{ clienteExpandido() ? 'Ocultar cliente' : '+ Cliente' }}</span>
+                <span>{{ clienteExpandido() ? '- CUIT' : '+ CUIT' }}</span>
               </button>
             </div>
 
@@ -56,7 +52,7 @@ interface FacturaReciente {
                       maxlength="11"
                       formControlName="cliente_cuit"
                       (input)="onClienteCuitInput()"
-                      placeholder="30712345678"
+                      placeholder="Ingresar CUIT"
                       class="form-input w-full"
                     />
                   </div>
@@ -105,10 +101,6 @@ interface FacturaReciente {
                     @if (clienteSeleccionado()!.domicilio) {
                       <div class="text-sm text-muted-foreground">{{ clienteSeleccionado()!.domicilio }}</div>
                     }
-                  </div>
-                } @else {
-                  <div class="rounded-xl border border-dashed border-border p-3 text-sm text-muted-foreground">
-                    Si no cargás un CUIT, la factura se emite como consumidor final.
                   </div>
                 }
               </div>
@@ -725,3 +717,5 @@ export class FacturarNuevoComponent {
     }, 100);
   }
 }
+
+
