@@ -202,7 +202,7 @@ export class PdfService {
       document.execCommand('copy');
       alert('📋 Información de Factura copiada al portapapeles');
       return true;
-    } catch (error) {
+    } catch {
       alert(`📄 Información de la factura:\n\n${text}`);
       return false;
     } finally {

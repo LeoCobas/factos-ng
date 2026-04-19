@@ -30,7 +30,7 @@ export class InputComponent implements ControlValueAccessor {
   class = input<string>('');
 
   value = '';
-  onChange = (value: string) => {};
+  onChange = (_value: string) => {};
   onTouched = () => {};
 
   computedClass = computed(() =>
@@ -58,7 +58,7 @@ export class InputComponent implements ControlValueAccessor {
     this.onTouched = fn;
   }
 
-  setDisabledState(isDisabled: boolean): void {
+  setDisabledState(_isDisabled: boolean): void {
     // El estado disabled se maneja a través del input signal
   }
 }

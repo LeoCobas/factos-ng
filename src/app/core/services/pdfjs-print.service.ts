@@ -131,13 +131,13 @@ export class PdfJsPrintService {
       
       // Renderizar página a canvas con alta calidad
       console.log(`🖨️ [DEBUG] Renderizando página a canvas...`);
-      const { imageDataUrl, width, height } = await this.renderPageToCanvas(page);
-      console.log(`🖨️ [DEBUG] Canvas renderizado. Dimensiones: ${width}x${height}`);
+      const { imageDataUrl, width, height: _height } = await this.renderPageToCanvas(page);
+      console.log(`🖨️ [DEBUG] Canvas renderizado. Dimensiones: ${width}x${_height}`);
       console.log(`🖨️ [DEBUG] Data URL generado (primeros 100 chars):`, imageDataUrl.substring(0, 100));
       
       // Imprimir directamente usando la MISMA lógica del visor PDF.js
       console.log(`🖨️ [DEBUG] Abriendo ventana de impresión...`);
-      this.openDirectPrintWindow(imageDataUrl, width, height);
+      this.openDirectPrintWindow(imageDataUrl, width, _height);
       console.log(`🖨️ [DEBUG] Ventana de impresión abierta`);
       
       // Limpiar recursos
@@ -234,7 +234,7 @@ export class PdfJsPrintService {
   /**
    * Abrir ventana de impresión directa (EXACTA implementación del visor PDF.js)
    */
-  private openDirectPrintWindow(imageDataUrl: string, width: number, height: number): void {
+  private openDirectPrintWindow(imageDataUrl: string, width: number, _height: number): void {
     const printWindow = window.open('', '_blank');
     
     if (!printWindow) {

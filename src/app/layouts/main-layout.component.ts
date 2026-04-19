@@ -112,6 +112,7 @@ import { ContribuyenteService } from '../core/services/contribuyente.service';
   imports: [RouterOutlet]
 })
 export class MainLayoutComponent implements OnInit {
+  private readonly router = inject(Router);
   readonly contribuyenteService = inject(ContribuyenteService);
   
   isDarkTheme = signal(false);
@@ -120,7 +121,7 @@ export class MainLayoutComponent implements OnInit {
     return this.isDarkTheme() ? '/logob.png' : '/logo.png';
   });
 
-  constructor(private router: Router) {
+  constructor() {
     this.updateTheme();
 
     effect(() => {
