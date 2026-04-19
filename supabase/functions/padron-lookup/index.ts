@@ -135,6 +135,20 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMes
   }
 }
 
+async function fetchTaxpayerFromArca(arca: Arca, cuit: number): Promise<Record<string, unknown> | null> {
+  const constancia = await withTimeout(
+    arca.registerInscriptionProofService.getTaxpayerDetails(cuit),
+    ARCA_TIMEOUT_MS,
+    'Timeout consultando la constancia de inscripcion en ARCA.'
+  );
+
+  if (constancia && typeof constancia === 'object') {
+    return asRecord(constancia);
+  }
+
+  return null;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -206,19 +220,21 @@ Deno.serve(async (req: Request) => {
 
     try {
       const normalizedCuit = parseInt(String(cuit), 10);
-      const persona = await withTimeout(
-        arca.registerInscriptionProofService.getTaxpayerDetails(normalizedCuit),
-        ARCA_TIMEOUT_MS,
-        'Timeout consultando la constancia de inscripcion en ARCA.'
-      );
+      const personaObj = await fetchTaxpayerFromArca(arca, normalizedCuit);
 
-      if (!persona) {
-        return new Response(JSON.stringify({ success: false, error: 'CUIT no encontrado' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      if (!personaObj) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error:
+              'ARCA no devolvio datos para ese CUIT. Verifica la relacion del servicio y vuelve a intentar en unos minutos.',
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
       }
 
-      const personaObj = asRecord(persona);
       const lookupError = buildLookupError(personaObj);
       if (lookupError) {
         return new Response(JSON.stringify({ success: false, error: lookupError }), {
