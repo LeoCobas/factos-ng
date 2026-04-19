@@ -1,5 +1,4 @@
-import { Component, signal, computed, effect } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, signal, computed, effect, inject } from '@angular/core';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
@@ -81,6 +80,8 @@ import { AuthService } from '../../core/services/auth.service';
   imports: [],
 })
 export class LoginComponent {
+  private readonly authService = inject(AuthService);
+
   loading = signal(false);
   error = signal<string | null>(null);
 
@@ -102,10 +103,7 @@ export class LoginComponent {
     return emailValid && password.length > 0;
   });
 
-  constructor(
-    private router: Router,
-    private authService: AuthService,
-  ) {
+  constructor() {
     // Detectar tema inicial
     this.updateTheme();
 
@@ -172,7 +170,7 @@ export class LoginComponent {
       if (error) {
         this.error.set(error.message || 'Error al iniciar sesión');
       }
-    } catch (err) {
+    } catch {
       this.error.set('Error inesperado. Inténtalo de nuevo.');
     } finally {
       this.loading.set(false);

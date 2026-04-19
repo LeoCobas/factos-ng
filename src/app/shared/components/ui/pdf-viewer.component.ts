@@ -506,7 +506,7 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
   /**
    * Ventana de impresión directa y simplificada
    */
-  private openDirectPrintWindow(imageDataUrl: string, width: number, height: number): void {
+  private openDirectPrintWindow(imageDataUrl: string, width: number, _height: number): void {
     const printWindow = window.open('', '_blank');
 
     if (!printWindow) {

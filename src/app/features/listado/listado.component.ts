@@ -8,7 +8,7 @@ function getFechaLocalArgentina(): string {
 }
 import { Component, signal, computed, inject, effect } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CurrencyPipe } from '@angular/common';
 import { supabase } from '../../core/services/supabase.service';
@@ -371,6 +371,11 @@ interface Factura {
 
 
 export class ListadoComponent {
+  private readonly pdfService = inject(PdfService);
+  private readonly facturacionService = inject(FacturacionService);
+  private readonly sanitizer = inject(DomSanitizer);
+  private readonly contribuyenteService = inject(ContribuyenteService);
+
   // Signals para estado
   fechaSeleccionada = signal(getFechaLocalArgentina()); // Fecha actual por defecto
   facturas = signal<Factura[]>([]);
@@ -402,13 +407,7 @@ export class ListadoComponent {
     };
   });
 
-  private readonly contribuyenteService = inject(ContribuyenteService);
-
-  constructor(
-    private pdfService: PdfService,
-    private facturacionService: FacturacionService,
-    private sanitizer: DomSanitizer
-  ) {
+  constructor() {
     // Cargar facturas iniciales
     this.cargarFacturasIniciales();
 

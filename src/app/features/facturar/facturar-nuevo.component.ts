@@ -308,6 +308,11 @@ interface FacturaReciente {
   `,
 })
 export class FacturarNuevoComponent {
+  private readonly fb = inject(FormBuilder);
+  private readonly facturacionService = inject(FacturacionService);
+  private readonly pdfService = inject(PdfService);
+  private readonly contribuyenteService = inject(ContribuyenteService);
+
   formFactura: FormGroup;
   isSubmitting = signal(false);
   mensaje = signal<string | null>(null);
@@ -359,13 +364,7 @@ export class FacturarNuevoComponent {
     return this._maxFecha();
   }
 
-  private readonly contribuyenteService = inject(ContribuyenteService);
-
-  constructor(
-    private fb: FormBuilder,
-    private facturacionService: FacturacionService,
-    private pdfService: PdfService,
-  ) {
+  constructor() {
     this.formFactura = this.fb.group({
       monto: ['', [Validators.required, Validators.min(0.01)]],
       fecha: [this.obtenerFechaHoy(), Validators.required],

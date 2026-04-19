@@ -557,7 +557,7 @@ export class ConfiguracionComponent implements OnInit {
         if (c.arca_cert) this.certFileName.set('(certificado guardado)');
         if (c.arca_key) this.keyFileName.set('(clave guardada)');
       }
-    } catch (error) {
+    } catch {
       this.mostrarMensaje('Error al cargar la configuraci\u00f3n.', 'error');
     } finally {
       this.cargando.set(false);
@@ -655,7 +655,7 @@ export class ConfiguracionComponent implements OnInit {
         const result = await this.contribuyenteService.crearContribuyente(payload);
         this.mostrarMensaje(result.success ? '\u2714 Contribuyente creado correctamente.' : (result.error || 'Error al crear.'), result.success ? 'success' : 'error');
       }
-    } catch (error) {
+    } catch {
       this.mostrarMensaje('Error inesperado al guardar.', 'error');
     } finally {
       this.guardando.set(false);
@@ -717,7 +717,7 @@ export class ConfiguracionComponent implements OnInit {
       } else {
         this.mostrarMensaje(result.error || 'Error al guardar certificado.', 'error');
       }
-    } catch (error) {
+    } catch {
       this.mostrarMensaje('Error inesperado.', 'error');
     } finally {
       this.guardando.set(false);
@@ -737,7 +737,7 @@ export class ConfiguracionComponent implements OnInit {
         this.mostrarMensaje('\u2714 Se envi\u00f3 un email de confirmaci\u00f3n a ambas direcciones.', 'success');
         this.nuevoEmail = '';
       }
-    } catch (err) {
+    } catch {
       this.mostrarMensaje('Error al cambiar email.', 'error');
     } finally {
       this.guardando.set(false);
@@ -765,7 +765,7 @@ export class ConfiguracionComponent implements OnInit {
         this.nuevaPassword = '';
         this.confirmarPassword = '';
       }
-    } catch (err) {
+    } catch {
       this.mostrarMensaje('Error al cambiar contrase\u00f1a.', 'error');
     } finally {
       this.guardando.set(false);
