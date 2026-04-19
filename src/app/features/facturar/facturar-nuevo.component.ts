@@ -102,34 +102,14 @@ interface FacturaReciente {
                       <span
                         class="rounded-full px-2.5 py-1 text-xs font-medium"
                         [class]="
-                          clienteSeleccionado()!.fiscal_status_reliable
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
-                            : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-                        "
-                      >
-                        {{
-                          clienteSeleccionado()!.fiscal_status_reliable
-                            ? 'Constancia verificada'
-                            : 'Constancia incompleta'
-                        }}
-                      </span>
-                      <span
-                        class="rounded-full px-2.5 py-1 text-xs font-medium"
-                        [class]="
                           tipoComprobanteResolution().requiereRevision
                             ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-                            : 'bg-background text-muted-foreground'
+                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
                         "
                       >
                         {{ tipoComprobanteResueltoLabel() }}
                       </span>
                     </div>
-
-                    @if (clienteSeleccionado()!.domicilio) {
-                      <div class="text-xs text-muted-foreground leading-relaxed">
-                        {{ clienteSeleccionado()!.domicilio }}
-                      </div>
-                    }
                   </div>
                 }
 
