@@ -673,8 +673,9 @@ export class ConfiguracionComponent implements OnInit {
     this.guardando.set(true);
 
     try {
+      const nextArcaProduction = this.certForm.get('arca_production')?.value ?? false;
       const payload: any = {
-        arca_production: this.certForm.get('arca_production')?.value ?? false,
+        arca_production: nextArcaProduction,
       };
       if (this.certModified) payload.arca_cert = this.certContent;
       if (this.keyModified) payload.arca_key = this.keyContent;
@@ -715,11 +716,20 @@ export class ConfiguracionComponent implements OnInit {
         return;
       }
 
+      const environmentChanged = (contribuyente.arca_production ?? false) !== nextArcaProduction;
+      if (this.certModified || this.keyModified || environmentChanged) {
+        // El ticket WSAA cacheado depende del certificado y del entorno.
+        payload.arca_ticket = null;
+      }
+
       const result = await this.contribuyenteService.actualizarContribuyente(payload);
       if (result.success) {
         this.certModified = false;
         this.keyModified = false;
-        this.mostrarMensaje('\u2714 Certificado guardado correctamente.', 'success');
+        this.mostrarMensaje(
+          `\u2714 Certificado guardado correctamente (${nextArcaProduction ? 'Producci\u00f3n' : 'Testing / Homologaci\u00f3n'}).`,
+          'success',
+        );
       } else {
         this.mostrarMensaje(result.error || 'Error al guardar certificado.', 'error');
       }
