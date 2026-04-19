@@ -75,42 +75,44 @@ interface FacturaReciente {
                   </button>
                 </div>
 
-                <div
-                  class="flex flex-wrap items-center gap-2 rounded-xl bg-muted/50 px-3 py-2 text-sm"
-                >
-                  <span class="text-muted-foreground">Tipo resultante:</span>
-                  <span class="font-semibold text-foreground">{{
-                    tipoComprobanteResueltoLabel()
-                  }}</span>
-                  <span
-                    class="rounded-full px-2 py-1 text-xs"
+                @if (clienteBuscado()) {
+                  <div
+                    class="flex flex-wrap items-center gap-2 rounded-xl bg-muted/50 px-3 py-2 text-sm"
+                  >
+                    <span class="text-muted-foreground">Tipo resultante:</span>
+                    <span class="font-semibold text-foreground">{{
+                      tipoComprobanteResueltoLabel()
+                    }}</span>
+                    <span
+                      class="rounded-full px-2 py-1 text-xs"
+                      [class]="
+                        tipoComprobanteResolution().requiereRevision
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
+                      "
+                    >
+                      {{
+                        tipoComprobanteResolution().requiereRevision
+                          ? 'Revision sugerida'
+                          : 'Automatico verificado'
+                      }}
+                    </span>
+                    <span class="rounded-full bg-background px-2 py-1 text-xs text-muted-foreground">
+                      {{ condicionClienteLabel() }}
+                    </span>
+                  </div>
+
+                  <div
+                    class="rounded-xl border px-3 py-2 text-sm"
                     [class]="
                       tipoComprobanteResolution().requiereRevision
-                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
+                        ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300'
+                        : 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
                     "
                   >
-                    {{
-                      tipoComprobanteResolution().requiereRevision
-                        ? 'Revision sugerida'
-                        : 'Automatico verificado'
-                    }}
-                  </span>
-                  <span class="rounded-full bg-background px-2 py-1 text-xs text-muted-foreground">
-                    {{ condicionClienteLabel() }}
-                  </span>
-                </div>
-
-                <div
-                  class="rounded-xl border px-3 py-2 text-sm"
-                  [class]="
-                    tipoComprobanteResolution().requiereRevision
-                      ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300'
-                      : 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
-                  "
-                >
-                  {{ tipoComprobanteResolution().motivo }}
-                </div>
+                    {{ tipoComprobanteResolution().motivo }}
+                  </div>
+                }
 
                 @if (mensajeCliente()) {
                   <div
@@ -376,6 +378,7 @@ export class FacturarNuevoComponent {
   mensajeCliente = signal<string | null>(null);
   mensajeClienteTipo = signal<'success' | 'warning' | 'error'>('success');
   clienteSeleccionado = signal<ClienteLookupResult | null>(null);
+  clienteBuscado = signal(false);
   clienteCuitIngresado = signal('');
   _minFecha = signal<string>('');
   _maxFecha = signal<string>('');
@@ -444,6 +447,7 @@ export class FacturarNuevoComponent {
     }
 
     this.buscandoCliente.set(true);
+    this.clienteBuscado.set(true);
     this.setMensajeCliente(null, 'success');
 
     try {
@@ -470,6 +474,7 @@ export class FacturarNuevoComponent {
 
   limpiarCliente() {
     this.clienteSeleccionado.set(null);
+    this.clienteBuscado.set(false);
     this.formFactura.patchValue({ cliente_cuit: '' });
     this.clienteCuitIngresado.set('');
     this.setMensajeCliente(null, 'success');

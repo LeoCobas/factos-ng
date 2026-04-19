@@ -2,6 +2,7 @@ import {
   normalizeCondicionIva,
   resolveTipoComprobanteDetallado,
 } from './factura-cliente.util';
+import { extractFiscalDataFromConstancia } from './constancia-inscripcion.util';
 
 describe('factura-cliente.util', () => {
   describe('normalizeCondicionIva', () => {
@@ -79,6 +80,39 @@ describe('factura-cliente.util', () => {
         modo: 'automatico',
         requiereRevision: false,
         motivo: 'El emisor no factura A/B segun su condicion frente al IVA.',
+      });
+    });
+  });
+
+  describe('extractFiscalDataFromConstancia', () => {
+    it('detecta responsable inscripto cuando la constancia resumida solo trae id de impuesto IVA', () => {
+      expect(
+        extractFiscalDataFromConstancia({
+          datosRegimenGeneral: {
+            impuestos: [11, 30],
+          },
+        }),
+      ).toEqual({
+        condicionIva: 'IVA Responsable Inscripto',
+        fiscalProfile: 'responsable-inscripto',
+        reliable: true,
+        message: 'Condicion fiscal verificada por constancia de inscripcion.',
+      });
+    });
+
+    it('detecta monotributo cuando la constancia resumida trae categoria y el impuesto 20', () => {
+      expect(
+        extractFiscalDataFromConstancia({
+          datosMonotributo: {
+            categoria: 'A',
+            impuestos: [20],
+          },
+        }),
+      ).toEqual({
+        condicionIva: 'Responsable Monotributo',
+        fiscalProfile: 'monotributo',
+        reliable: true,
+        message: 'Condicion fiscal verificada por constancia de inscripcion.',
       });
     });
   });

@@ -1,12 +1,15 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { Arca, AuthRepository } from 'npm:@arcasdk/core@0.3.6';
+import { extractFiscalDataFromConstancia } from '../../../src/app/core/utils/constancia-inscripcion.util.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+const ARCA_TIMEOUT_MS = 15000;
 
 class SupabaseAuthRepository implements AuthRepository {
   supabaseClient: any;
@@ -31,15 +34,6 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 }
 
-type FiscalProfile =
-  | 'responsable-inscripto'
-  | 'monotributo'
-  | 'exento'
-  | 'no-inscripto'
-  | 'no-alcanzado'
-  | 'sin-datos'
-  | 'ambiguo';
-
 function getSupabaseClient(authHeader: string | null) {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -57,20 +51,6 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
-}
-
-function asArray(value: unknown): Record<string, unknown>[] {
-  if (Array.isArray(value)) {
-    return value.filter(
-      (item): item is Record<string, unknown> => item != null && typeof item === 'object'
-    );
-  }
-
-  if (value && typeof value === 'object') {
-    return [value as Record<string, unknown>];
-  }
-
-  return [];
 }
 
 function normalizeText(value: unknown): string {
@@ -97,17 +77,6 @@ function getNestedRecord(
   }
 
   return {};
-}
-
-function getTaxEntries(source: Record<string, unknown>): Record<string, unknown>[] {
-  return [...asArray(source.impuesto), ...asArray(source.impuestos)];
-}
-
-function normalizeTaxState(value: unknown): string {
-  const normalized = normalizeText(value).toUpperCase();
-  if (normalized === 'ACTIVO') return 'AC';
-  if (normalized === 'EXENTO') return 'EX';
-  return normalized;
 }
 
 function formatDomicilioFiscal(domicilioFiscal: Record<string, unknown>): string {
@@ -148,102 +117,22 @@ function buildLookupError(persona: Record<string, unknown>): string | null {
   return errorMessage;
 }
 
-function resolveFiscalProfile(persona: Record<string, unknown>): {
-  condicionIva: string;
-  fiscalProfile: FiscalProfile;
-  reliable: boolean;
-  message: string;
-} {
-  const datosMonotributo = getNestedRecord(persona, 'datosMonotributo');
-  const datosRegimenGeneral = getNestedRecord(persona, 'datosRegimenGeneral');
-  const monotributoTaxes = getTaxEntries(datosMonotributo);
-  const regimenGeneralTaxes = getTaxEntries(datosRegimenGeneral);
-  const monotributoCategory = asArray(datosMonotributo.categoriaMonotributo);
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-  const monotributoActive =
-    monotributoCategory.length > 0 ||
-    monotributoTaxes.some((tax) => {
-      const descripcion = normalizeText(tax.descripcionImpuesto);
-      const estado = normalizeTaxState(tax.estadoImpuesto ?? tax.estado);
-      return descripcion.includes('monotributo') && estado === 'AC';
-    });
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+  });
 
-  const ivaTax =
-    regimenGeneralTaxes.find((tax) => normalizeText(tax.descripcionImpuesto) === 'iva') ||
-    regimenGeneralTaxes.find((tax) =>
-      normalizeText(tax.descripcionImpuesto).includes('impuesto al valor agregado')
-    );
-
-  const ivaState = normalizeTaxState(ivaTax?.estadoImpuesto ?? ivaTax?.estado);
-
-  if (monotributoActive && ivaState === 'AC') {
-    return {
-      condicionIva: 'No categorizado',
-      fiscalProfile: 'ambiguo',
-      reliable: false,
-      message: 'La constancia informa Monotributo e IVA activos al mismo tiempo.',
-    };
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
   }
-
-  if (monotributoActive) {
-    return {
-      condicionIva: 'Responsable Monotributo',
-      fiscalProfile: 'monotributo',
-      reliable: true,
-      message: 'Condicion fiscal verificada por constancia de inscripcion.',
-    };
-  }
-
-  switch (ivaState) {
-    case 'AC':
-      return {
-        condicionIva: 'IVA Responsable Inscripto',
-        fiscalProfile: 'responsable-inscripto',
-        reliable: true,
-        message: 'Condicion fiscal verificada por constancia de inscripcion.',
-      };
-    case 'EX':
-      return {
-        condicionIva: 'Exento',
-        fiscalProfile: 'exento',
-        reliable: true,
-        message: 'Constancia con IVA exento.',
-      };
-    case 'NI':
-      return {
-        condicionIva: 'No Inscripto',
-        fiscalProfile: 'no-inscripto',
-        reliable: true,
-        message: 'La constancia indica que el cliente no esta inscripto en IVA.',
-      };
-    case 'NA':
-    case 'XN':
-    case 'AN':
-      return {
-        condicionIva: 'No Alcanzado',
-        fiscalProfile: 'no-alcanzado',
-        reliable: true,
-        message: 'La constancia indica que el cliente no esta alcanzado por IVA.',
-      };
-    default:
-      break;
-  }
-
-  const errorRegimenGeneral = getNestedRecord(persona, 'errorRegimenGeneral');
-  const errorMonotributo = getNestedRecord(persona, 'errorMonotributo');
-  const hint =
-    getString(errorRegimenGeneral.error) ||
-    getString(errorRegimenGeneral.mensaje) ||
-    getString(errorMonotributo.error) ||
-    getString(errorMonotributo.mensaje) ||
-    'La constancia no devolvio impuestos suficientes para clasificar al cliente.';
-
-  return {
-    condicionIva: 'No categorizado',
-    fiscalProfile: 'sin-datos',
-    reliable: false,
-    message: hint,
-  };
 }
 
 Deno.serve(async (req: Request) => {
@@ -316,8 +205,11 @@ Deno.serve(async (req: Request) => {
     });
 
     try {
-      const persona = await arca.registerInscriptionProofService.getTaxpayerDetails(
-        parseInt(String(cuit), 10)
+      const normalizedCuit = parseInt(String(cuit), 10);
+      const persona = await withTimeout(
+        arca.registerInscriptionProofService.getTaxpayerDetails(normalizedCuit),
+        ARCA_TIMEOUT_MS,
+        'Timeout consultando la constancia de inscripcion en ARCA.'
       );
 
       if (!persona) {
@@ -336,7 +228,7 @@ Deno.serve(async (req: Request) => {
 
       const datosGenerales = getNestedRecord(personaObj, 'datosGenerales');
       const domicilioFiscal = getNestedRecord(datosGenerales, 'domicilioFiscal');
-      const fiscalData = resolveFiscalProfile(personaObj);
+      const fiscalData = extractFiscalDataFromConstancia(personaObj);
 
       return new Response(
         JSON.stringify({
@@ -354,7 +246,16 @@ Deno.serve(async (req: Request) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } catch (afipErr: any) {
-      return new Response(JSON.stringify({ success: false, error: `AFIP: ${afipErr.message}` }), {
+      const message = String(afipErr?.message || 'Error desconocido');
+      const normalizedMessage = normalizeText(message);
+
+      const status =
+        normalizedMessage.includes('timeout') || normalizedMessage.includes('timed out')
+          ? 504
+          : 200;
+
+      return new Response(JSON.stringify({ success: false, error: `AFIP: ${message}` }), {
+        status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
