@@ -24,6 +24,13 @@ interface DiagnosticCallResult {
   preview: Record<string, unknown> | null;
 }
 
+interface TicketDiagnosticResult {
+  hasStoredTicket: boolean;
+  expiresAt: string | null;
+  destination: string | null;
+  generationTime: string | null;
+}
+
 function getArcaEnvironmentLabel(production: boolean): 'produccion' | 'homologacion' {
   return production ? 'produccion' : 'homologacion';
 }
@@ -222,6 +229,31 @@ async function captureDiagnosticCall(
   }
 }
 
+function inspectStoredPadronTicket(rawTicket: unknown): TicketDiagnosticResult {
+  const ticket = asRecord(rawTicket);
+  const header = getNestedRecord(ticket, 'header');
+  const credentials = getNestedRecord(ticket, 'credentials');
+
+  return {
+    hasStoredTicket: Object.keys(ticket).length > 0,
+    expiresAt:
+      getString(ticket['expirationTime']) ||
+      getString(credentials['expirationTime']) ||
+      getString(header['expirationTime']) ||
+      null,
+    destination:
+      getString(ticket['destination']) ||
+      getString(credentials['destination']) ||
+      getString(header['destination']) ||
+      null,
+    generationTime:
+      getString(ticket['generationTime']) ||
+      getString(credentials['generationTime']) ||
+      getString(header['generationTime']) ||
+      null,
+  };
+}
+
 async function fetchTaxpayerFromArca(arca: Arca, cuit: number): Promise<Record<string, unknown> | null> {
   const constancia = await withTimeout(
     arca.registerInscriptionProofService.getTaxpayerDetails(cuit),
@@ -310,13 +342,21 @@ Deno.serve(async (req: Request) => {
       const arcaEnvironment = getArcaEnvironmentLabel(contribuyente.arca_production === true);
 
       if (debug === true) {
-        const [constanciaDiag, a13Diag] = await Promise.all([
+        const storedPadronTicket = readArcaTicketBucket(contribuyente.arca_ticket, 'padron');
+        const [constanciaDiag, a13Diag, constanciaStatus] = await Promise.all([
           captureDiagnosticCall('constancia_inscripcion', () =>
             arca.registerInscriptionProofService.getTaxpayerDetails(normalizedCuit)
           ),
           captureDiagnosticCall('padron_a13', () =>
             arca.registerScopeThirteenService.getTaxpayerDetails(normalizedCuit)
           ),
+          withTimeout(
+            arca.registerInscriptionProofService.getServerStatus(),
+            ARCA_TIMEOUT_MS,
+            'Timeout consultando serverStatus de constancia_inscripcion.'
+          ).catch((error) => ({
+            error: error instanceof Error ? error.message : 'Error desconocido',
+          })),
         ]);
 
         return new Response(
@@ -326,6 +366,8 @@ Deno.serve(async (req: Request) => {
             cuit: normalizedCuit,
             environment: arcaEnvironment,
             emisor_cuit: contribuyente.cuit,
+            ticket: inspectStoredPadronTicket(storedPadronTicket),
+            constancia_server_status: constanciaStatus,
             diagnostics: [constanciaDiag, a13Diag],
           }),
           {
