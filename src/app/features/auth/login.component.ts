@@ -1,23 +1,26 @@
 import { Component, signal, computed, effect } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
-import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-login',
   standalone: true,
   template: `
-    <div class="min-h-screen flex items-center justify-center bg-background px-4 py-8 sm:px-6 lg:px-8">
+    <div
+      class="min-h-screen flex items-center justify-center bg-background px-4 py-8 sm:px-6 lg:px-8"
+    >
       <div class="max-w-md w-full">
         <div class="card-surface">
           <div class="p-6 text-center">
             <div class="flex justify-center mb-4">
               <img [src]="logoSrc()" alt="Factos Logo" class="h-12 w-auto" />
             </div>
-            <h2 class="text-2xl font-semibold leading-none tracking-tight text-foreground">Iniciar Sesión</h2>
+            <h2 class="text-2xl font-semibold leading-none tracking-tight text-foreground">
+              Iniciar Sesión
+            </h2>
             <p class="text-sm text-muted-foreground mt-2">Ingresa a tu cuenta de FACTOS</p>
           </div>
-          
+
           <div class="p-6 pt-0">
             <div class="space-y-4">
               <div>
@@ -34,7 +37,7 @@ import { CommonModule } from '@angular/common';
                   class="form-input flex h-10 w-full px-3 py-2 text-sm"
                 />
               </div>
-              
+
               <div>
                 <label for="password" class="form-label">Contraseña</label>
                 <input
@@ -63,7 +66,9 @@ import { CommonModule } from '@angular/common';
                 class="btn-primary w-full inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 @if (loading()) {
-                  <span class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></span>
+                  <span
+                    class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"
+                  ></span>
                 }
                 {{ loading() ? 'Iniciando sesión...' : 'Iniciar Sesión' }}
               </button>
@@ -73,15 +78,15 @@ import { CommonModule } from '@angular/common';
       </div>
     </div>
   `,
-  imports: [CommonModule]
+  imports: [],
 })
 export class LoginComponent {
   loading = signal(false);
   error = signal<string | null>(null);
-  
+
   emailValue = signal('');
   passwordValue = signal('');
-  
+
   // Signal para detectar el tema actual
   isDarkTheme = signal(false);
 
@@ -89,7 +94,7 @@ export class LoginComponent {
   logoSrc = computed(() => {
     return this.isDarkTheme() ? '/logob.png' : '/logo.png';
   });
-  
+
   isFormValid = computed(() => {
     const email = this.emailValue();
     const password = this.passwordValue();
@@ -99,7 +104,7 @@ export class LoginComponent {
 
   constructor(
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
   ) {
     // Detectar tema inicial
     this.updateTheme();
@@ -112,7 +117,7 @@ export class LoginComponent {
 
       observer.observe(document.documentElement, {
         attributes: true,
-        attributeFilter: ['class']
+        attributeFilter: ['class'],
       });
 
       // Cleanup en destroy
@@ -128,7 +133,7 @@ export class LoginComponent {
   syncFromDOM() {
     const emailInput = document.getElementById('email') as HTMLInputElement;
     const passwordInput = document.getElementById('password') as HTMLInputElement;
-    
+
     if (emailInput?.value && !this.emailValue()) {
       this.emailValue.set(emailInput.value);
     }
@@ -163,7 +168,7 @@ export class LoginComponent {
 
     try {
       const { error } = await this.authService.signIn(email, password);
-      
+
       if (error) {
         this.error.set(error.message || 'Error al iniciar sesión');
       }

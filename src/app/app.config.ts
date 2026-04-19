@@ -1,4 +1,4 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZoneChangeDetection, isDevMode, LOCALE_ID } from '@angular/core';
+import { ApplicationConfig, provideBrowserGlobalErrorListeners, isDevMode, LOCALE_ID } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { registerLocaleData } from '@angular/common';
@@ -13,7 +13,6 @@ registerLocaleData(localeEs);
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
     provideHttpClient(withInterceptorsFromDi()),
     { provide: LOCALE_ID, useValue: 'es-AR' },
