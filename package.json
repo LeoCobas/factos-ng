@@ -28,29 +28,27 @@
   },
   "private": true,
   "dependencies": {
-    "@angular/cdk": "^20.2.14",
-    "@angular/common": "^20.3.19",
-    "@angular/compiler": "^20.3.19",
-    "@angular/core": "^20.3.19",
-    "@angular/forms": "^20.3.19",
-    "@angular/platform-browser": "^20.3.19",
-    "@angular/router": "^20.3.19",
-    "@angular/service-worker": "^20.3.19",
+    "@angular/cdk": "^21.2.7",
+    "@angular/common": "^21.2.9",
+    "@angular/compiler": "^21.2.9",
+    "@angular/core": "^21.2.9",
+    "@angular/forms": "^21.2.9",
+    "@angular/platform-browser": "^21.2.9",
+    "@angular/router": "^21.2.9",
+    "@angular/service-worker": "^21.2.9",
     "@supabase/supabase-js": "^2.55.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "lucide-angular": "^0.539.0",
     "pdfmake": "^0.3.7",
     "rxjs": "~7.8.0",
     "tailwind-merge": "^3.3.1",
-    "tslib": "^2.3.0",
-    "zone.js": "~0.15.0"
+    "tslib": "^2.3.0"
   },
   "devDependencies": {
-    "@angular/build": "^20.3.24",
-    "@angular/cli": "^20.3.24",
-    "@angular/compiler-cli": "^20.3.19",
+    "@angular/build": "^21.2.7",
+    "@angular/cli": "^21.2.7",
+    "@angular/compiler-cli": "^21.2.9",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/postcss": "^4.1.12",
     "@tailwindcss/typography": "^0.5.16",
@@ -71,6 +69,6 @@
     "prettier": "^3.6.2",
     "supabase": "^2.91.1",
     "tailwindcss": "^4.1.12",
-    "typescript": "~5.8.2"
+    "typescript": "~5.9.3"
   }
 }

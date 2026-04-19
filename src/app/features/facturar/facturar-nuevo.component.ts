@@ -1,18 +1,15 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { PdfViewerComponent, PdfViewerConfig } from '../../shared/components/ui/pdf-viewer.component';
 import {
-  ClienteLookupResult,
-  FacturacionService,
-} from '../../core/services/facturacion.service';
+  PdfViewerComponent,
+  PdfViewerConfig,
+} from '../../shared/components/ui/pdf-viewer.component';
+import { ClienteLookupResult, FacturacionService } from '../../core/services/facturacion.service';
 import { PdfService } from '../../core/services/pdf.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import { supabase } from '../../core/services/supabase.service';
-import {
-  resolveTipoComprobante,
-  sanitizeCuit,
-} from '../../core/utils/factura-cliente.util';
+import { resolveTipoComprobante, sanitizeCuit } from '../../core/utils/factura-cliente.util';
 
 interface FacturaReciente {
   id: string;
@@ -26,17 +23,24 @@ interface FacturaReciente {
 @Component({
   selector: 'app-facturar-nuevo',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PdfViewerComponent],
+  imports: [ReactiveFormsModule, PdfViewerComponent],
   template: `
     <div class="max-w-5xl mx-auto">
-      <div class="grid gap-4 lg:grid-cols-[minmax(0,28rem)_minmax(20rem,24rem)] lg:items-start lg:justify-center">
+      <div
+        class="grid gap-4 lg:grid-cols-[minmax(0,28rem)_minmax(20rem,24rem)] lg:items-start lg:justify-center"
+      >
         <section class="card-surface px-4 pb-5 pt-4 sm:p-6">
-          <form [formGroup]="formFactura" (ngSubmit)="emitirFactura()" class="space-y-3 sm:space-y-5">
+          <form
+            [formGroup]="formFactura"
+            (ngSubmit)="emitirFactura()"
+            class="space-y-3 sm:space-y-5"
+          >
             <div class="flex items-center justify-end gap-3">
               <button
                 type="button"
                 (click)="toggleCliente()"
-                class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+                class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              >
                 <span>{{ clienteExpandido() ? '- CUIT' : '+ CUIT' }}</span>
               </button>
             </div>
@@ -45,7 +49,9 @@ interface FacturaReciente {
               <div class="rounded-2xl border border-border bg-card/70 p-4 space-y-4">
                 <div class="flex items-end gap-3">
                   <div class="flex-1">
-                    <label class="block text-sm font-medium text-foreground mb-2">CUIT del cliente</label>
+                    <label class="block text-sm font-medium text-foreground mb-2"
+                      >CUIT del cliente</label
+                    >
                     <input
                       type="text"
                       inputmode="numeric"
@@ -60,14 +66,19 @@ interface FacturaReciente {
                     type="button"
                     (click)="buscarCliente()"
                     [disabled]="buscandoCliente() || !clienteCuitValido()"
-                    class="btn-primary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="btn-primary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
                     {{ buscandoCliente() ? 'Buscando...' : 'Buscar' }}
                   </button>
                 </div>
 
-                <div class="flex flex-wrap items-center gap-2 rounded-xl bg-muted/50 px-3 py-2 text-sm">
+                <div
+                  class="flex flex-wrap items-center gap-2 rounded-xl bg-muted/50 px-3 py-2 text-sm"
+                >
                   <span class="text-muted-foreground">Tipo resultante:</span>
-                  <span class="font-semibold text-foreground">{{ tipoComprobanteResueltoLabel() }}</span>
+                  <span class="font-semibold text-foreground">{{
+                    tipoComprobanteResueltoLabel()
+                  }}</span>
                   <span class="rounded-full bg-background px-2 py-1 text-xs text-muted-foreground">
                     {{ condicionClienteLabel() }}
                   </span>
@@ -76,9 +87,12 @@ interface FacturaReciente {
                 @if (mensajeCliente()) {
                   <div
                     class="rounded-lg border px-3 py-2 text-sm"
-                    [class]="mensajeClienteTipo() === 'success'
-                      ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-900/20 dark:text-green-300'
-                      : 'border-red-200 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300'">
+                    [class]="
+                      mensajeClienteTipo() === 'success'
+                        ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-900/20 dark:text-green-300'
+                        : 'border-red-200 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300'
+                    "
+                  >
                     {{ mensajeCliente() }}
                   </div>
                 }
@@ -87,19 +101,28 @@ interface FacturaReciente {
                   <div class="rounded-xl border border-border bg-background/80 p-4 space-y-2">
                     <div class="flex items-start justify-between gap-3">
                       <div>
-                        <div class="text-sm font-semibold text-foreground">{{ clienteSeleccionado()!.nombre || 'Cliente identificado' }}</div>
-                        <div class="text-xs text-muted-foreground">CUIT {{ formatearCuit(clienteSeleccionado()!.cuit || '') }}</div>
+                        <div class="text-sm font-semibold text-foreground">
+                          {{ clienteSeleccionado()!.nombre || 'Cliente identificado' }}
+                        </div>
+                        <div class="text-xs text-muted-foreground">
+                          CUIT {{ formatearCuit(clienteSeleccionado()!.cuit || '') }}
+                        </div>
                       </div>
                       <button
                         type="button"
                         (click)="limpiarCliente()"
-                        class="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
+                        class="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                      >
                         Quitar cliente
                       </button>
                     </div>
-                    <div class="text-sm text-muted-foreground">{{ clienteSeleccionado()!.condicion_iva_normalizada }}</div>
+                    <div class="text-sm text-muted-foreground">
+                      {{ clienteSeleccionado()!.condicion_iva_normalizada }}
+                    </div>
                     @if (clienteSeleccionado()!.domicilio) {
-                      <div class="text-sm text-muted-foreground">{{ clienteSeleccionado()!.domicilio }}</div>
+                      <div class="text-sm text-muted-foreground">
+                        {{ clienteSeleccionado()!.domicilio }}
+                      </div>
                     }
                   </div>
                 }
@@ -107,9 +130,7 @@ interface FacturaReciente {
             }
 
             <div>
-              <label class="block text-sm font-medium text-foreground mb-4">
-                Monto Total
-              </label>
+              <label class="block text-sm font-medium text-foreground mb-4"> Monto Total </label>
               <input
                 id="monto"
                 type="text"
@@ -121,7 +142,9 @@ interface FacturaReciente {
                 (beforeinput)="onMontoBeforeInput($event)"
                 (input)="onMontoInput($event)"
                 class="form-input w-full text-2xl sm:text-3xl text-center py-2 sm:py-4 px-3"
-                [class.border-red-500]="formFactura.get('monto')?.invalid && formFactura.get('monto')?.touched"
+                [class.border-red-500]="
+                  formFactura.get('monto')?.invalid && formFactura.get('monto')?.touched
+                "
               />
               @if (formFactura.get('monto')?.invalid && formFactura.get('monto')?.touched) {
                 <p class="text-red-500 text-sm mt-1">El monto es requerido y debe ser mayor a 0</p>
@@ -138,7 +161,9 @@ interface FacturaReciente {
                 class="form-input w-full py-2 px-3"
                 [min]="minFecha()"
                 [max]="maxFecha()"
-                [class.border-red-500]="formFactura.get('fecha')?.invalid && formFactura.get('fecha')?.touched"
+                [class.border-red-500]="
+                  formFactura.get('fecha')?.invalid && formFactura.get('fecha')?.touched
+                "
               />
               @if (formFactura.get('fecha')?.invalid && formFactura.get('fecha')?.touched) {
                 <p class="text-red-500 text-sm mt-1">La fecha es requerida</p>
@@ -169,17 +194,41 @@ interface FacturaReciente {
                 </div>
                 @if (facturaEmitida()?.cliente_nombre) {
                   <div class="mt-2 text-sm text-muted-foreground">
-                    {{ facturaEmitida()?.cliente_nombre }} - {{ facturaEmitida()?.cliente_condicion_iva }}
+                    {{ facturaEmitida()?.cliente_nombre }} -
+                    {{ facturaEmitida()?.cliente_condicion_iva }}
                   </div>
                 }
               </div>
               <div class="grid grid-cols-2 gap-2 mb-3">
-                <button (click)="verPDF()" class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm">Ver</button>
-                <button (click)="compartir()" class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm">Compartir</button>
-                <button (click)="descargar()" class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm">Descargar</button>
-                <button (click)="imprimir()" class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm">Imprimir</button>
+                <button
+                  (click)="verPDF()"
+                  class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                >
+                  Ver
+                </button>
+                <button
+                  (click)="compartir()"
+                  class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                >
+                  Compartir
+                </button>
+                <button
+                  (click)="descargar()"
+                  class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                >
+                  Descargar
+                </button>
+                <button
+                  (click)="imprimir()"
+                  class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+                >
+                  Imprimir
+                </button>
               </div>
-              <button (click)="volver()" class="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 font-medium py-2 px-3 rounded-lg transition-colors text-sm">
+              <button
+                (click)="volver()"
+                class="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+              >
                 Volver
               </button>
             </div>
@@ -209,7 +258,9 @@ interface FacturaReciente {
               }
             </div>
           } @else if (facturasRecientes().length === 0) {
-            <div class="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+            <div
+              class="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground"
+            >
               Todavía no hay facturas recientes.
             </div>
           } @else {
@@ -219,7 +270,8 @@ interface FacturaReciente {
                   <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                       <div class="text-sm font-medium text-foreground">
-                        {{ obtenerTipoComprobante(factura) }} {{ obtenerNumeroSinCeros(factura.numero_comprobante) }}
+                        {{ obtenerTipoComprobante(factura) }}
+                        {{ obtenerNumeroSinCeros(factura.numero_comprobante) }}
                       </div>
                       <div class="text-xs text-muted-foreground mt-1">
                         {{ formatearFechaCorta(factura.fecha) }}
@@ -237,9 +289,18 @@ interface FacturaReciente {
       </div>
 
       @if (pdfViewing() && pdfViewingConfig()) {
-        <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" (click)="cerrarVisorPdf()">
-          <div class="bg-card rounded-lg w-full max-w-2xl h-full max-h-[95vh] flex flex-col shadow-2xl overflow-hidden" (click)="$event.stopPropagation()">
-            <app-pdf-viewer [config]="pdfViewingConfig()!" (closeRequested)="cerrarVisorPdf()"></app-pdf-viewer>
+        <div
+          class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+          (click)="cerrarVisorPdf()"
+        >
+          <div
+            class="bg-card rounded-lg w-full max-w-2xl h-full max-h-[95vh] flex flex-col shadow-2xl overflow-hidden"
+            (click)="$event.stopPropagation()"
+          >
+            <app-pdf-viewer
+              [config]="pdfViewingConfig()!"
+              (closeRequested)="cerrarVisorPdf()"
+            ></app-pdf-viewer>
           </div>
         </div>
       }
@@ -273,21 +334,21 @@ export class FacturarNuevoComponent {
   cargandoFacturasRecientes = signal(false);
 
   readonly clienteCuitValido = computed(
-    () => sanitizeCuit(this.clienteCuitIngresado()).length === 11
+    () => sanitizeCuit(this.clienteCuitIngresado()).length === 11,
   );
   readonly tipoComprobanteResuelto = computed(() => {
     const contribuyente = this.contribuyenteService.contribuyente();
     return resolveTipoComprobante(
       contribuyente?.condicion_iva,
       this.clienteSeleccionado()?.condicion_iva_normalizada,
-      contribuyente?.tipo_comprobante_default || 'FACTURA C'
+      contribuyente?.tipo_comprobante_default || 'FACTURA C',
     );
   });
   readonly tipoComprobanteResueltoLabel = computed(() =>
-    this.tipoComprobanteResuelto().replace('FACTURA', 'FC')
+    this.tipoComprobanteResuelto().replace('FACTURA', 'FC'),
   );
-  readonly condicionClienteLabel = computed(() =>
-    this.clienteSeleccionado()?.condicion_iva_normalizada || 'Consumidor Final'
+  readonly condicionClienteLabel = computed(
+    () => this.clienteSeleccionado()?.condicion_iva_normalizada || 'Consumidor Final',
   );
 
   minFecha() {
@@ -303,7 +364,7 @@ export class FacturarNuevoComponent {
   constructor(
     private fb: FormBuilder,
     private facturacionService: FacturacionService,
-    private pdfService: PdfService
+    private pdfService: PdfService,
   ) {
     this.formFactura = this.fb.group({
       monto: ['', [Validators.required, Validators.min(0.01)]],
@@ -347,7 +408,7 @@ export class FacturarNuevoComponent {
       this.clienteSeleccionado.set(null);
       this.setMensajeCliente(
         error instanceof Error ? error.message : 'No se pudo obtener datos del cliente.',
-        'error'
+        'error',
       );
     } finally {
       this.buscandoCliente.set(false);
@@ -441,7 +502,9 @@ export class FacturarNuevoComponent {
 
       if (resultado.success) {
         this.esExito.set(true);
-        this.mensaje.set(`Factura emitida exitosamente. Numero: ${resultado.comprobante.numero_comprobante}`);
+        this.mensaje.set(
+          `Factura emitida exitosamente. Numero: ${resultado.comprobante.numero_comprobante}`,
+        );
         this.facturaEmitida.set(resultado.comprobante);
         void this.cargarFacturasRecientes();
         this.formFactura.reset({
@@ -460,7 +523,9 @@ export class FacturarNuevoComponent {
     } catch (error) {
       console.error('Error al emitir factura:', error);
       this.esExito.set(false);
-      this.mensaje.set(error instanceof Error ? error.message : 'Error desconocido al emitir factura');
+      this.mensaje.set(
+        error instanceof Error ? error.message : 'Error desconocido al emitir factura',
+      );
     } finally {
       this.isSubmitting.set(false);
     }
@@ -542,7 +607,7 @@ export class FacturarNuevoComponent {
           total: Number(factura.total ?? 0),
           numero_comprobante: factura.numero_comprobante,
           created_at: factura.created_at,
-        }))
+        })),
       );
     } catch (error) {
       console.error('Error inesperado al cargar facturas recientes:', error);
@@ -585,7 +650,11 @@ export class FacturarNuevoComponent {
     }
   }
 
-  private getNextMontoValue(currentValue: string, inputEvent: InputEvent, fallbackValue: string): string {
+  private getNextMontoValue(
+    currentValue: string,
+    inputEvent: InputEvent,
+    fallbackValue: string,
+  ): string {
     const inputType = inputEvent.inputType || '';
     const inputData = inputEvent.data || '';
 
@@ -717,5 +786,3 @@ export class FacturarNuevoComponent {
     }, 100);
   }
 }
-
-
