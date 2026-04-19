@@ -75,7 +75,7 @@ interface FacturaReciente {
                   </button>
                 </div>
 
-                @if (clienteBuscado()) {
+                @if (clienteSeleccionado()) {
                   <div
                     class="flex flex-wrap items-center gap-2 rounded-xl bg-muted/50 px-3 py-2 text-sm"
                   >
@@ -378,7 +378,6 @@ export class FacturarNuevoComponent {
   mensajeCliente = signal<string | null>(null);
   mensajeClienteTipo = signal<'success' | 'warning' | 'error'>('success');
   clienteSeleccionado = signal<ClienteLookupResult | null>(null);
-  clienteBuscado = signal(false);
   clienteCuitIngresado = signal('');
   _minFecha = signal<string>('');
   _maxFecha = signal<string>('');
@@ -447,7 +446,6 @@ export class FacturarNuevoComponent {
     }
 
     this.buscandoCliente.set(true);
-    this.clienteBuscado.set(true);
     this.setMensajeCliente(null, 'success');
 
     try {
@@ -474,7 +472,6 @@ export class FacturarNuevoComponent {
 
   limpiarCliente() {
     this.clienteSeleccionado.set(null);
-    this.clienteBuscado.set(false);
     this.formFactura.patchValue({ cliente_cuit: '' });
     this.clienteCuitIngresado.set('');
     this.setMensajeCliente(null, 'success');
