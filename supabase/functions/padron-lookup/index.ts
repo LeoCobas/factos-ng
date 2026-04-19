@@ -9,6 +9,8 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+const ARCA_TIMEOUT_MS = 15000;
+
 class SupabaseAuthRepository implements AuthRepository {
   supabaseClient: any;
   userId: string;
@@ -115,6 +117,24 @@ function buildLookupError(persona: Record<string, unknown>): string | null {
   return errorMessage;
 }
 
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -185,8 +205,11 @@ Deno.serve(async (req: Request) => {
     });
 
     try {
-      const persona = await arca.registerInscriptionProofService.getTaxpayerDetails(
-        parseInt(String(cuit), 10)
+      const normalizedCuit = parseInt(String(cuit), 10);
+      const persona = await withTimeout(
+        arca.registerInscriptionProofService.getTaxpayerDetails(normalizedCuit),
+        ARCA_TIMEOUT_MS,
+        'Timeout consultando la constancia de inscripcion en ARCA.'
       );
 
       if (!persona) {
@@ -223,7 +246,16 @@ Deno.serve(async (req: Request) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } catch (afipErr: any) {
-      return new Response(JSON.stringify({ success: false, error: `AFIP: ${afipErr.message}` }), {
+      const message = String(afipErr?.message || 'Error desconocido');
+      const normalizedMessage = normalizeText(message);
+
+      const status =
+        normalizedMessage.includes('timeout') || normalizedMessage.includes('timed out')
+          ? 504
+          : 200;
+
+      return new Response(JSON.stringify({ success: false, error: `AFIP: ${message}` }), {
+        status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
