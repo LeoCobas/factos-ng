@@ -9,7 +9,10 @@ import { ClienteLookupResult, FacturacionService } from '../../core/services/fac
 import { PdfService } from '../../core/services/pdf.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import { supabase } from '../../core/services/supabase.service';
-import { resolveTipoComprobante, sanitizeCuit } from '../../core/utils/factura-cliente.util';
+import {
+  resolveTipoComprobanteDetallado,
+  sanitizeCuit,
+} from '../../core/utils/factura-cliente.util';
 
 interface FacturaReciente {
   id: string;
@@ -79,9 +82,34 @@ interface FacturaReciente {
                   <span class="font-semibold text-foreground">{{
                     tipoComprobanteResueltoLabel()
                   }}</span>
+                  <span
+                    class="rounded-full px-2 py-1 text-xs"
+                    [class]="
+                      tipoComprobanteResolution().requiereRevision
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
+                    "
+                  >
+                    {{
+                      tipoComprobanteResolution().requiereRevision
+                        ? 'Revision sugerida'
+                        : 'Automatico verificado'
+                    }}
+                  </span>
                   <span class="rounded-full bg-background px-2 py-1 text-xs text-muted-foreground">
                     {{ condicionClienteLabel() }}
                   </span>
+                </div>
+
+                <div
+                  class="rounded-xl border px-3 py-2 text-sm"
+                  [class]="
+                    tipoComprobanteResolution().requiereRevision
+                      ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300'
+                      : 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
+                  "
+                >
+                  {{ tipoComprobanteResolution().motivo }}
                 </div>
 
                 @if (mensajeCliente()) {
@@ -90,7 +118,9 @@ interface FacturaReciente {
                     [class]="
                       mensajeClienteTipo() === 'success'
                         ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-900/20 dark:text-green-300'
-                        : 'border-red-200 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300'
+                        : mensajeClienteTipo() === 'warning'
+                          ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300'
+                          : 'border-red-200 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300'
                     "
                   >
                     {{ mensajeCliente() }}
@@ -118,6 +148,23 @@ interface FacturaReciente {
                     </div>
                     <div class="text-sm text-muted-foreground">
                       {{ clienteSeleccionado()!.condicion_iva_normalizada }}
+                    </div>
+                    <div
+                      class="inline-flex w-fit rounded-full px-2 py-1 text-xs font-medium"
+                      [class]="
+                        clienteSeleccionado()!.fiscal_status_reliable
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+                      "
+                    >
+                      {{
+                        clienteSeleccionado()!.fiscal_status_reliable
+                          ? 'Constancia verificada'
+                          : 'Constancia incompleta'
+                      }}
+                    </div>
+                    <div class="text-sm text-muted-foreground">
+                      {{ clienteSeleccionado()!.fiscal_status_message }}
                     </div>
                     @if (clienteSeleccionado()!.domicilio) {
                       <div class="text-sm text-muted-foreground">
@@ -327,7 +374,7 @@ export class FacturarNuevoComponent {
   clienteExpandido = signal(false);
   buscandoCliente = signal(false);
   mensajeCliente = signal<string | null>(null);
-  mensajeClienteTipo = signal<'success' | 'error'>('success');
+  mensajeClienteTipo = signal<'success' | 'warning' | 'error'>('success');
   clienteSeleccionado = signal<ClienteLookupResult | null>(null);
   clienteCuitIngresado = signal('');
   _minFecha = signal<string>('');
@@ -341,14 +388,16 @@ export class FacturarNuevoComponent {
   readonly clienteCuitValido = computed(
     () => sanitizeCuit(this.clienteCuitIngresado()).length === 11,
   );
-  readonly tipoComprobanteResuelto = computed(() => {
+  readonly tipoComprobanteResolution = computed(() => {
     const contribuyente = this.contribuyenteService.contribuyente();
-    return resolveTipoComprobante(
+    return resolveTipoComprobanteDetallado(
       contribuyente?.condicion_iva,
       this.clienteSeleccionado()?.condicion_iva_normalizada,
       contribuyente?.tipo_comprobante_default || 'FACTURA C',
+      this.clienteSeleccionado()?.fiscal_profile,
     );
   });
+  readonly tipoComprobanteResuelto = computed(() => this.tipoComprobanteResolution().tipo);
   readonly tipoComprobanteResueltoLabel = computed(() =>
     this.tipoComprobanteResuelto().replace('FACTURA', 'FC'),
   );
@@ -402,7 +451,12 @@ export class FacturarNuevoComponent {
       this.clienteSeleccionado.set(cliente);
       this.formFactura.patchValue({ cliente_cuit: cliente.cuit || cuit });
       this.clienteCuitIngresado.set(cliente.cuit || cuit);
-      this.setMensajeCliente('Datos obtenidos desde ARCA.', 'success');
+      this.setMensajeCliente(
+        cliente.fiscal_status_reliable
+          ? 'Datos fiscales obtenidos desde Constancia de Inscripcion.'
+          : 'Se obtuvo la constancia, pero conviene revisar el resultado automatico.',
+        cliente.fiscal_status_reliable ? 'success' : 'warning',
+      );
     } catch (error) {
       this.clienteSeleccionado.set(null);
       this.setMensajeCliente(
@@ -434,7 +488,7 @@ export class FacturarNuevoComponent {
     }
   }
 
-  private setMensajeCliente(message: string | null, tipo: 'success' | 'error') {
+  private setMensajeCliente(message: string | null, tipo: 'success' | 'warning' | 'error') {
     this.mensajeCliente.set(message);
     this.mensajeClienteTipo.set(tipo);
   }
@@ -496,6 +550,7 @@ export class FacturarNuevoComponent {
         cliente_nombre: this.clienteSeleccionado()?.nombre,
         cliente_domicilio: this.clienteSeleccionado()?.domicilio,
         cliente_condicion_iva: this.clienteSeleccionado()?.condicion_iva_normalizada,
+        cliente_fiscal_profile: this.clienteSeleccionado()?.fiscal_profile,
         tipo_comprobante_resuelto: this.tipoComprobanteResuelto(),
       });
 

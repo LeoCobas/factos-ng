@@ -76,7 +76,7 @@ interface MensajeEstado {
                       {{ buscandoCuit() ? 'Buscando...' : 'Buscar CUIT' }}
                     </button>
                   </div>
-                  <p class="form-help">Us&aacute; el padr&oacute;n ARCA para autocompletar raz&oacute;n social, domicilio y condici&oacute;n frente al IVA.</p>
+                  <p class="form-help">Us&aacute; la constancia de inscripci&oacute;n ARCA para autocompletar raz&oacute;n social, domicilio fiscal y condici&oacute;n frente al IVA.</p>
                   @if (facturacionForm.get('cuit')?.invalid && facturacionForm.get('cuit')?.touched) {
                     <p class="form-error">El CUIT debe tener 11 d&iacute;gitos.</p>
                   }
@@ -579,7 +579,7 @@ export class ConfiguracionComponent implements OnInit {
       if (!this.contribuyenteService.contribuyente()) {
         this.mensajePadron.set({
           texto:
-            'Primero toc\u00e1 "Guardar Datos de Facturaci\u00f3n" para crear tu perfil. Sin ese registro no podemos usar tu certificado para consultar el padr\u00f3n.',
+            'Primero toc\u00e1 "Guardar Datos de Facturaci\u00f3n" para crear tu perfil. Sin ese registro no podemos usar tu certificado para consultar la constancia.',
           tipo: 'error',
         });
         return;
@@ -613,12 +613,18 @@ export class ConfiguracionComponent implements OnInit {
           this.facturacionForm.patchValue({ ingresos_brutos: cuit });
         }
 
-        this.mensajePadron.set({ texto: '\u2714 Datos obtenidos del padr\u00f3n ARCA', tipo: 'success' });
+        this.mensajePadron.set({
+          texto: '\u2714 Datos obtenidos desde Constancia de Inscripci\u00f3n ARCA',
+          tipo: 'success',
+        });
       } else {
         this.mensajePadron.set({ texto: result?.error || 'No se pudo obtener datos del CUIT', tipo: 'error' });
       }
     } catch (error: any) {
-      this.mensajePadron.set({ texto: error.message || 'Error al consultar el padr\u00f3n', tipo: 'error' });
+      this.mensajePadron.set({
+        texto: error.message || 'Error al consultar la constancia de inscripci\u00f3n',
+        tipo: 'error',
+      });
     } finally {
       this.buscandoCuit.set(false);
     }

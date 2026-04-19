@@ -3,7 +3,26 @@ export type ClienteCondicionIva =
   | 'Responsable Monotributo'
   | 'Consumidor Final'
   | 'Exento'
+  | 'No Inscripto'
+  | 'No Alcanzado'
   | 'No categorizado';
+
+export type ClienteFiscalProfile =
+  | 'responsable-inscripto'
+  | 'monotributo'
+  | 'exento'
+  | 'no-inscripto'
+  | 'no-alcanzado'
+  | 'consumidor-final'
+  | 'sin-datos'
+  | 'ambiguo';
+
+export interface TipoComprobanteResolution {
+  tipo: 'FACTURA A' | 'FACTURA B' | 'FACTURA C';
+  modo: 'automatico' | 'fallback';
+  requiereRevision: boolean;
+  motivo: string;
+}
 
 export interface ClienteFacturaData {
   cuit?: string | null;
@@ -33,6 +52,18 @@ export function normalizeCondicionIva(value: string | null | undefined): Cliente
     return 'Responsable Monotributo';
   }
 
+  if (normalized.includes('no inscripto')) {
+    return 'No Inscripto';
+  }
+
+  if (
+    normalized.includes('no alcanzado') ||
+    normalized.includes('activo no alcanzado') ||
+    normalized.includes('exento no alcanzado')
+  ) {
+    return 'No Alcanzado';
+  }
+
   if (
     normalized.includes('inscripto') ||
     normalized.includes('regimen general') ||
@@ -53,28 +84,125 @@ export function normalizeCondicionIva(value: string | null | undefined): Cliente
   return 'No categorizado';
 }
 
-export function resolveTipoComprobante(
-  emisorCondicionIva: string | null | undefined,
-  clienteCondicionIva?: string | null,
-  fallback: string = 'FACTURA C'
-): 'FACTURA A' | 'FACTURA B' | 'FACTURA C' {
-  const emisor = normalizeCondicionIva(emisorCondicionIva);
-  const cliente = normalizeCondicionIva(clienteCondicionIva);
+function sanitizeFacturaFallback(
+  fallback: string | null | undefined,
+): 'FACTURA A' | 'FACTURA B' | 'FACTURA C' | null {
+  const upperFallback = String(fallback || '').toUpperCase().trim();
 
-  if (emisor === 'Responsable Monotributo' || emisor === 'Exento') {
-    return 'FACTURA C';
-  }
-
-  if (emisor === 'IVA Responsable Inscripto') {
-    return cliente === 'IVA Responsable Inscripto' ? 'FACTURA A' : 'FACTURA B';
-  }
-
-  const upperFallback = fallback.toUpperCase();
   if (upperFallback === 'FACTURA A' || upperFallback === 'FACTURA B' || upperFallback === 'FACTURA C') {
     return upperFallback;
   }
 
-  return 'FACTURA C';
+  return null;
+}
+
+function normalizeClienteFiscalProfile(
+  profile: ClienteFiscalProfile | null | undefined,
+  clienteCondicionIva?: string | null,
+): ClienteFiscalProfile {
+  if (profile) {
+    return profile;
+  }
+
+  switch (normalizeCondicionIva(clienteCondicionIva)) {
+    case 'IVA Responsable Inscripto':
+      return 'responsable-inscripto';
+    case 'Responsable Monotributo':
+      return 'monotributo';
+    case 'Exento':
+      return 'exento';
+    case 'No Inscripto':
+      return 'no-inscripto';
+    case 'No Alcanzado':
+      return 'no-alcanzado';
+    case 'Consumidor Final':
+      return 'consumidor-final';
+    default:
+      return 'sin-datos';
+  }
+}
+
+export function resolveTipoComprobanteDetallado(
+  emisorCondicionIva: string | null | undefined,
+  clienteCondicionIva?: string | null,
+  fallback: string = 'FACTURA C',
+  clienteFiscalProfile?: ClienteFiscalProfile | null,
+): TipoComprobanteResolution {
+  const emisor = normalizeCondicionIva(emisorCondicionIva);
+  const fallbackSanitizado = sanitizeFacturaFallback(fallback);
+  const profile = normalizeClienteFiscalProfile(clienteFiscalProfile, clienteCondicionIva);
+
+  if (emisor === 'Responsable Monotributo' || emisor === 'Exento') {
+    return {
+      tipo: 'FACTURA C',
+      modo: 'automatico',
+      requiereRevision: false,
+      motivo: 'El emisor no factura A/B segun su condicion frente al IVA.',
+    };
+  }
+
+  if (emisor === 'IVA Responsable Inscripto') {
+    if (profile === 'responsable-inscripto') {
+      return {
+        tipo: 'FACTURA A',
+        modo: 'automatico',
+        requiereRevision: false,
+        motivo: 'La constancia indica IVA activo para el cliente.',
+      };
+    }
+
+    if (
+      profile === 'monotributo' ||
+      profile === 'exento' ||
+      profile === 'no-inscripto' ||
+      profile === 'no-alcanzado' ||
+      profile === 'consumidor-final'
+    ) {
+      return {
+        tipo: 'FACTURA B',
+        modo: 'automatico',
+        requiereRevision: false,
+        motivo: 'La condicion fiscal del cliente no habilita Factura A.',
+      };
+    }
+
+    return {
+      tipo: 'FACTURA B',
+      modo: 'fallback',
+      requiereRevision: true,
+      motivo: 'La constancia no aporta datos fiscales suficientes para habilitar Factura A.',
+    };
+  }
+
+  if (fallbackSanitizado) {
+    return {
+      tipo: fallbackSanitizado,
+      modo: 'fallback',
+      requiereRevision: true,
+      motivo: 'No se pudo clasificar la condicion fiscal del emisor; se usa el tipo configurado.',
+    };
+  }
+
+  return {
+    tipo: 'FACTURA C',
+    modo: 'fallback',
+    requiereRevision: true,
+    motivo: 'No se pudo resolver el tipo de comprobante; se aplica Factura C como resguardo.',
+  };
+}
+
+export function resolveTipoComprobante(
+  emisorCondicionIva: string | null | undefined,
+  clienteCondicionIva?: string | null,
+  fallback: string = 'FACTURA C',
+  clienteFiscalProfile?: ClienteFiscalProfile | null,
+): 'FACTURA A' | 'FACTURA B' | 'FACTURA C' {
+  return resolveTipoComprobanteDetallado(
+    emisorCondicionIva,
+    clienteCondicionIva,
+    fallback,
+    clienteFiscalProfile,
+  ).tipo;
 }
 
 export function getNotaCreditoTipo(tipoComprobante: string | null | undefined): 'NOTA DE CREDITO A' | 'NOTA DE CREDITO B' | 'NOTA DE CREDITO C' {
@@ -126,6 +254,8 @@ export function getCondicionIvaReceptorId(condicionIva: string | null | undefine
       return 5;
     case 'Responsable Monotributo':
       return 6;
+    case 'No Inscripto':
+    case 'No Alcanzado':
     default:
       return 5;
   }

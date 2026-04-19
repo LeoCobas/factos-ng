@@ -4,12 +4,13 @@ import { ContribuyenteService } from './contribuyente.service';
 import { environment } from '../../../environments/environment';
 import { Contribuyente } from '../types/database.types';
 import {
+  ClienteFiscalProfile,
   ClienteFacturaData,
   getClienteDocData,
   getCondicionIvaReceptorId,
   getNotaCreditoTipo,
   normalizeCondicionIva,
-  resolveTipoComprobante,
+  resolveTipoComprobanteDetallado,
   sanitizeCuit,
 } from '../utils/factura-cliente.util';
 
@@ -20,6 +21,7 @@ export interface FacturaRequestData {
   cliente_nombre?: string | null;
   cliente_domicilio?: string | null;
   cliente_condicion_iva?: string | null;
+  cliente_fiscal_profile?: ClienteFiscalProfile | null;
   tipo_comprobante_resuelto?: 'FACTURA A' | 'FACTURA B' | 'FACTURA C';
 }
 
@@ -57,6 +59,10 @@ export interface NotaCreditoResult {
 
 export interface ClienteLookupResult extends ClienteFacturaData {
   condicion_iva_normalizada: string;
+  fiscal_profile: ClienteFiscalProfile;
+  fiscal_status_message: string;
+  fiscal_status_reliable: boolean;
+  fiscal_status_source: 'constancia_inscripcion';
 }
 
 @Injectable({
@@ -159,11 +165,12 @@ export class FacturacionService {
     const cliente = this.buildClienteFacturaData(facturaData);
     const tipoComprobante =
       facturaData.tipo_comprobante_resuelto ||
-      resolveTipoComprobante(
+      resolveTipoComprobanteDetallado(
         contribuyente.condicion_iva,
         cliente.cliente_condicion_iva,
-        contribuyente.tipo_comprobante_default || 'FACTURA C'
-      );
+        contribuyente.tipo_comprobante_default || 'FACTURA C',
+        facturaData.cliente_fiscal_profile,
+      ).tipo;
 
     const actividad = contribuyente.actividad === 'bienes' ? 'bienes' : 'servicios';
     const [dia, mes, anio] = facturaData.fecha.split('/');
@@ -455,6 +462,11 @@ export class FacturacionService {
       doc_tipo: 80,
       doc_nro: Number(cuitSanitizado),
       condicion_iva_normalizada: normalizeCondicionIva(result.data?.condicion_iva),
+      fiscal_profile: result.data?.fiscal_profile || 'sin-datos',
+      fiscal_status_message:
+        result.data?.fiscal_status_message || 'No se pudo clasificar la constancia del cliente.',
+      fiscal_status_reliable: result.data?.fiscal_status_reliable === true,
+      fiscal_status_source: 'constancia_inscripcion',
     };
   }
 
