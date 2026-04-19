@@ -16,7 +16,10 @@ const corsHeaders = {
 const ARCA_TIMEOUT_MS = 15000;
 
 interface DiagnosticCallResult {
-  service: 'constancia_inscripcion' | 'padron_a13';
+  service:
+    | 'constancia_inscripcion_single'
+    | 'constancia_inscripcion_batch'
+    | 'padron_a13';
   ok: boolean;
   returnedNull: boolean;
   error: string | null;
@@ -342,22 +345,38 @@ Deno.serve(async (req: Request) => {
       const arcaEnvironment = getArcaEnvironmentLabel(contribuyente.arca_production === true);
 
       if (debug === true) {
-        const storedPadronTicket = readArcaTicketBucket(contribuyente.arca_ticket, 'padron');
-        const [constanciaDiag, a13Diag, constanciaStatus] = await Promise.all([
-          captureDiagnosticCall('constancia_inscripcion', () =>
-            arca.registerInscriptionProofService.getTaxpayerDetails(normalizedCuit)
-          ),
-          captureDiagnosticCall('padron_a13', () =>
-            arca.registerScopeThirteenService.getTaxpayerDetails(normalizedCuit)
-          ),
-          withTimeout(
-            arca.registerInscriptionProofService.getServerStatus(),
-            ARCA_TIMEOUT_MS,
-            'Timeout consultando serverStatus de constancia_inscripcion.'
-          ).catch((error) => ({
-            error: error instanceof Error ? error.message : 'Error desconocido',
-          })),
-        ]);
+        const storedPadronTicketBefore = readArcaTicketBucket(contribuyente.arca_ticket, 'padron');
+        const [constanciaSingleDiag, constanciaBatchDiag, a13Diag, constanciaStatus] =
+          await Promise.all([
+            captureDiagnosticCall('constancia_inscripcion_single', () =>
+              arca.registerInscriptionProofService.getTaxpayerDetails(normalizedCuit)
+            ),
+            captureDiagnosticCall('constancia_inscripcion_batch', () =>
+              arca.registerInscriptionProofService.getTaxpayersDetails([normalizedCuit])
+            ),
+            captureDiagnosticCall('padron_a13', () =>
+              arca.registerScopeThirteenService.getTaxpayerDetails(normalizedCuit)
+            ),
+            withTimeout(
+              arca.registerInscriptionProofService.getServerStatus(),
+              ARCA_TIMEOUT_MS,
+              'Timeout consultando serverStatus de constancia_inscripcion.'
+            ).catch((error) => ({
+              error: error instanceof Error ? error.message : 'Error desconocido',
+            })),
+          ]);
+
+        const {
+          data: contribuyenteAfterDebug,
+        } = await db
+          .from('contribuyentes')
+          .select('arca_ticket')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        const storedPadronTicketAfter = readArcaTicketBucket(
+          contribuyenteAfterDebug?.arca_ticket,
+          'padron'
+        );
 
         return new Response(
           JSON.stringify({
@@ -366,9 +385,10 @@ Deno.serve(async (req: Request) => {
             cuit: normalizedCuit,
             environment: arcaEnvironment,
             emisor_cuit: contribuyente.cuit,
-            ticket: inspectStoredPadronTicket(storedPadronTicket),
+            ticket_before: inspectStoredPadronTicket(storedPadronTicketBefore),
+            ticket_after: inspectStoredPadronTicket(storedPadronTicketAfter),
             constancia_server_status: constanciaStatus,
-            diagnostics: [constanciaDiag, a13Diag],
+            diagnostics: [constanciaSingleDiag, constanciaBatchDiag, a13Diag],
           }),
           {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
