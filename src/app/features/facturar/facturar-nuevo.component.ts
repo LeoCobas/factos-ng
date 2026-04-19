@@ -69,7 +69,7 @@ interface FacturaReciente {
                     type="button"
                     (click)="buscarCliente()"
                     [disabled]="buscandoCliente() || !clienteCuitValido()"
-                    class="btn-primary inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="btn-primary inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                     [attr.aria-label]="buscandoCliente() ? 'Buscando cliente' : 'Buscar cliente'"
                     [attr.title]="buscandoCliente() ? 'Buscando cliente' : 'Buscar cliente'"
                   >
