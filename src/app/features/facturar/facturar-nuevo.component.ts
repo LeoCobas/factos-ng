@@ -38,11 +38,11 @@ interface FacturaReciente {
             (ngSubmit)="emitirFactura()"
             class="space-y-3 sm:space-y-4"
           >
-            <div class="flex items-center justify-end gap-3">
+            <div class="flex items-center justify-end">
               <button
                 type="button"
                 (click)="toggleCliente()"
-                class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted sm:px-3 sm:py-2 sm:text-sm"
               >
                 <span>{{ clienteExpandido() ? '- CUIT' : '+ CUIT' }}</span>
               </button>
@@ -50,9 +50,9 @@ interface FacturaReciente {
 
             @if (clienteExpandido()) {
               <div class="rounded-2xl border border-border bg-card/70 p-3 sm:p-4 space-y-3">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div class="flex items-end gap-2 sm:gap-3">
                   <div class="flex-1">
-                    <label class="block text-sm font-medium text-foreground mb-2"
+                    <label class="block text-sm font-medium text-foreground mb-1.5"
                       >CUIT del cliente</label
                     >
                     <input
@@ -69,9 +69,56 @@ interface FacturaReciente {
                     type="button"
                     (click)="buscarCliente()"
                     [disabled]="buscandoCliente() || !clienteCuitValido()"
-                    class="btn-primary w-full sm:w-auto px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="btn-primary inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    [attr.aria-label]="buscandoCliente() ? 'Buscando cliente' : 'Buscar cliente'"
+                    [attr.title]="buscandoCliente() ? 'Buscando cliente' : 'Buscar cliente'"
                   >
-                    {{ buscandoCliente() ? 'Buscando...' : 'Buscar' }}
+                    @if (buscandoCliente()) {
+                      <svg
+                        class="h-4 w-4 animate-spin"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                      >
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="9"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          class="opacity-30"
+                        />
+                        <path
+                          d="M21 12a9 9 0 0 0-9-9"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                        />
+                      </svg>
+                    } @else {
+                      <svg
+                        class="h-4 w-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                      >
+                        <circle
+                          cx="11"
+                          cy="11"
+                          r="6"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        />
+                        <path
+                          d="m20 20-4.35-4.35"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                        />
+                      </svg>
+                    }
                   </button>
                 </div>
 
