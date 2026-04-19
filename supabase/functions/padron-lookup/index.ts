@@ -1,6 +1,10 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { Arca, AuthRepository } from 'npm:@arcasdk/core@0.3.6';
+import {
+  readArcaTicketBucket,
+  writeArcaTicketBucket,
+} from '../../../src/app/core/utils/arca-ticket.util.ts';
 import { extractFiscalDataFromConstancia } from '../../../src/app/core/utils/constancia-inscripcion.util.ts';
 
 const corsHeaders = {
@@ -36,14 +40,15 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   async get(_cuit: number): Promise<any | null> {
-    return this.dbTicket;
+    return readArcaTicketBucket(this.dbTicket, 'padron');
   }
 
   async save(_cuit: number, credentials: any): Promise<void> {
     await this.supabaseClient
       .from('contribuyentes')
-      .update({ arca_ticket: credentials })
+      .update({ arca_ticket: writeArcaTicketBucket(this.dbTicket, 'padron', credentials) })
       .eq('user_id', this.userId);
+    this.dbTicket = writeArcaTicketBucket(this.dbTicket, 'padron', credentials);
   }
 }
 
