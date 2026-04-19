@@ -11,6 +11,19 @@ const corsHeaders = {
 
 const ARCA_TIMEOUT_MS = 15000;
 
+interface DiagnosticCallResult {
+  service: 'constancia_inscripcion' | 'padron_a13';
+  ok: boolean;
+  returnedNull: boolean;
+  error: string | null;
+  keys: string[];
+  preview: Record<string, unknown> | null;
+}
+
+function getArcaEnvironmentLabel(production: boolean): 'produccion' | 'homologacion' {
+  return production ? 'produccion' : 'homologacion';
+}
+
 class SupabaseAuthRepository implements AuthRepository {
   supabaseClient: any;
   userId: string;
@@ -135,6 +148,75 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMes
   }
 }
 
+function extractPreview(node: unknown): Record<string, unknown> | null {
+  const record = asRecord(node);
+  if (Object.keys(record).length === 0) {
+    return null;
+  }
+
+  const datosGenerales = getNestedRecord(record, 'datosGenerales');
+  const datosRegimenGeneral = getNestedRecord(record, 'datosRegimenGeneral');
+  const datosMonotributo = getNestedRecord(record, 'datosMonotributo');
+
+  return {
+    topLevelKeys: Object.keys(record),
+    razonSocial: getString(datosGenerales['razonSocial']),
+    nombre: getString(datosGenerales['nombre']),
+    apellido: getString(datosGenerales['apellido']),
+    impuestosRg: datosRegimenGeneral['impuestos'] ?? datosRegimenGeneral['impuesto'] ?? null,
+    impuestosMono: datosMonotributo['impuestos'] ?? datosMonotributo['impuesto'] ?? null,
+    categoriaMono:
+      datosMonotributo['categoriaMonotributo'] ?? datosMonotributo['categoria'] ?? null,
+    errorConstancia: getNestedRecord(record, 'errorConstancia'),
+    errorRegimenGeneral: getNestedRecord(record, 'errorRegimenGeneral'),
+    errorMonotributo: getNestedRecord(record, 'errorMonotributo'),
+  };
+}
+
+async function captureDiagnosticCall(
+  service: DiagnosticCallResult['service'],
+  fetcher: () => Promise<unknown>
+): Promise<DiagnosticCallResult> {
+  try {
+    const result = await withTimeout(
+      fetcher(),
+      ARCA_TIMEOUT_MS,
+      `Timeout consultando ${service} en ARCA.`
+    );
+
+    if (result == null) {
+      return {
+        service,
+        ok: false,
+        returnedNull: true,
+        error: null,
+        keys: [],
+        preview: null,
+      };
+    }
+
+    const record = asRecord(result);
+
+    return {
+      service,
+      ok: true,
+      returnedNull: false,
+      error: null,
+      keys: Object.keys(record),
+      preview: extractPreview(record),
+    };
+  } catch (error) {
+    return {
+      service,
+      ok: false,
+      returnedNull: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+      keys: [],
+      preview: null,
+    };
+  }
+}
+
 async function fetchTaxpayerFromArca(arca: Arca, cuit: number): Promise<Record<string, unknown> | null> {
   const constancia = await withTimeout(
     arca.registerInscriptionProofService.getTaxpayerDetails(cuit),
@@ -157,7 +239,7 @@ Deno.serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get('Authorization');
     const supabase = getSupabaseClient(authHeader);
-    const { cuit } = await req.json();
+    const { cuit, debug } = await req.json();
 
     if (!cuit) throw new Error('CUIT requerido');
 
@@ -220,6 +302,33 @@ Deno.serve(async (req: Request) => {
 
     try {
       const normalizedCuit = parseInt(String(cuit), 10);
+      const arcaEnvironment = getArcaEnvironmentLabel(contribuyente.arca_production === true);
+
+      if (debug === true) {
+        const [constanciaDiag, a13Diag] = await Promise.all([
+          captureDiagnosticCall('constancia_inscripcion', () =>
+            arca.registerInscriptionProofService.getTaxpayerDetails(normalizedCuit)
+          ),
+          captureDiagnosticCall('padron_a13', () =>
+            arca.registerScopeThirteenService.getTaxpayerDetails(normalizedCuit)
+          ),
+        ]);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            debug: true,
+            cuit: normalizedCuit,
+            environment: arcaEnvironment,
+            emisor_cuit: contribuyente.cuit,
+            diagnostics: [constanciaDiag, a13Diag],
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
       const personaObj = await fetchTaxpayerFromArca(arca, normalizedCuit);
 
       if (!personaObj) {
@@ -227,7 +336,7 @@ Deno.serve(async (req: Request) => {
           JSON.stringify({
             success: false,
             error:
-              'ARCA no devolvio datos para ese CUIT. Verifica la relacion del servicio y vuelve a intentar en unos minutos.',
+              `ARCA no devolvio datos para ese CUIT en ${arcaEnvironment}. Verifica la relacion del servicio y vuelve a intentar en unos minutos.`,
           }),
           {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
