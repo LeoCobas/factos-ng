@@ -36,7 +36,7 @@ interface FacturaReciente {
           <form
             [formGroup]="formFactura"
             (ngSubmit)="emitirFactura()"
-            class="space-y-3 sm:space-y-5"
+            class="space-y-3 sm:space-y-4"
           >
             <div class="flex items-center justify-end gap-3">
               <button
@@ -49,8 +49,8 @@ interface FacturaReciente {
             </div>
 
             @if (clienteExpandido()) {
-              <div class="rounded-2xl border border-border bg-card/70 p-4 space-y-4">
-                <div class="flex items-end gap-3">
+              <div class="rounded-2xl border border-border bg-card/70 p-3 sm:p-4 space-y-3">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
                   <div class="flex-1">
                     <label class="block text-sm font-medium text-foreground mb-2"
                       >CUIT del cliente</label
@@ -69,74 +69,20 @@ interface FacturaReciente {
                     type="button"
                     (click)="buscarCliente()"
                     [disabled]="buscandoCliente() || !clienteCuitValido()"
-                    class="btn-primary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="btn-primary w-full sm:w-auto px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {{ buscandoCliente() ? 'Buscando...' : 'Buscar' }}
                   </button>
                 </div>
 
                 @if (clienteSeleccionado()) {
-                  <div
-                    class="flex flex-wrap items-center gap-2 rounded-xl bg-muted/50 px-3 py-2 text-sm"
-                  >
-                    <span class="text-muted-foreground">Tipo resultante:</span>
-                    <span class="font-semibold text-foreground">{{
-                      tipoComprobanteResueltoLabel()
-                    }}</span>
-                    <span
-                      class="rounded-full px-2 py-1 text-xs"
-                      [class]="
-                        tipoComprobanteResolution().requiereRevision
-                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
-                      "
-                    >
-                      {{
-                        tipoComprobanteResolution().requiereRevision
-                          ? 'Revision sugerida'
-                          : 'Automatico verificado'
-                      }}
-                    </span>
-                    <span class="rounded-full bg-background px-2 py-1 text-xs text-muted-foreground">
-                      {{ condicionClienteLabel() }}
-                    </span>
-                  </div>
-
-                  <div
-                    class="rounded-xl border px-3 py-2 text-sm"
-                    [class]="
-                      tipoComprobanteResolution().requiereRevision
-                        ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300'
-                        : 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
-                    "
-                  >
-                    {{ tipoComprobanteResolution().motivo }}
-                  </div>
-                }
-
-                @if (mensajeCliente()) {
-                  <div
-                    class="rounded-lg border px-3 py-2 text-sm"
-                    [class]="
-                      mensajeClienteTipo() === 'success'
-                        ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-900/20 dark:text-green-300'
-                        : mensajeClienteTipo() === 'warning'
-                          ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300'
-                          : 'border-red-200 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300'
-                    "
-                  >
-                    {{ mensajeCliente() }}
-                  </div>
-                }
-
-                @if (clienteSeleccionado()) {
-                  <div class="rounded-xl border border-border bg-background/80 p-4 space-y-2">
+                  <div class="rounded-xl border border-border bg-background/80 p-3 sm:p-4 space-y-3">
                     <div class="flex items-start justify-between gap-3">
                       <div>
                         <div class="text-sm font-semibold text-foreground">
                           {{ clienteSeleccionado()!.nombre || 'Cliente identificado' }}
                         </div>
-                        <div class="text-xs text-muted-foreground">
+                        <div class="mt-1 text-xs text-muted-foreground">
                           CUIT {{ formatearCuit(clienteSeleccionado()!.cuit || '') }}
                         </div>
                       </div>
@@ -148,31 +94,55 @@ interface FacturaReciente {
                         Quitar cliente
                       </button>
                     </div>
-                    <div class="text-sm text-muted-foreground">
-                      {{ clienteSeleccionado()!.condicion_iva_normalizada }}
+
+                    <div class="flex flex-wrap gap-2">
+                      <span class="rounded-full bg-muted px-2.5 py-1 text-xs text-foreground">
+                        {{ condicionClienteLabel() }}
+                      </span>
+                      <span
+                        class="rounded-full px-2.5 py-1 text-xs font-medium"
+                        [class]="
+                          clienteSeleccionado()!.fiscal_status_reliable
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
+                            : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+                        "
+                      >
+                        {{
+                          clienteSeleccionado()!.fiscal_status_reliable
+                            ? 'Constancia verificada'
+                            : 'Constancia incompleta'
+                        }}
+                      </span>
+                      <span
+                        class="rounded-full px-2.5 py-1 text-xs font-medium"
+                        [class]="
+                          tipoComprobanteResolution().requiereRevision
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+                            : 'bg-background text-muted-foreground'
+                        "
+                      >
+                        {{ tipoComprobanteResueltoLabel() }}
+                      </span>
                     </div>
-                    <div
-                      class="inline-flex w-fit rounded-full px-2 py-1 text-xs font-medium"
-                      [class]="
-                        clienteSeleccionado()!.fiscal_status_reliable
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
-                          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-                      "
-                    >
-                      {{
-                        clienteSeleccionado()!.fiscal_status_reliable
-                          ? 'Constancia verificada'
-                          : 'Constancia incompleta'
-                      }}
-                    </div>
-                    <div class="text-sm text-muted-foreground">
-                      {{ clienteSeleccionado()!.fiscal_status_message }}
-                    </div>
+
                     @if (clienteSeleccionado()!.domicilio) {
-                      <div class="text-sm text-muted-foreground">
+                      <div class="text-xs text-muted-foreground leading-relaxed">
                         {{ clienteSeleccionado()!.domicilio }}
                       </div>
                     }
+                  </div>
+                }
+
+                @if (mostrarAlertaCliente()) {
+                  <div
+                    class="rounded-lg border px-3 py-2 text-sm"
+                    [class]="
+                      mensajeClienteTipo() === 'error'
+                        ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300'
+                        : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300'
+                    "
+                  >
+                    {{ alertaClienteTexto() }}
                   </div>
                 }
               </div>
@@ -406,6 +376,35 @@ export class FacturarNuevoComponent {
   readonly condicionClienteLabel = computed(
     () => this.clienteSeleccionado()?.condicion_iva_normalizada || 'Consumidor Final',
   );
+  readonly mostrarAlertaCliente = computed(() => {
+    const mensaje = this.mensajeCliente();
+    const tipoMensaje = this.mensajeClienteTipo();
+
+    if (tipoMensaje === 'error') {
+      return Boolean(mensaje);
+    }
+
+    if (!this.clienteSeleccionado()) {
+      return tipoMensaje === 'warning' && Boolean(mensaje);
+    }
+
+    return this.tipoComprobanteResolution().requiereRevision || tipoMensaje === 'warning';
+  });
+  readonly alertaClienteTexto = computed(() => {
+    if (this.mensajeClienteTipo() === 'error') {
+      return this.mensajeCliente() || '';
+    }
+
+    if (this.tipoComprobanteResolution().requiereRevision) {
+      return this.tipoComprobanteResolution().motivo;
+    }
+
+    if (this.mensajeClienteTipo() === 'warning') {
+      return this.mensajeCliente() || this.clienteSeleccionado()?.fiscal_status_message || '';
+    }
+
+    return '';
+  });
 
   minFecha() {
     return this._minFecha();
