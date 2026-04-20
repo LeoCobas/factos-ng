@@ -56,6 +56,21 @@ function getSupabaseClient(authHeader: string | null) {
   return createClient(supabaseUrl, supabaseKey);
 }
 
+async function getAuthenticatedUser(req: Request) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) throw new Error('No autorizado');
+
+  const supabase = getSupabaseClient(authHeader);
+  const token = authHeader.replace('Bearer ', '').trim();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser(token);
+
+  if (error || !user) throw new Error('Sesion invalida');
+  return { supabase, user };
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -171,7 +186,8 @@ async function fetchTaxpayerFromArca(
 
 /**
  * Contrato operativo: consulta constancia de inscripcion para un CUIT usando el contribuyente autenticado.
- * Requiere JWT valido, contribuyente existente, certificados cargados y bucket `padron` operativo.
+ * La plataforma no valida JWT en gateway: la function exige Bearer token y valida sesion en codigo.
+ * Requiere contribuyente existente, certificados cargados y bucket `padron` operativo.
  * Devuelve una respuesta normalizada para frontend con razon social, domicilio y clasificacion fiscal.
  */
 Deno.serve(async (req: Request) => {
@@ -180,16 +196,10 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    const supabase = getSupabaseClient(authHeader);
+    const { supabase, user } = await getAuthenticatedUser(req);
     const { cuit } = await req.json();
 
     if (!cuit) throw new Error('CUIT requerido');
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) throw new Error('Sesion invalida');
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');

@@ -5,7 +5,8 @@
 ### Precondiciones
 
 - Requiere `POST /functions/v1/arca-proxy?action=...`.
-- Requiere JWT valido en `Authorization: Bearer ...`.
+- Requiere `Authorization: Bearer ...` con sesion Supabase valida.
+- La verificacion ocurre dentro de la function, no en el gateway legacy de Edge Functions.
 - Requiere contribuyente asociado al usuario autenticado.
 - Requiere `arca_cert` y `arca_key` cargados.
 - Requiere bucket `wsfe` dentro de `contribuyentes.arca_ticket`.
@@ -93,7 +94,8 @@ Response:
 ### Precondiciones
 
 - Requiere `POST /functions/v1/padron-lookup`.
-- Requiere JWT valido en `Authorization: Bearer ...`.
+- Requiere `Authorization: Bearer ...` con sesion Supabase valida.
+- La verificacion ocurre dentro de la function, no en el gateway legacy de Edge Functions.
 - Requiere contribuyente del usuario autenticado.
 - Requiere `arca_cert` y `arca_key`.
 - Usa bucket `padron` dentro de `contribuyentes.arca_ticket`.
