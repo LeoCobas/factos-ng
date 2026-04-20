@@ -1,5 +1,4 @@
 import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
-
 import {
   FormControl,
   FormGroup,
@@ -7,6 +6,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+
 import {
   PdfViewerComponent,
   PdfViewerConfig,
@@ -19,16 +19,27 @@ import {
 import { PdfService } from '../../core/services/pdf.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import { Comprobante } from '../../core/types/database.types';
+import { PdfComprobanteData } from '../../core/types/pdf.types';
 import {
   resolveTipoComprobanteDetallado,
   sanitizeCuit,
 } from '../../core/utils/factura-cliente.util';
+import { FacturaClienteLookupSectionComponent } from './factura-cliente-lookup-section.component';
 import { FacturaEmitidaPanelComponent } from './factura-emitida-panel.component';
+import { FacturasRecientesPanelComponent } from './facturas-recientes-panel.component';
 
 interface FacturaFormModel {
   monto: FormControl<number | ''>;
   fecha: FormControl<string>;
   cliente_cuit: FormControl<string>;
+}
+
+interface FacturaRecienteView {
+  id: string;
+  tipoLabel: string;
+  numeroLabel: string;
+  fechaLabel: string;
+  total: number;
 }
 
 @Component({
@@ -37,7 +48,9 @@ interface FacturaFormModel {
   imports: [
     ReactiveFormsModule,
     PdfViewerComponent,
+    FacturaClienteLookupSectionComponent,
     FacturaEmitidaPanelComponent,
+    FacturasRecientesPanelComponent,
   ],
   template: `
     <div class="max-w-5xl mx-auto">
@@ -61,134 +74,26 @@ interface FacturaFormModel {
             </div>
 
             @if (clienteExpandido()) {
-              <div class="rounded-2xl border border-border bg-card/70 p-3 sm:p-4 space-y-3">
-                <div class="flex items-end gap-2 sm:gap-3">
-                  <div class="flex-1">
-                    <label class="block text-sm font-medium text-foreground mb-1.5"
-                      >CUIT del cliente</label
-                    >
-                    <input
-                      type="text"
-                      inputmode="numeric"
-                      maxlength="11"
-                      formControlName="cliente_cuit"
-                      (input)="onClienteCuitInput()"
-                      placeholder="Ingresar CUIT"
-                      class="form-input w-full"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    (click)="buscarCliente()"
-                    [disabled]="buscandoCliente() || !clienteCuitValido()"
-                    class="btn-primary inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                    [attr.aria-label]="buscandoCliente() ? 'Buscando cliente' : 'Buscar cliente'"
-                    [attr.title]="buscandoCliente() ? 'Buscando cliente' : 'Buscar cliente'"
-                  >
-                    @if (buscandoCliente()) {
-                      <svg
-                        class="h-4 w-4 animate-spin"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden="true"
-                      >
-                        <circle
-                          cx="12"
-                          cy="12"
-                          r="9"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          class="opacity-30"
-                        />
-                        <path
-                          d="M21 12a9 9 0 0 0-9-9"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                        />
-                      </svg>
-                    } @else {
-                      <svg
-                        class="h-4 w-4"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden="true"
-                      >
-                        <circle
-                          cx="11"
-                          cy="11"
-                          r="6"
-                          stroke="currentColor"
-                          stroke-width="2"
-                        />
-                        <path
-                          d="m20 20-4.35-4.35"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                        />
-                      </svg>
-                    }
-                  </button>
-                </div>
-
-                @if (clienteSeleccionado()) {
-                  <div class="rounded-xl border border-border bg-background/80 p-3 sm:p-4 space-y-3">
-                    <div class="flex items-start justify-between gap-3">
-                      <div>
-                        <div class="text-sm font-semibold text-foreground">
-                          {{ clienteSeleccionado()!.nombre || 'Cliente identificado' }}
-                        </div>
-                        <div class="mt-1 text-xs text-muted-foreground">
-                          CUIT {{ formatearCuit(clienteSeleccionado()!.cuit || '') }}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        (click)="limpiarCliente()"
-                        class="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        Quitar cliente
-                      </button>
-                    </div>
-
-                    <div class="flex flex-wrap gap-2">
-                      <span class="rounded-full bg-muted px-2.5 py-1 text-xs text-foreground">
-                        {{ condicionClienteLabel() }}
-                      </span>
-                      <span
-                        class="rounded-full px-2.5 py-1 text-xs font-medium"
-                        [class]="
-                          tipoComprobanteResolution().requiereRevision
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
-                        "
-                      >
-                        {{ tipoComprobanteResueltoLabel() }}
-                      </span>
-                    </div>
-                  </div>
-                }
-
-                @if (mostrarAlertaCliente()) {
-                  <div
-                    class="rounded-lg border px-3 py-2 text-sm"
-                    [class]="
-                      mensajeClienteTipo() === 'error'
-                        ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300'
-                        : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300'
-                    "
-                  >
-                    {{ alertaClienteTexto() }}
-                  </div>
-                }
-              </div>
+              <app-factura-cliente-lookup-section
+                [clienteCuitControl]="formFactura.controls.cliente_cuit"
+                [clienteCuitValido]="clienteCuitValido()"
+                [buscandoCliente]="buscandoCliente()"
+                [clienteSeleccionado]="clienteSeleccionado()"
+                [clienteCuitFormateado]="clienteSeleccionado() ? formatearCuit(clienteSeleccionado()!.cuit || '') : ''"
+                [condicionClienteLabel]="condicionClienteLabel()"
+                [tipoComprobanteResueltoLabel]="tipoComprobanteResueltoLabel()"
+                [requiereRevision]="tipoComprobanteResolution().requiereRevision"
+                [mostrarAlertaCliente]="mostrarAlertaCliente()"
+                [alertaClienteTexto]="alertaClienteTexto()"
+                [mensajeClienteTipo]="mensajeClienteTipo()"
+                (buscarCliente)="buscarCliente()"
+                (limpiarCliente)="limpiarCliente()"
+                (clienteCuitInput)="onClienteCuitInput()"
+              />
             }
 
             <div>
-              <label class="block text-sm font-medium text-foreground mb-4"> Monto Total </label>
+              <label class="block text-sm font-medium text-foreground mb-4">Monto total</label>
               <input
                 #montoInput
                 id="monto"
@@ -212,7 +117,7 @@ interface FacturaFormModel {
 
             <div>
               <label class="block text-sm font-medium text-foreground mb-4">
-                Fecha de Facturación
+                Fecha de facturación
               </label>
               <input
                 type="date"
@@ -245,8 +150,8 @@ interface FacturaFormModel {
           <app-factura-emitida-panel
             [factura]="facturaEmitida()"
             [tipoComprobante]="facturaEmitida() ? obtenerTipoComprobante(facturaEmitida()!) : ''"
-            [numeroComprobante]="facturaEmitida() ? obtenerNumeroSinCeros(obtenerNumeroComprobante(facturaEmitida()!)) : ''"
-            [monto]="facturaEmitida() ? formatearMonto(obtenerMontoComprobante(facturaEmitida()!)) : ''"
+            [numeroComprobante]="facturaEmitida() ? obtenerNumeroSinCeros(facturaEmitida()!.numero_comprobante) : ''"
+            [monto]="facturaEmitida() ? montoFacturaEmitida() : ''"
             (ver)="verPDF()"
             (compartir)="compartir()"
             (descargar)="descargar()"
@@ -263,49 +168,10 @@ interface FacturaFormModel {
           }
         </section>
 
-        <aside class="card-surface p-4 sm:p-5">
-          <div class="mb-4">
-            <h3 class="text-base font-semibold text-foreground">Últimas facturas</h3>
-          </div>
-
-          @if (cargandoFacturasRecientes()) {
-            <div class="space-y-2">
-              @for (skeleton of [1, 2, 3]; track skeleton) {
-                <div class="rounded-lg border border-border/60 bg-muted/30 p-3 animate-pulse">
-                  <div class="h-4 w-24 bg-muted rounded mb-2"></div>
-                  <div class="h-4 w-full bg-muted rounded"></div>
-                </div>
-              }
-            </div>
-          } @else if (facturasRecientes().length === 0) {
-            <div
-              class="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground"
-            >
-              Todavía no hay facturas recientes.
-            </div>
-          } @else {
-            <div class="space-y-2">
-              @for (factura of facturasRecientes(); track factura.id) {
-                <div class="rounded-lg border border-border bg-card/70 px-3 py-3">
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                      <div class="text-sm font-medium text-foreground">
-                        {{ obtenerTipoComprobante(factura) }}
-                        {{ obtenerNumeroSinCeros(factura.numero_comprobante) }}
-                      </div>
-                      <div class="text-xs text-muted-foreground mt-1">
-                        {{ formatearFechaCorta(factura.fecha) }}
-                      </div>
-                    </div>
-                    <div class="text-sm font-semibold text-foreground text-right whitespace-nowrap">
-                      {{ formatearMonto(factura.total) }}
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
-          }
-        </aside>
+        <app-facturas-recientes-panel
+          [facturas]="facturasRecientesView()"
+          [cargando]="cargandoFacturasRecientes()"
+        />
       </div>
 
       @if (pdfViewing() && pdfViewingConfig()) {
@@ -320,7 +186,7 @@ interface FacturaFormModel {
             <app-pdf-viewer
               [config]="pdfViewingConfig()!"
               (closeRequested)="cerrarVisorPdf()"
-            ></app-pdf-viewer>
+            />
           </div>
         </div>
       }
@@ -344,15 +210,15 @@ export class FacturarNuevoComponent {
   readonly pdfViewingConfig = signal<PdfViewerConfig | null>(null);
   readonly pdfViewingBlobUrl = signal<string | null>(null);
 
-  actividad = signal<'bienes' | 'servicios' | null>(null);
-  clienteExpandido = signal(false);
-  buscandoCliente = signal(false);
-  mensajeCliente = signal<string | null>(null);
-  mensajeClienteTipo = signal<'success' | 'warning' | 'error'>('success');
-  clienteSeleccionado = signal<ClienteLookupResult | null>(null);
-  clienteCuitIngresado = signal('');
-  _minFecha = signal<string>('');
-  _maxFecha = signal<string>('');
+  readonly actividad = signal<'bienes' | 'servicios' | null>(null);
+  readonly clienteExpandido = signal(false);
+  readonly buscandoCliente = signal(false);
+  readonly mensajeCliente = signal<string | null>(null);
+  readonly mensajeClienteTipo = signal<'success' | 'warning' | 'error'>('success');
+  readonly clienteSeleccionado = signal<ClienteLookupResult | null>(null);
+  readonly clienteCuitIngresado = signal('');
+  readonly minFecha = signal('');
+  readonly maxFecha = signal('');
 
   readonly rawMonto = signal('');
   readonly displayMonto = signal('');
@@ -371,26 +237,22 @@ export class FacturarNuevoComponent {
       this.clienteSeleccionado()?.fiscal_profile,
     );
   });
-  readonly tipoComprobanteResuelto = computed(() => this.tipoComprobanteResolution().tipo);
   readonly tipoComprobanteResueltoLabel = computed(() =>
-    this.tipoComprobanteResuelto().replace('FACTURA', 'FC'),
+    this.tipoComprobanteResolution().tipo.replace('FACTURA', 'FC'),
   );
   readonly condicionClienteLabel = computed(
     () => this.clienteSeleccionado()?.condicion_iva_normalizada || 'Consumidor Final',
   );
   readonly mostrarAlertaCliente = computed(() => {
-    const mensaje = this.mensajeCliente();
-    const tipoMensaje = this.mensajeClienteTipo();
-
-    if (tipoMensaje === 'error') {
-      return Boolean(mensaje);
+    if (this.mensajeClienteTipo() === 'error') {
+      return Boolean(this.mensajeCliente());
     }
 
     if (!this.clienteSeleccionado()) {
-      return tipoMensaje === 'warning' && Boolean(mensaje);
+      return this.mensajeClienteTipo() === 'warning' && Boolean(this.mensajeCliente());
     }
 
-    return this.tipoComprobanteResolution().requiereRevision || tipoMensaje === 'warning';
+    return this.tipoComprobanteResolution().requiereRevision || this.mensajeClienteTipo() === 'warning';
   });
   readonly alertaClienteTexto = computed(() => {
     if (this.mensajeClienteTipo() === 'error') {
@@ -407,14 +269,18 @@ export class FacturarNuevoComponent {
 
     return '';
   });
-
-  minFecha() {
-    return this._minFecha();
-  }
-
-  maxFecha() {
-    return this._maxFecha();
-  }
+  readonly facturasRecientesView = computed<FacturaRecienteView[]>(() =>
+    this.facturasRecientes().map((factura) => ({
+      id: factura.id,
+      tipoLabel: this.obtenerTipoComprobante(factura),
+      numeroLabel: this.obtenerNumeroSinCeros(factura.numero_comprobante),
+      fechaLabel: this.formatearFechaCorta(factura.fecha),
+      total: factura.total,
+    })),
+  );
+  readonly montoFacturaEmitida = computed(() =>
+    this.facturaEmitida() ? this.formatearMonto(this.facturaEmitida()!.total) : '',
+  );
 
   constructor() {
     this.formFactura = this.fb.group({
@@ -428,7 +294,7 @@ export class FacturarNuevoComponent {
       const contribuyente = this.contribuyenteService.contribuyente();
       if (contribuyente) {
         this.actualizarLimitesFecha(contribuyente.actividad === 'bienes' ? 'bienes' : 'servicios');
-        this.cargarFacturasRecientes();
+        void this.cargarFacturasRecientes();
       } else {
         this.facturasRecientes.set([]);
       }
@@ -456,8 +322,8 @@ export class FacturarNuevoComponent {
       this.clienteCuitIngresado.set(cliente.cuit || cuit);
       this.setMensajeCliente(
         cliente.fiscal_status_reliable
-          ? 'Datos fiscales obtenidos desde Constancia de Inscripcion.'
-          : 'Se obtuvo la constancia, pero conviene revisar el resultado automatico.',
+          ? 'Datos fiscales obtenidos desde Constancia de Inscripción.'
+          : 'Se obtuvo la constancia, pero conviene revisar el resultado automático.',
         cliente.fiscal_status_reliable ? 'success' : 'warning',
       );
     } catch (error) {
@@ -491,49 +357,6 @@ export class FacturarNuevoComponent {
     }
   }
 
-  private setMensajeCliente(message: string | null, tipo: 'success' | 'warning' | 'error') {
-    this.mensajeCliente.set(message);
-    this.mensajeClienteTipo.set(tipo);
-  }
-
-  private actualizarLimitesFecha(actividad: 'bienes' | 'servicios') {
-    this.actividad.set(actividad);
-
-    const hoy = new Date();
-    const max = this.formatDateInput(hoy);
-    const minDate = new Date(hoy);
-    minDate.setDate(hoy.getDate() - (actividad === 'bienes' ? 5 : 10));
-    const min = this.formatDateInput(minDate);
-    this._maxFecha.set(max);
-    this._minFecha.set(min);
-
-    const fechaActual = this.formFactura.controls.fecha.value;
-    const fechaControl = this.formFactura.controls.fecha;
-    if (fechaActual) {
-      if (fechaActual > max) {
-        fechaControl.setValue(max);
-      } else if (fechaActual < min) {
-        fechaControl.setValue(min);
-      }
-    }
-  }
-
-  private formatDateInput(date: Date): string {
-    const anio = date.getFullYear();
-    const mes = String(date.getMonth() + 1).padStart(2, '0');
-    const dia = String(date.getDate()).padStart(2, '0');
-    return `${anio}-${mes}-${dia}`;
-  }
-
-  private obtenerFechaHoy(): string {
-    return this.formatDateInput(new Date());
-  }
-
-  private convertirFechaADDMMYYYY(fechaISO: string): string {
-    const [anio, mes, dia] = fechaISO.split('-');
-    return `${dia}/${mes}/${anio}`;
-  }
-
   async emitirFactura(): Promise<void> {
     if (this.formFactura.invalid) {
       this.formFactura.markAllAsTouched();
@@ -546,38 +369,37 @@ export class FacturarNuevoComponent {
 
     try {
       const { monto, fecha } = this.formFactura.getRawValue();
-      const fechaFormateada = this.convertirFechaADDMMYYYY(fecha);
       const resultado = await this.facturacionService.emitirFactura({
         monto: Number(monto),
-        fecha: fechaFormateada,
+        fecha: this.convertirFechaADDMMYYYY(fecha),
         cliente_cuit: this.clienteSeleccionado()?.cuit,
         cliente_nombre: this.clienteSeleccionado()?.nombre,
         cliente_domicilio: this.clienteSeleccionado()?.domicilio,
         cliente_condicion_iva: this.clienteSeleccionado()?.condicion_iva_normalizada,
         cliente_fiscal_profile: this.clienteSeleccionado()?.fiscal_profile,
-        tipo_comprobante_resuelto: this.tipoComprobanteResuelto(),
+        tipo_comprobante_resuelto: this.tipoComprobanteResolution().tipo,
       });
 
-      if (resultado.success && resultado.comprobante) {
-        this.esExito.set(true);
-        this.mensaje.set(
-          `Factura emitida exitosamente. Numero: ${resultado.comprobante.numero_comprobante}`,
-        );
-        this.facturaEmitida.set(resultado.comprobante);
-        void this.cargarFacturasRecientes();
-        this.formFactura.reset({
-          monto: '',
-          fecha: this.obtenerFechaHoy(),
-          cliente_cuit: '',
-        });
-        this.clienteCuitIngresado.set('');
-        this.rawMonto.set('');
-        this.displayMonto.set('');
-        this.clienteSeleccionado.set(null);
-        this.setMensajeCliente(null, 'success');
-      } else {
+      if (!resultado.success || !resultado.comprobante) {
         throw new Error('Error al emitir factura');
       }
+
+      this.esExito.set(true);
+      this.mensaje.set(
+        `Factura emitida exitosamente. Número: ${resultado.comprobante.numero_comprobante}`,
+      );
+      this.facturaEmitida.set(resultado.comprobante);
+      void this.cargarFacturasRecientes();
+      this.formFactura.reset({
+        monto: '',
+        fecha: this.obtenerFechaHoy(),
+        cliente_cuit: '',
+      });
+      this.clienteCuitIngresado.set('');
+      this.rawMonto.set('');
+      this.displayMonto.set('');
+      this.clienteSeleccionado.set(null);
+      this.setMensajeCliente(null, 'success');
     } catch (error) {
       console.error('Error al emitir factura:', error);
       this.esExito.set(false);
@@ -587,49 +409,6 @@ export class FacturarNuevoComponent {
     } finally {
       this.isSubmitting.set(false);
     }
-  }
-
-  obtenerTipoComprobante(factura: Pick<Comprobante, 'tipo_comprobante'> | FacturaReciente): string {
-    if (factura.tipo_comprobante === 'FACTURA A') return 'FC A';
-    if (factura.tipo_comprobante === 'FACTURA B') return 'FC B';
-    if (factura.tipo_comprobante === 'FACTURA C') return 'FC C';
-    return factura.tipo_comprobante || 'FC C';
-  }
-
-  obtenerNumeroSinCeros(numeroCompleto: string): string {
-    if (numeroCompleto?.includes('-')) {
-      return numeroCompleto.split('-')[1];
-    }
-    return numeroCompleto?.replace(/^0+/, '') || '0';
-  }
-
-  obtenerNumeroComprobante(factura: Partial<Comprobante> & { numero_factura?: string }): string {
-    return factura.numero_comprobante || factura.numero_factura || '0000-00000000';
-  }
-
-  obtenerMontoComprobante(factura: Partial<Comprobante> & { monto?: number }): number {
-    return Number(factura.total ?? factura.monto ?? 0);
-  }
-
-  formatearMonto(monto: number): string {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(monto);
-  }
-
-  formatearFechaCorta(fechaISO: string): string {
-    if (!fechaISO) return '-';
-    const [anio, mes, dia] = fechaISO.split('-');
-    if (!anio || !mes || !dia) return fechaISO;
-    return `${dia}/${mes}/${anio}`;
-  }
-
-  formatearCuit(cuit: string): string {
-    if (!cuit || cuit.length !== 11) return cuit;
-    return `${cuit.substring(0, 2)}-${cuit.substring(2, 10)}-${cuit.substring(10)}`;
   }
 
   async cargarFacturasRecientes(): Promise<void> {
@@ -684,6 +463,142 @@ export class FacturarNuevoComponent {
     if (this.rawMonto().includes('.') && decimalPart.length >= 2 && /\d/.test(inputData)) {
       event.preventDefault();
     }
+  }
+
+  async verPDF(): Promise<void> {
+    const factura = this.facturaEmitida();
+    if (!factura) return;
+
+    try {
+      const pdfData = this.mapComprobanteToPdfData(factura);
+      const asset = await this.pdfService.createPdfAsset(pdfData);
+      this.pdfService.revokeBlobUrl(this.pdfViewingBlobUrl());
+      this.pdfViewing.set(factura);
+      this.pdfViewingBlobUrl.set(asset.blobUrl);
+      this.pdfViewingConfig.set({
+        url: asset.blobUrl,
+        filename: asset.info.filename,
+        title: `Factura ${this.obtenerTipoComprobante(factura)} N ${this.obtenerNumeroSinCeros(factura.numero_comprobante)}`,
+      });
+    } catch (error) {
+      console.error('Error al generar PDF para visualización:', error);
+      this.cerrarVisorPdf();
+      alert('Hubo un error al generar el ticket.');
+    }
+  }
+
+  async compartir(): Promise<void> {
+    const factura = this.facturaEmitida();
+    if (!factura) return;
+    await this.pdfService.sharePdf(this.pdfService.createPdfInfo(this.mapComprobanteToPdfData(factura)));
+  }
+
+  async imprimir(): Promise<void> {
+    const factura = this.facturaEmitida();
+    if (!factura) return;
+    await this.pdfService.printFactura(this.mapComprobanteToPdfData(factura));
+  }
+
+  async descargar(): Promise<void> {
+    const factura = this.facturaEmitida();
+    if (!factura) return;
+    await this.pdfService.downloadPdf(
+      this.pdfService.createPdfInfo(this.mapComprobanteToPdfData(factura)),
+    );
+  }
+
+  cerrarVisorPdf() {
+    this.pdfService.revokeBlobUrl(this.pdfViewingBlobUrl());
+    this.pdfViewing.set(null);
+    this.pdfViewingBlobUrl.set(null);
+    this.pdfViewingConfig.set(null);
+  }
+
+  volver(): void {
+    this.facturaEmitida.set(null);
+    this.mensaje.set(null);
+    this.esExito.set(false);
+
+    setTimeout(() => this.montoInputRef()?.focus(), 100);
+  }
+
+  obtenerTipoComprobante(factura: Pick<Comprobante, 'tipo_comprobante'> | FacturaReciente): string {
+    if (factura.tipo_comprobante === 'FACTURA A') return 'FC A';
+    if (factura.tipo_comprobante === 'FACTURA B') return 'FC B';
+    if (factura.tipo_comprobante === 'FACTURA C') return 'FC C';
+    return factura.tipo_comprobante || 'FC C';
+  }
+
+  obtenerNumeroSinCeros(numeroCompleto: string): string {
+    if (numeroCompleto?.includes('-')) {
+      return numeroCompleto.split('-')[1] || '0';
+    }
+    return numeroCompleto?.replace(/^0+/, '') || '0';
+  }
+
+  formatearMonto(monto: number): string {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(monto);
+  }
+
+  formatearFechaCorta(fechaISO: string): string {
+    if (!fechaISO) return '-';
+    const [anio, mes, dia] = fechaISO.split('-');
+    if (!anio || !mes || !dia) return fechaISO;
+    return `${dia}/${mes}/${anio}`;
+  }
+
+  formatearCuit(cuit: string): string {
+    if (!cuit || cuit.length !== 11) return cuit;
+    return `${cuit.substring(0, 2)}-${cuit.substring(2, 10)}-${cuit.substring(10)}`;
+  }
+
+  private setMensajeCliente(message: string | null, tipo: 'success' | 'warning' | 'error') {
+    this.mensajeCliente.set(message);
+    this.mensajeClienteTipo.set(tipo);
+  }
+
+  private actualizarLimitesFecha(actividad: 'bienes' | 'servicios') {
+    this.actividad.set(actividad);
+
+    const hoy = new Date();
+    const max = this.formatDateInput(hoy);
+    const minDate = new Date(hoy);
+    minDate.setDate(hoy.getDate() - (actividad === 'bienes' ? 5 : 10));
+    const min = this.formatDateInput(minDate);
+    this.maxFecha.set(max);
+    this.minFecha.set(min);
+
+    const fechaActual = this.formFactura.controls.fecha.value;
+    if (!fechaActual) {
+      return;
+    }
+
+    if (fechaActual > max) {
+      this.formFactura.controls.fecha.setValue(max);
+    } else if (fechaActual < min) {
+      this.formFactura.controls.fecha.setValue(min);
+    }
+  }
+
+  private obtenerFechaHoy(): string {
+    return this.formatDateInput(new Date());
+  }
+
+  private convertirFechaADDMMYYYY(fechaISO: string): string {
+    const [anio, mes, dia] = fechaISO.split('-');
+    return `${dia}/${mes}/${anio}`;
+  }
+
+  private formatDateInput(date: Date): string {
+    const anio = date.getFullYear();
+    const mes = String(date.getMonth() + 1).padStart(2, '0');
+    const dia = String(date.getDate()).padStart(2, '0');
+    return `${anio}-${mes}-${dia}`;
   }
 
   private getNextMontoValue(
@@ -765,57 +680,22 @@ export class FacturarNuevoComponent {
     return `${formattedIntegerPart},${decimalPart}`;
   }
 
-  async verPDF(): Promise<void> {
-    const factura = this.facturaEmitida();
-    if (!factura) return;
-
-    try {
-      const asset = await this.pdfService.createPdfAsset(factura);
-      this.pdfService.revokeBlobUrl(this.pdfViewingBlobUrl());
-      this.pdfViewing.set(factura);
-      this.pdfViewingBlobUrl.set(asset.blobUrl);
-      this.pdfViewingConfig.set({
-        url: asset.blobUrl,
-        filename: asset.info.filename,
-        title: `Factura ${this.obtenerTipoComprobante(factura)} N ${this.obtenerNumeroSinCeros(this.obtenerNumeroComprobante(factura))}`,
-      });
-    } catch (error) {
-      console.error('Error al generar PDF para visualizacion:', error);
-      this.cerrarVisorPdf();
-      alert('Hubo un error al generar el ticket.');
-    }
-  }
-
-  cerrarVisorPdf() {
-    this.pdfService.revokeBlobUrl(this.pdfViewingBlobUrl());
-    this.pdfViewing.set(null);
-    this.pdfViewingBlobUrl.set(null);
-    this.pdfViewingConfig.set(null);
-  }
-
-  async compartir(): Promise<void> {
-    const factura = this.facturaEmitida();
-    if (!factura) return;
-    await this.pdfService.sharePdf(this.pdfService.createPdfInfo(factura));
-  }
-
-  async imprimir(): Promise<void> {
-    const factura = this.facturaEmitida();
-    if (!factura) return;
-    await this.pdfService.printFactura(factura);
-  }
-
-  async descargar(): Promise<void> {
-    const factura = this.facturaEmitida();
-    if (!factura) return;
-    await this.pdfService.downloadPdf(this.pdfService.createPdfInfo(factura));
-  }
-
-  volver(): void {
-    this.facturaEmitida.set(null);
-    this.mensaje.set(null);
-    this.esExito.set(false);
-
-    setTimeout(() => this.montoInputRef()?.focus(), 100);
+  private mapComprobanteToPdfData(comprobante: Comprobante): PdfComprobanteData {
+    return {
+      tipo_comprobante: comprobante.tipo_comprobante,
+      numero_comprobante: comprobante.numero_comprobante,
+      fecha: comprobante.fecha,
+      total: Number(comprobante.total ?? 0),
+      cae: comprobante.cae,
+      vencimiento_cae: comprobante.vencimiento_cae,
+      cliente_cuit: comprobante.cliente_cuit,
+      cliente_doc_tipo: comprobante.cliente_doc_tipo,
+      cliente_doc_nro: comprobante.cliente_doc_nro,
+      cliente_nombre: comprobante.cliente_nombre,
+      cliente_domicilio: comprobante.cliente_domicilio,
+      cliente_condicion_iva: comprobante.cliente_condicion_iva,
+      punto_venta: comprobante.punto_venta,
+      concepto: comprobante.concepto,
+    };
   }
 }

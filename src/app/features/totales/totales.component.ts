@@ -1,10 +1,11 @@
-import { Component, signal, computed, inject, effect } from '@angular/core';
+import { CurrencyPipe } from '@angular/common';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { format, startOfMonth, endOfMonth, subMonths, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { CurrencyPipe } from '@angular/common';
-import { supabase } from '../../core/services/supabase.service';
+
+import { ComprobantesService } from '../../core/services/comprobantes.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
-import { Comprobante } from '../../core/types/database.types';
+import { ComprobanteMetricRow } from '../../core/types/comprobantes.types';
 
 interface PeriodoTotal {
   nombre: string;
@@ -14,40 +15,23 @@ interface PeriodoTotal {
   color: 'blue' | 'green' | 'purple' | 'orange';
 }
 
-interface FacturaData {
-  fecha: string;
-  monto: number;
-  estado: string;
-  tipo_comprobante: string;
-  esNotaCredito: boolean;
-}
-
-type TotalesComprobanteRow = Pick<Comprobante, 'fecha' | 'total' | 'estado' | 'tipo_comprobante'>;
-
 @Component({
   selector: 'app-totales',
   template: `
-  <div class="space-y-3">
-      <!-- Loading state -->
+    <div class="space-y-3">
       @if (cargando()) {
         <div class="text-center py-8">
           <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <p class="text-muted-foreground mt-4">Cargando datos...</p>
         </div>
       } @else {
-        <!-- Totales por período -->
-  <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
           @for (periodo of periodos(); track periodo.nombre) {
-            <div class="card-surface p-4"
-                 [class]="'border-l-4 border-l-' + periodo.color + '-500'">
+            <div class="card-surface p-4" [class]="'border-l-4 border-l-' + periodo.color + '-500'">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="period-title">
-                    {{ periodo.nombre }}
-                  </p>
-                  <p class="period-sub mt-1">
-                    {{ periodo.fechaTexto }}
-                  </p>
+                  <p class="period-title">{{ periodo.nombre }}</p>
+                  <p class="period-sub mt-1">{{ periodo.fechaTexto }}</p>
                 </div>
                 <div class="text-right">
                   <p class="period-amount">
@@ -62,17 +46,14 @@ type TotalesComprobanteRow = Pick<Comprobante, 'fecha' | 'total' | 'estado' | 't
           }
         </div>
 
-        
-
-        <!-- Resumen anual -->
         <div class="bg-muted rounded-lg border border-border p-4">
           <div class="text-center">
-            <h3 class="period-title mb-2">
-              Resumen del Año {{ getAnoActual() }}
-            </h3>
+            <h3 class="period-title mb-2">Resumen del Año {{ getAnoActual() }}</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
               <div class="text-center">
-                <p class="period-amount">{{ totalAnual() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}</p>
+                <p class="period-amount">
+                  {{ totalAnual() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
+                </p>
                 <p class="period-sub">Total facturado</p>
               </div>
               <div class="text-center">
@@ -80,16 +61,16 @@ type TotalesComprobanteRow = Pick<Comprobante, 'fecha' | 'total' | 'estado' | 't
                 <p class="period-sub">Comprobantes emitidos</p>
               </div>
               <div class="text-center">
-                <p class="period-amount">{{ promedioMensual() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}</p>
+                <p class="period-amount">
+                  {{ promedioMensual() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
+                </p>
                 <p class="period-sub">Promedio mensual</p>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Métricas adicionales -->
-  <div class="grid gap-3 md:grid-cols-2">
-          <!-- Día más productivo -->
+        <div class="grid gap-3 md:grid-cols-2">
           <div class="card-surface p-4">
             <h3 class="period-title mb-4">Día Más Productivo</h3>
             @if (mejorDia()) {
@@ -105,7 +86,6 @@ type TotalesComprobanteRow = Pick<Comprobante, 'fecha' | 'total' | 'estado' | 't
             }
           </div>
 
-          <!-- Ticket promedio -->
           <div class="card-surface p-4">
             <h3 class="period-title mb-4">Ticket Promedio</h3>
             <div class="text-center">
@@ -113,27 +93,29 @@ type TotalesComprobanteRow = Pick<Comprobante, 'fecha' | 'total' | 'estado' | 't
                 {{ ticketPromedio() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
               </p>
               <p class="period-sub">Por comprobante</p>
-              <p class="period-sub text-info">Basado en {{ comprobantesAnuales() }} comprobante(s)</p>
+              <p class="period-sub text-info">
+                Basado en {{ comprobantesAnuales() }} comprobante(s)
+              </p>
             </div>
           </div>
         </div>
       }
     </div>
   `,
-  imports: [CurrencyPipe]
+  imports: [CurrencyPipe],
 })
 export class TotalesComponent {
-  // Signals para datos reales de Supabase
-  facturas = signal<FacturaData[]>([]);
-  cargando = signal(false);
+  readonly facturas = signal<ComprobanteMetricRow[]>([]);
+  readonly cargando = signal(false);
 
+  private readonly comprobantesService = inject(ComprobantesService);
   private readonly contribuyenteService = inject(ContribuyenteService);
 
   constructor() {
     effect(() => {
       const contribuyente = this.contribuyenteService.contribuyente();
       if (contribuyente) {
-        this.cargarDatosIniciales();
+        void this.cargarDatosIniciales();
       } else {
         this.facturas.set([]);
       }
@@ -141,40 +123,21 @@ export class TotalesComponent {
   }
 
   async cargarDatosIniciales() {
+    const contribuyente = this.contribuyenteService.contribuyente();
+    if (!contribuyente) {
+      this.facturas.set([]);
+      return;
+    }
+
     this.cargando.set(true);
-    
+
     try {
-      const contribuyente = this.contribuyenteService.contribuyente();
-      if (!contribuyente) {
-        this.facturas.set([]);
-        return;
-      }
-
-      // Query unificada a tabla comprobantes
-      const { data: comprobantes, error } = await supabase
-        .from('comprobantes')
-        .select('fecha, total, estado, tipo_comprobante')
-        .eq('contribuyente_id', contribuyente.id)
-        .order('fecha', { ascending: false });
-
-      if (error) {
-        console.error('Error al cargar comprobantes:', error);
-        return;
-      }
-
-      // Convertir al formato esperado
-      const todosLosComprobantes: FacturaData[] = ((comprobantes || []) as TotalesComprobanteRow[]).map(c => ({
-        fecha: c.fecha,
-        monto: Number(c.total),
-        estado: c.estado || 'emitida',
-        tipo_comprobante: c.tipo_comprobante,
-        esNotaCredito: c.tipo_comprobante.includes('NOTA DE CREDITO')
-      }));
-
-      this.facturas.set(todosLosComprobantes);
-
+      this.facturas.set(
+        await this.comprobantesService.cargarMetricasComprobantes(contribuyente.id),
+      );
     } catch (error) {
       console.error('Error inesperado al cargar datos:', error);
+      this.facturas.set([]);
     } finally {
       this.cargando.set(false);
     }
@@ -182,10 +145,8 @@ export class TotalesComponent {
 
   getAnoActual = computed(() => new Date().getFullYear());
 
-  // Helper para calcular monto real (facturas positivas, NC negativas)
-  calcularMontoReal = (comprobante: FacturaData) => {
-    return comprobante.esNotaCredito ? -comprobante.monto : comprobante.monto;
-  };
+  calcularMontoReal = (comprobante: ComprobanteMetricRow) =>
+    comprobante.esNotaCredito ? -comprobante.total : comprobante.total;
 
   periodos = computed((): PeriodoTotal[] => {
     const hoy = new Date();
@@ -195,101 +156,93 @@ export class TotalesComponent {
     const inicioMesAnterior = startOfMonth(subMonths(hoy, 1));
     const finMesAnterior = endOfMonth(subMonths(hoy, 1));
 
-    const comprobantesEmitidos = this.facturas().filter(f => f.estado === 'emitida');
-
-    // Hoy
-    const comprobantesHoy = comprobantesEmitidos.filter(f => f.fecha === format(hoy, 'yyyy-MM-dd'));
-    const totalHoy = comprobantesHoy.reduce((sum, f) => sum + this.calcularMontoReal(f), 0);
-
-    // Ayer
-    const comprobantesAyer = comprobantesEmitidos.filter(f => f.fecha === format(ayer, 'yyyy-MM-dd'));
-    const totalAyer = comprobantesAyer.reduce((sum, f) => sum + this.calcularMontoReal(f), 0);
-
-    // Mes actual
-    const comprobantesMesActual = comprobantesEmitidos.filter(f => {
-      const fechaFactura = new Date(f.fecha + 'T00:00:00');
+    const comprobantesEmitidos = this.facturas().filter((factura) => factura.estado === 'emitida');
+    const comprobantesHoy = comprobantesEmitidos.filter(
+      (factura) => factura.fecha === format(hoy, 'yyyy-MM-dd'),
+    );
+    const comprobantesAyer = comprobantesEmitidos.filter(
+      (factura) => factura.fecha === format(ayer, 'yyyy-MM-dd'),
+    );
+    const comprobantesMesActual = comprobantesEmitidos.filter((factura) => {
+      const fechaFactura = new Date(`${factura.fecha}T00:00:00`);
       return fechaFactura >= inicioMesActual && fechaFactura <= finMesActual;
     });
-    const totalMesActual = comprobantesMesActual.reduce((sum, f) => sum + this.calcularMontoReal(f), 0);
-
-    // Mes anterior
-    const comprobantesMesAnterior = comprobantesEmitidos.filter(f => {
-      const fechaFactura = new Date(f.fecha + 'T00:00:00');
+    const comprobantesMesAnterior = comprobantesEmitidos.filter((factura) => {
+      const fechaFactura = new Date(`${factura.fecha}T00:00:00`);
       return fechaFactura >= inicioMesAnterior && fechaFactura <= finMesAnterior;
     });
-    const totalMesAnterior = comprobantesMesAnterior.reduce((sum, f) => sum + this.calcularMontoReal(f), 0);
 
     return [
       {
         nombre: 'Hoy',
-        fechaTexto: format(hoy, 'd \'de\' MMMM', { locale: es }),
-        total: totalHoy,
+        fechaTexto: format(hoy, "d 'de' MMMM", { locale: es }),
+        total: comprobantesHoy.reduce((sum, factura) => sum + this.calcularMontoReal(factura), 0),
         cantidad: comprobantesHoy.length,
-        color: 'blue'
+        color: 'blue',
       },
       {
         nombre: 'Ayer',
-        fechaTexto: format(ayer, 'd \'de\' MMMM', { locale: es }),
-        total: totalAyer,
+        fechaTexto: format(ayer, "d 'de' MMMM", { locale: es }),
+        total: comprobantesAyer.reduce((sum, factura) => sum + this.calcularMontoReal(factura), 0),
         cantidad: comprobantesAyer.length,
-        color: 'green'
+        color: 'green',
       },
       {
         nombre: 'Mes Actual',
         fechaTexto: format(hoy, 'MMMM yyyy', { locale: es }),
-        total: totalMesActual,
+        total: comprobantesMesActual.reduce(
+          (sum, factura) => sum + this.calcularMontoReal(factura),
+          0,
+        ),
         cantidad: comprobantesMesActual.length,
-        color: 'purple'
+        color: 'purple',
       },
       {
         nombre: 'Mes Anterior',
         fechaTexto: format(subMonths(hoy, 1), 'MMMM yyyy', { locale: es }),
-        total: totalMesAnterior,
+        total: comprobantesMesAnterior.reduce(
+          (sum, factura) => sum + this.calcularMontoReal(factura),
+          0,
+        ),
         cantidad: comprobantesMesAnterior.length,
-        color: 'orange'
-      }
+        color: 'orange',
+      },
     ];
-  });
-
-  maxTotal = computed(() => {
-    return Math.max(...this.periodos().map(p => p.total), 1);
   });
 
   totalAnual = computed(() => {
     const anoActual = this.getAnoActual();
     return this.facturas()
-      .filter(f => f.estado === 'emitida' && f.fecha.startsWith(anoActual.toString()))
-      .reduce((sum, f) => sum + this.calcularMontoReal(f), 0);
+      .filter((factura) => factura.estado === 'emitida' && factura.fecha.startsWith(anoActual.toString()))
+      .reduce((sum, factura) => sum + this.calcularMontoReal(factura), 0);
   });
 
   comprobantesAnuales = computed(() => {
     const anoActual = this.getAnoActual();
-    return this.facturas()
-      .filter(f => f.estado === 'emitida' && f.fecha.startsWith(anoActual.toString()))
-      .length;
+    return this.facturas().filter(
+      (factura) => factura.estado === 'emitida' && factura.fecha.startsWith(anoActual.toString()),
+    ).length;
   });
 
   promedioMensual = computed(() => {
-    const totalAnual = this.totalAnual();
-    const mesActual = new Date().getMonth() + 1; // Meses transcurridos
-    return mesActual > 0 ? totalAnual / mesActual : 0;
+    const mesActual = new Date().getMonth() + 1;
+    return mesActual > 0 ? this.totalAnual() / mesActual : 0;
   });
 
   ticketPromedio = computed(() => {
     const totalComprobantes = this.comprobantesAnuales();
-    const totalAnual = this.totalAnual();
-    return totalComprobantes > 0 ? totalAnual / totalComprobantes : 0;
+    return totalComprobantes > 0 ? this.totalAnual() / totalComprobantes : 0;
   });
 
   mejorDia = computed(() => {
-    const comprobantesEmitidos = this.facturas().filter(f => f.estado === 'emitida');
+    const comprobantesEmitidos = this.facturas().filter((factura) => factura.estado === 'emitida');
     const totalesPorDia = new Map<string, { total: number; cantidad: number }>();
 
-    comprobantesEmitidos.forEach(f => {
-      const existing = totalesPorDia.get(f.fecha) || { total: 0, cantidad: 0 };
-      totalesPorDia.set(f.fecha, {
-        total: existing.total + this.calcularMontoReal(f),
-        cantidad: existing.cantidad + 1
+    comprobantesEmitidos.forEach((factura) => {
+      const existing = totalesPorDia.get(factura.fecha) || { total: 0, cantidad: 0 };
+      totalesPorDia.set(factura.fecha, {
+        total: existing.total + this.calcularMontoReal(factura),
+        cantidad: existing.cantidad + 1,
       });
     });
 
@@ -305,17 +258,14 @@ export class TotalesComponent {
       }
     });
 
-    if (!mejorFecha) return null;
+    if (!mejorFecha) {
+      return null;
+    }
 
     return {
-      fecha: format(new Date(mejorFecha + 'T00:00:00'), 'EEEE d \'de\' MMMM', { locale: es }),
+      fecha: format(new Date(`${mejorFecha}T00:00:00`), "EEEE d 'de' MMMM", { locale: es }),
       total: mejorTotal,
-      cantidad: mejorCantidad
+      cantidad: mejorCantidad,
     };
   });
-
-  getBarWidth(total: number): number {
-    const maxTotal = this.maxTotal();
-    return maxTotal > 0 ? (total / maxTotal) * 100 : 0;
-  }
 }

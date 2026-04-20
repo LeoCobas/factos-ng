@@ -3,6 +3,7 @@ import localeEsAr from '@angular/common/locales/es-AR';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
+import { ComprobantesService } from '../../core/services/comprobantes.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import { FacturacionService } from '../../core/services/facturacion.service';
 import { PdfService } from '../../core/services/pdf.service';
@@ -24,6 +25,13 @@ describe('ListadoComponent', () => {
         {
           provide: FacturacionService,
           useValue: {},
+        },
+        {
+          provide: ComprobantesService,
+          useValue: {
+            cargarComprobantesPorFecha: vi.fn().mockResolvedValue([]),
+            cargarUltimaFechaConComprobantes: vi.fn().mockResolvedValue(null),
+          },
         },
         {
           provide: ContribuyenteService,

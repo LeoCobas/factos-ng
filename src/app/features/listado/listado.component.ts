@@ -11,11 +11,13 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CurrencyPipe } from '@angular/common';
+import { ComprobantesService } from '../../core/services/comprobantes.service';
 import { supabase } from '../../core/services/supabase.service';
 import { PdfService } from '../../core/services/pdf.service';
 import { FacturacionService } from '../../core/services/facturacion.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import { Comprobante } from '../../core/types/database.types';
+import { PdfComprobanteData } from '../../core/types/pdf.types';
 
 import { PdfViewerComponent, PdfViewerConfig } from '../../shared/components/ui/pdf-viewer.component';
 
@@ -28,6 +30,7 @@ interface Factura {
   monto: number;
   estado: 'emitida' | 'anulada';
   cae?: string;
+  vencimiento_cae?: string;
   tipo_comprobante: string;
   pdf_url?: string;
   concepto?: string;
@@ -399,6 +402,7 @@ interface ComprobanteListadoRow extends Comprobante {
 
 
 export class ListadoComponent {
+  private readonly comprobantesService = inject(ComprobantesService);
   private readonly pdfService = inject(PdfService);
   private readonly facturacionService = inject(FacturacionService);
   private readonly sanitizer = inject(DomSanitizer);
@@ -463,14 +467,14 @@ export class ListadoComponent {
   }
 
   // Métodos de acción para PDF (adaptados de facturar-nuevo)
-  async verPDF(factura: Factura | PdfFacturaLike, event?: Event) {
+  async verPDF(factura: Factura | PdfComprobanteData, event?: Event) {
     if (event) {
       event.preventDefault();
       event.stopPropagation();
     }
     
     try {
-      const asset = await this.pdfService.createPdfAsset(factura);
+      const asset = await this.pdfService.createPdfAsset(this.toPdfComprobanteData(factura));
 
       this.pdfViewing.set(factura);
       this.pdfViewingInfo.set({
@@ -489,57 +493,79 @@ export class ListadoComponent {
     }
   }
 
-  async compartir(factura: Factura | PdfFacturaLike, event?: Event) {
+  async compartir(factura: Factura | PdfComprobanteData, event?: Event) {
     if (event) {
       event.preventDefault();
       event.stopPropagation();
     }
     
     try {
-      const pdfInfo = this.pdfService.createPdfInfo(factura);
+      const pdfInfo = this.pdfService.createPdfInfo(this.toPdfComprobanteData(factura));
       await this.pdfService.sharePdf(pdfInfo);
     } catch (error) {
       console.error('Error al compartir:', error);
     }
   }
 
-  async descargar(factura: Factura | PdfFacturaLike, event?: Event) {
+  async descargar(factura: Factura | PdfComprobanteData, event?: Event) {
     if (event) {
       event.preventDefault();
       event.stopPropagation();
     }
     
     try {
-      const pdfInfo = this.pdfService.createPdfInfo(factura);
+      const pdfInfo = this.pdfService.createPdfInfo(this.toPdfComprobanteData(factura));
       await this.pdfService.downloadPdf(pdfInfo);
     } catch (error) {
       console.error('Error al descargar:', error);
     }
   }
 
-  async imprimir(factura: Factura | PdfFacturaLike, event?: Event) {
+  async imprimir(factura: Factura | PdfComprobanteData, event?: Event) {
     if (event) {
       event.preventDefault();
       event.stopPropagation();
     }
     
     try {
-      await this.pdfService.printFactura(factura);
+      await this.pdfService.printFactura(this.toPdfComprobanteData(factura));
     } catch (error) {
       console.error('Error al imprimir:', error);
       alert('Hubo un error enviando a imprimir');
     }
   }
 
-  private buildNotaCreditoPdfPayload(notaCredito: NotaCreditoEmitida): PdfFacturaLike {
+  private buildNotaCreditoPdfPayload(notaCredito: NotaCreditoEmitida): PdfComprobanteData {
     return {
       numero_comprobante: notaCredito.numero || '0000-00000000',
       tipo_comprobante: notaCredito.tipo_comprobante || 'NOTA DE CREDITO',
-      monto: notaCredito.monto,
       total: notaCredito.monto,
       fecha: new Date().toISOString().split('T')[0],
       cae: notaCredito.cae ?? null,
       vencimiento_cae: notaCredito.vencimiento_cae ?? null
+    };
+  }
+
+  private toPdfComprobanteData(factura: Factura | PdfComprobanteData): PdfComprobanteData {
+    if ('numero_comprobante' in factura) {
+      return factura;
+    }
+
+    return {
+      tipo_comprobante: factura.tipo_comprobante,
+      numero_comprobante: factura.numero_factura,
+      fecha: factura.fecha,
+      total: factura.monto,
+      cae: factura.cae ?? null,
+      vencimiento_cae: factura.vencimiento_cae ?? null,
+      cliente_cuit: factura.cliente_cuit ?? null,
+      cliente_doc_tipo: factura.cliente_doc_tipo ?? null,
+      cliente_doc_nro: factura.cliente_doc_nro ?? null,
+      cliente_nombre: factura.cliente_nombre ?? null,
+      cliente_domicilio: factura.cliente_domicilio ?? null,
+      cliente_condicion_iva: factura.cliente_condicion_iva ?? null,
+      punto_venta: factura.punto_venta ?? null,
+      concepto: factura.concepto ?? null
     };
   }
 
@@ -673,7 +699,17 @@ export class ListadoComponent {
     
     try {
       // Query unificada a tabla comprobantes
-      const { data: comprobantes, error } = await supabase
+      const comprobantes = await this.comprobantesService.cargarComprobantesPorFecha(
+        contribuyente.id,
+        fecha,
+      );
+      this.cacheFacturasPorFecha.set(cacheKey, comprobantes);
+      this.facturas.set(comprobantes);
+      await this.actualizarUltimaFechaConFacturas(fecha, comprobantes);
+      return;
+
+      /*
+      const { data: comprobantesLegacy, error } = await supabase
         .from('comprobantes')
         .select(`
           *,
@@ -756,6 +792,7 @@ export class ListadoComponent {
       this.cacheFacturasPorFecha.set(cacheKey, comprobantesFormateados);
       this.facturas.set(comprobantesFormateados);
       await this.actualizarUltimaFechaConFacturas(fecha, comprobantesFormateados);
+      */
 
     } catch (error) {
       console.error('Error inesperado al cargar comprobantes:', error);
@@ -867,6 +904,14 @@ export class ListadoComponent {
     }
 
     try {
+      const ultimaFecha = await this.comprobantesService.cargarUltimaFechaConComprobantes(
+        contribuyente.id,
+      );
+      this.cacheUltimaFechaConFacturas.set(cacheKey, ultimaFecha);
+      this.ultimaFechaConFacturas.set(ultimaFecha);
+      return;
+
+      /*
       const { data, error } = await supabase
         .from('comprobantes')
         .select('fecha')
@@ -883,6 +928,7 @@ export class ListadoComponent {
       const ultimaFecha = data?.[0]?.fecha ?? null;
       this.cacheUltimaFechaConFacturas.set(cacheKey, ultimaFecha);
       this.ultimaFechaConFacturas.set(ultimaFecha);
+      */
     } catch (error) {
       console.error('Error inesperado al buscar última fecha con facturas:', error);
       this.ultimaFechaConFacturas.set(null);

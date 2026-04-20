@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 
 import { Comprobante } from '../../core/types/database.types';
 
@@ -6,19 +6,19 @@ import { Comprobante } from '../../core/types/database.types';
   selector: 'app-factura-emitida-panel',
   standalone: true,
   template: `
-    @if (factura()) {
+    @if (factura) {
       <div class="mt-4 p-4 card-factura-emitida">
         <div class="text-center mb-4">
           <h3 class="text-lg font-semibold mb-2">Factura emitida:</h3>
           <div class="text-xl font-bold text-primary">
-            {{ tipoComprobante() }}
-            {{ numeroComprobante() }}
-            {{ monto() }}
+            {{ tipoComprobante }}
+            {{ numeroComprobante }}
+            {{ monto }}
           </div>
-          @if (factura()?.cliente_nombre) {
+          @if (factura && factura.cliente_nombre) {
             <div class="mt-2 text-sm text-muted-foreground">
-              {{ factura()?.cliente_nombre }} -
-              {{ factura()?.cliente_condicion_iva }}
+              {{ factura.cliente_nombre }} -
+              {{ factura.cliente_condicion_iva }}
             </div>
           }
         </div>
@@ -59,14 +59,14 @@ import { Comprobante } from '../../core/types/database.types';
   `,
 })
 export class FacturaEmitidaPanelComponent {
-  readonly factura = input.required<Comprobante | null>();
-  readonly tipoComprobante = input.required<string>();
-  readonly numeroComprobante = input.required<string>();
-  readonly monto = input.required<string>();
+  @Input({ required: true }) factura!: Comprobante | null;
+  @Input({ required: true }) tipoComprobante!: string;
+  @Input({ required: true }) numeroComprobante!: string;
+  @Input({ required: true }) monto!: string;
 
-  readonly ver = output<void>();
-  readonly compartir = output<void>();
-  readonly descargar = output<void>();
-  readonly imprimir = output<void>();
-  readonly volver = output<void>();
+  @Output() readonly ver = new EventEmitter<void>();
+  @Output() readonly compartir = new EventEmitter<void>();
+  @Output() readonly descargar = new EventEmitter<void>();
+  @Output() readonly imprimir = new EventEmitter<void>();
+  @Output() readonly volver = new EventEmitter<void>();
 }
