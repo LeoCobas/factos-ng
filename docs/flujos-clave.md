@@ -96,15 +96,6 @@
    - `fiscal_status_reliable`
    - `fiscal_status_source`
 
-### Modo diagnóstico
-
-Si recibe `debug: true`, devuelve además:
-
-- entorno ARCA activo
-- estado del ticket de padrón antes y después
-- `serverStatus`
-- diagnóstico de la llamada batch de constancia
-
 ## 4. Constancia de inscripción y clasificación fiscal
 
 ### Utilidad base
@@ -180,7 +171,6 @@ Uso verificado:
 
 - `new Arca({...})`
 - `arca.registerInscriptionProofService.getTaxpayersDetails(...)`
-- `arca.registerInscriptionProofService.getServerStatus()`
 
 ## 9. Persistencia de tickets ARCA
 

@@ -15,22 +15,6 @@ const corsHeaders = {
 
 const ARCA_TIMEOUT_MS = 15000;
 
-interface DiagnosticCallResult {
-  service: 'constancia_inscripcion_batch';
-  ok: boolean;
-  returnedNull: boolean;
-  error: string | null;
-  keys: string[];
-  preview: Record<string, unknown> | null;
-}
-
-interface TicketDiagnosticResult {
-  hasStoredTicket: boolean;
-  expiresAt: string | null;
-  destination: string | null;
-  generationTime: string | null;
-}
-
 function getArcaEnvironmentLabel(production: boolean): 'produccion' | 'homologacion' {
   return production ? 'produccion' : 'homologacion';
 }
@@ -142,7 +126,11 @@ function buildLookupError(persona: Record<string, unknown>): string | null {
   return errorMessage;
 }
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutMessage: string
+): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
   const timeoutPromise = new Promise<T>((_, reject) => {
@@ -160,103 +148,10 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMes
   }
 }
 
-function extractPreview(node: unknown): Record<string, unknown> | null {
-  const record = asRecord(node);
-  if (Object.keys(record).length === 0) {
-    return null;
-  }
-
-  const personaEntries = Array.isArray(record['persona']) ? record['persona'] : [];
-  const persona = asRecord(personaEntries[0] ?? record);
-  const datosGenerales = getNestedRecord(persona, 'datosGenerales');
-  const datosRegimenGeneral = getNestedRecord(persona, 'datosRegimenGeneral');
-  const datosMonotributo = getNestedRecord(persona, 'datosMonotributo');
-
-  return {
-    topLevelKeys: Object.keys(record),
-    razonSocial: getString(datosGenerales['razonSocial']),
-    nombre: getString(datosGenerales['nombre']),
-    apellido: getString(datosGenerales['apellido']),
-    impuestosRg: datosRegimenGeneral['impuestos'] ?? datosRegimenGeneral['impuesto'] ?? null,
-    impuestosMono: datosMonotributo['impuestos'] ?? datosMonotributo['impuesto'] ?? null,
-    categoriaMono:
-      datosMonotributo['categoriaMonotributo'] ?? datosMonotributo['categoria'] ?? null,
-    errorConstancia: getNestedRecord(record, 'errorConstancia'),
-    errorRegimenGeneral: getNestedRecord(persona, 'errorRegimenGeneral'),
-    errorMonotributo: getNestedRecord(persona, 'errorMonotributo'),
-  };
-}
-
-async function captureDiagnosticCall(
-  service: DiagnosticCallResult['service'],
-  fetcher: () => Promise<unknown>
-): Promise<DiagnosticCallResult> {
-  try {
-    const result = await withTimeout(
-      fetcher(),
-      ARCA_TIMEOUT_MS,
-      `Timeout consultando ${service} en ARCA.`
-    );
-
-    if (result == null) {
-      return {
-        service,
-        ok: false,
-        returnedNull: true,
-        error: null,
-        keys: [],
-        preview: null,
-      };
-    }
-
-    const record = asRecord(result);
-
-    return {
-      service,
-      ok: true,
-      returnedNull: false,
-      error: null,
-      keys: Object.keys(record),
-      preview: extractPreview(record),
-    };
-  } catch (error) {
-    return {
-      service,
-      ok: false,
-      returnedNull: false,
-      error: error instanceof Error ? error.message : 'Error desconocido',
-      keys: [],
-      preview: null,
-    };
-  }
-}
-
-function inspectStoredPadronTicket(rawTicket: unknown): TicketDiagnosticResult {
-  const ticket = asRecord(rawTicket);
-  const header = getNestedRecord(ticket, 'header');
-  const credentials = getNestedRecord(ticket, 'credentials');
-
-  return {
-    hasStoredTicket: Object.keys(ticket).length > 0,
-    expiresAt:
-      getString(ticket['expirationTime']) ||
-      getString(credentials['expirationTime']) ||
-      getString(header['expirationTime']) ||
-      null,
-    destination:
-      getString(ticket['destination']) ||
-      getString(credentials['destination']) ||
-      getString(header['destination']) ||
-      null,
-    generationTime:
-      getString(ticket['generationTime']) ||
-      getString(credentials['generationTime']) ||
-      getString(header['generationTime']) ||
-      null,
-  };
-}
-
-async function fetchTaxpayerFromArca(arca: Arca, cuit: number): Promise<Record<string, unknown> | null> {
+async function fetchTaxpayerFromArca(
+  arca: Arca,
+  cuit: number
+): Promise<Record<string, unknown> | null> {
   const constanciaBatch = await withTimeout(
     arca.registerInscriptionProofService.getTaxpayersDetails([cuit]),
     ARCA_TIMEOUT_MS,
@@ -282,7 +177,7 @@ Deno.serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get('Authorization');
     const supabase = getSupabaseClient(authHeader);
-    const { cuit, debug } = await req.json();
+    const { cuit } = await req.json();
 
     if (!cuit) throw new Error('CUIT requerido');
 
@@ -346,51 +241,6 @@ Deno.serve(async (req: Request) => {
     try {
       const normalizedCuit = parseInt(String(cuit), 10);
       const arcaEnvironment = getArcaEnvironmentLabel(contribuyente.arca_production === true);
-
-      if (debug === true) {
-        const storedPadronTicketBefore = readArcaTicketBucket(contribuyente.arca_ticket, 'padron');
-        const [constanciaBatchDiag, constanciaStatus] = await Promise.all([
-          captureDiagnosticCall('constancia_inscripcion_batch', () =>
-            arca.registerInscriptionProofService.getTaxpayersDetails([normalizedCuit])
-          ),
-          withTimeout(
-            arca.registerInscriptionProofService.getServerStatus(),
-            ARCA_TIMEOUT_MS,
-            'Timeout consultando serverStatus de constancia_inscripcion.'
-          ).catch((error) => ({
-            error: error instanceof Error ? error.message : 'Error desconocido',
-          })),
-        ]);
-
-        const {
-          data: contribuyenteAfterDebug,
-        } = await db
-          .from('contribuyentes')
-          .select('arca_ticket')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        const storedPadronTicketAfter = readArcaTicketBucket(
-          contribuyenteAfterDebug?.arca_ticket,
-          'padron'
-        );
-
-        return new Response(
-          JSON.stringify({
-            success: true,
-            debug: true,
-            cuit: normalizedCuit,
-            environment: arcaEnvironment,
-            emisor_cuit: contribuyente.cuit,
-            ticket_before: inspectStoredPadronTicket(storedPadronTicketBefore),
-            ticket_after: inspectStoredPadronTicket(storedPadronTicketAfter),
-            constancia_server_status: constanciaStatus,
-            diagnostics: [constanciaBatchDiag],
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
-      }
 
       const personaObj = await fetchTaxpayerFromArca(arca, normalizedCuit);
 

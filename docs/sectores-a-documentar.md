@@ -12,7 +12,6 @@
 - `supabase/functions/padron-lookup/index.ts`
   - merece una nota técnica específica sobre:
     - consulta de constancia de inscripción
-    - modo `debug`
     - timeouts
     - significado de `fiscal_status_reliable`
 
