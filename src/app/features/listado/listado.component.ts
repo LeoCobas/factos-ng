@@ -409,7 +409,7 @@ export class ListadoComponent {
   facturas = signal<Factura[]>([]);
   cargando = signal(false);
   facturaExpandida = signal<string | null>(null); // ID de factura expandida
-  notaCreditoEmitida = signal<any>(null); // Nota de crédito recién emitida
+  notaCreditoEmitida = signal<NotaCreditoEmitida | null>(null); // Nota de crédito recién emitida
   ultimaFechaConFacturas = signal<string | null>(null);
 
   // Cache de facturas por fecha para evitar consultas repetidas
@@ -417,7 +417,7 @@ export class ListadoComponent {
   private cacheUltimaFechaConFacturas = new Map<string, string | null>();
 
   // Signals para el visor PDF
-  pdfViewing = signal<Factura | null>(null);
+  pdfViewing = signal<Factura | PdfFacturaLike | null>(null);
   pdfViewingInfo = signal<{title: string; url: string; filename: string} | null>(null);
   pdfViewingBlobUrl = signal<string | null>(null);
 
@@ -462,13 +462,8 @@ export class ListadoComponent {
     }
   }
 
-  // Método de prueba simple
-  testClick(facturaId: string) {
-  alert('Click funcionando para factura: ' + facturaId);
-  }
-
   // Métodos de acción para PDF (adaptados de facturar-nuevo)
-  async verPDF(factura: any, event?: Event) {
+  async verPDF(factura: Factura | PdfFacturaLike, event?: Event) {
     if (event) {
       event.preventDefault();
       event.stopPropagation();
@@ -494,7 +489,7 @@ export class ListadoComponent {
     }
   }
 
-  async compartir(factura: any, event?: Event) {
+  async compartir(factura: Factura | PdfFacturaLike, event?: Event) {
     if (event) {
       event.preventDefault();
       event.stopPropagation();
@@ -508,7 +503,7 @@ export class ListadoComponent {
     }
   }
 
-  async descargar(factura: any, event?: Event) {
+  async descargar(factura: Factura | PdfFacturaLike, event?: Event) {
     if (event) {
       event.preventDefault();
       event.stopPropagation();
@@ -522,7 +517,7 @@ export class ListadoComponent {
     }
   }
 
-  async imprimir(factura: any, event?: Event) {
+  async imprimir(factura: Factura | PdfFacturaLike, event?: Event) {
     if (event) {
       event.preventDefault();
       event.stopPropagation();
@@ -536,24 +531,25 @@ export class ListadoComponent {
     }
   }
 
+  private buildNotaCreditoPdfPayload(notaCredito: NotaCreditoEmitida): PdfFacturaLike {
+    return {
+      numero_comprobante: notaCredito.numero || '0000-00000000',
+      tipo_comprobante: notaCredito.tipo_comprobante || 'NOTA DE CREDITO',
+      monto: notaCredito.monto,
+      total: notaCredito.monto,
+      fecha: new Date().toISOString().split('T')[0],
+      cae: notaCredito.cae ?? null,
+      vencimiento_cae: notaCredito.vencimiento_cae ?? null
+    };
+  }
+
   // Métodos específicos para acciones de nota de crédito
   async verPDFNotaCredito() {
     const notaCredito = this.notaCreditoEmitida();
     if (!notaCredito) return;
 
     try {
-      // Crear un objeto temporal para usar con el visor existente
-      const notaCreditoTemporal = {
-        numero_comprobante: notaCredito.numero,
-        tipo_comprobante: notaCredito.tipo_comprobante || 'NOTA DE CREDITO',
-        monto: notaCredito.monto,
-        total: notaCredito.monto,
-        fecha: new Date().toISOString().split('T')[0],
-        cae: notaCredito.cae,
-        vencimiento_cae: notaCredito.vencimiento_cae
-      };
-
-      await this.verPDF(notaCreditoTemporal);
+      await this.verPDF(this.buildNotaCreditoPdfPayload(notaCredito));
     } catch (error) {
       console.error('Error al ver PDF de nota de crédito:', error);
     }
@@ -564,16 +560,7 @@ export class ListadoComponent {
     if (!notaCredito) return;
 
     try {
-      const notaCreditoTemporal = {
-        numero_comprobante: notaCredito.numero,
-        tipo_comprobante: notaCredito.tipo_comprobante || 'NOTA DE CREDITO',
-        monto: notaCredito.monto,
-        total: notaCredito.monto,
-        fecha: new Date().toISOString().split('T')[0],
-        cae: notaCredito.cae,
-        vencimiento_cae: notaCredito.vencimiento_cae
-      };
-      const pdfInfo = this.pdfService.createPdfInfo(notaCreditoTemporal);
+      const pdfInfo = this.pdfService.createPdfInfo(this.buildNotaCreditoPdfPayload(notaCredito));
       await this.pdfService.sharePdf(pdfInfo);
     } catch (error) {
       console.error('Error al compartir nota de crédito:', error);
@@ -585,16 +572,7 @@ export class ListadoComponent {
     if (!notaCredito) return;
 
     try {
-      const notaCreditoTemporal = {
-        numero_comprobante: notaCredito.numero,
-        tipo_comprobante: notaCredito.tipo_comprobante || 'NOTA DE CREDITO',
-        monto: notaCredito.monto,
-        total: notaCredito.monto,
-        fecha: new Date().toISOString().split('T')[0],
-        cae: notaCredito.cae,
-        vencimiento_cae: notaCredito.vencimiento_cae
-      };
-      const pdfInfo = this.pdfService.createPdfInfo(notaCreditoTemporal);
+      const pdfInfo = this.pdfService.createPdfInfo(this.buildNotaCreditoPdfPayload(notaCredito));
       await this.pdfService.downloadPdf(pdfInfo);
     } catch (error) {
       console.error('Error al descargar nota de crédito:', error);
@@ -606,17 +584,7 @@ export class ListadoComponent {
     if (!notaCredito) return;
 
     try {
-      const notaCreditoTemporal = {
-        numero_comprobante: notaCredito.numero,
-        tipo_comprobante: notaCredito.tipo_comprobante || 'NOTA DE CREDITO',
-        monto: notaCredito.monto,
-        total: notaCredito.monto,
-        fecha: new Date().toISOString().split('T')[0],
-        cae: notaCredito.cae,
-        vencimiento_cae: notaCredito.vencimiento_cae
-      };
-      
-      await this.pdfService.printFactura(notaCreditoTemporal);
+      await this.pdfService.printFactura(this.buildNotaCreditoPdfPayload(notaCredito));
     } catch (error) {
       console.error('Error al imprimir nota de credito:', error);
       alert('Hubo un error al intentar imprimir la nota de credito');
@@ -722,7 +690,9 @@ export class ListadoComponent {
         return;
       }
 
-      const idsFacturasAnuladas = (comprobantes || [])
+      const comprobantesRows = (comprobantes || []) as ComprobanteListadoRow[];
+
+      const idsFacturasAnuladas = comprobantesRows
         .filter(
           c => c.estado === 'anulada' && !String(c.tipo_comprobante).includes('NOTA DE CREDITO')
         )
@@ -742,7 +712,10 @@ export class ListadoComponent {
         if (notasError) {
           console.error('Error al cargar notas de crédito asociadas:', notasError);
         } else {
-          for (const nc of notasCreditoAsociadas || []) {
+          for (const nc of (notasCreditoAsociadas || []) as Pick<
+            Comprobante,
+            'comprobante_asociado_id' | 'numero_comprobante' | 'created_at'
+          >[]) {
             if (!nc.comprobante_asociado_id || !nc.numero_comprobante) continue;
             if (!mapaNotasCreditoPorAsociado.has(nc.comprobante_asociado_id)) {
               mapaNotasCreditoPorAsociado.set(nc.comprobante_asociado_id, nc.numero_comprobante);
@@ -752,7 +725,7 @@ export class ListadoComponent {
       }
 
       // Convertir al formato esperado por el template
-      const comprobantesFormateados: Factura[] = (comprobantes || []).map(c => {
+      const comprobantesFormateados: Factura[] = comprobantesRows.map(c => {
         const esNC = c.tipo_comprobante.includes('NOTA DE CREDITO');
         return {
           id: c.id,
@@ -764,18 +737,18 @@ export class ListadoComponent {
           vencimiento_cae: c.vencimiento_cae || undefined,
           tipo_comprobante: c.tipo_comprobante,
           pdf_url: c.pdf_url || undefined,
-          concepto: c.concepto,
-          punto_venta: c.punto_venta,
-          cliente_cuit: (c as any).cliente_cuit || undefined,
-          cliente_nombre: (c as any).cliente_nombre || undefined,
-          cliente_domicilio: (c as any).cliente_domicilio || undefined,
-          cliente_condicion_iva: (c as any).cliente_condicion_iva || undefined,
-          cliente_doc_tipo: (c as any).cliente_doc_tipo || undefined,
-          cliente_doc_nro: (c as any).cliente_doc_nro || undefined,
-          created_at: c.created_at,
-          updated_at: c.updated_at,
+          concepto: c.concepto || undefined,
+          punto_venta: c.punto_venta || undefined,
+          cliente_cuit: c.cliente_cuit || undefined,
+          cliente_nombre: c.cliente_nombre || undefined,
+          cliente_domicilio: c.cliente_domicilio || undefined,
+          cliente_condicion_iva: c.cliente_condicion_iva || undefined,
+          cliente_doc_tipo: c.cliente_doc_tipo || undefined,
+          cliente_doc_nro: c.cliente_doc_nro || undefined,
+          created_at: c.created_at || undefined,
+          updated_at: c.updated_at || undefined,
           comprobante_asociado_id: c.comprobante_asociado_id || undefined,
-          factura_anulada: esNC ? (c as any).comprobante_asociado?.numero_comprobante : undefined,
+          factura_anulada: esNC ? c.comprobante_asociado?.numero_comprobante || undefined : undefined,
           nota_credito_anuladora: !esNC ? mapaNotasCreditoPorAsociado.get(c.id) : undefined
         };
       });
@@ -1028,10 +1001,11 @@ export class ListadoComponent {
         this.notaCreditoEmitida.set({
           numero: resultado.data?.numero,
           cae: resultado.data?.cae,
-          cae_vto: resultado.data?.vencimiento_cae,
+          vencimiento_cae: resultado.data?.vencimiento_cae,
           pdf_url: resultado.data?.pdf_url,
           monto: factura.monto,
           facturaOriginal: factura.numero_factura,
+          tipo_comprobante: resultado.data?.comprobante.tipo_comprobante,
           notaCredito: resultado.data?.comprobante
         });
 

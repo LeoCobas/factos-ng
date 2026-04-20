@@ -4,6 +4,7 @@ import { es } from 'date-fns/locale';
 import { CurrencyPipe } from '@angular/common';
 import { supabase } from '../../core/services/supabase.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
+import { Comprobante } from '../../core/types/database.types';
 
 interface PeriodoTotal {
   nombre: string;
@@ -20,6 +21,8 @@ interface FacturaData {
   tipo_comprobante: string;
   esNotaCredito: boolean;
 }
+
+type TotalesComprobanteRow = Pick<Comprobante, 'fecha' | 'total' | 'estado' | 'tipo_comprobante'>;
 
 @Component({
   selector: 'app-totales',
@@ -127,13 +130,12 @@ export class TotalesComponent {
   private readonly contribuyenteService = inject(ContribuyenteService);
 
   constructor() {
-    this.cargarDatosIniciales();
-
-    // Recargar cuando cambia el contribuyente
     effect(() => {
       const contribuyente = this.contribuyenteService.contribuyente();
       if (contribuyente) {
         this.cargarDatosIniciales();
+      } else {
+        this.facturas.set([]);
       }
     });
   }
@@ -161,10 +163,10 @@ export class TotalesComponent {
       }
 
       // Convertir al formato esperado
-      const todosLosComprobantes: FacturaData[] = (comprobantes || []).map(c => ({
+      const todosLosComprobantes: FacturaData[] = ((comprobantes || []) as TotalesComprobanteRow[]).map(c => ({
         fecha: c.fecha,
         monto: Number(c.total),
-        estado: c.estado,
+        estado: c.estado || 'emitida',
         tipo_comprobante: c.tipo_comprobante,
         esNotaCredito: c.tipo_comprobante.includes('NOTA DE CREDITO')
       }));
