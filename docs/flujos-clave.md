@@ -30,16 +30,14 @@
   - `comprobantes`
 - Functions:
   - `padron-lookup`
+  - `arca-proxy`
 
 ### Patrón de acceso
 
 - la mayoría de las lecturas y escrituras se hacen con el cliente autenticado del navegador
 - el `contribuyente` se busca por `user_id`
 - los `comprobantes` se buscan por `contribuyente_id`
-
-### Supuesto operativo
-
-La app presupone RLS coherente con el usuario autenticado y el `schema.sql` del repo refleja el modelo efectivo usado por frontend y Edge Functions.
+- las Edge Functions reciben `Authorization` y `apikey` explícitos desde frontend
 
 ## 3. Edge Functions
 
@@ -54,22 +52,28 @@ La app presupone RLS coherente con el usuario autenticado y el `schema.sql` del 
 ### Flujo de factura
 
 1. recibe `punto_venta`, `tipo_comprobante`, `monto`, `fecha`, `concepto_afip`, `iva_porcentaje`
-2. obtiene el contribuyente usando el JWT recibido por header
-3. crea instancia `Arca` con `arca_cert`, `arca_key`, `cuit` y `arca_production`
-4. consulta el último comprobante
-5. calcula importes neto/IVA cuando corresponde
-6. arma payload WSFE
-7. llama `createVoucher`
-8. normaliza la respuesta y devuelve `CAE`, vencimiento y numeración
+2. recibe además datos del receptor:
+   - `doc_tipo`
+   - `doc_nro`
+   - `condicion_iva_receptor_id`
+3. valida usuario y carga el contribuyente por `user_id`
+4. crea instancia `Arca` con `arca_cert`, `arca_key`, `cuit` y `arca_production`
+5. lee o renueva ticket WSFE en el bucket `wsfe`
+6. consulta el último comprobante
+7. calcula importes neto/IVA cuando corresponde
+8. arma payload WSFE
+9. llama `createVoucher`
+10. normaliza la respuesta y devuelve `CAE`, vencimiento y numeración
 
 ### Flujo de nota de crédito
 
-1. recibe datos del comprobante asociado
-2. decide `NOTA DE CREDITO B` o `C`
-3. consulta el último número disponible
-4. arma `CbtesAsoc`
-5. llama `createVoucher`
-6. devuelve CAE y numeración
+1. recibe los datos del comprobante asociado
+2. vuelve a informar documento y condición IVA del receptor
+3. decide `NOTA DE CREDITO A`, `B` o `C`
+4. consulta el último número disponible
+5. arma `CbtesAsoc`
+6. llama `createVoucher`
+7. devuelve CAE y numeración
 
 ## `padron-lookup`
 
@@ -80,16 +84,89 @@ La app presupone RLS coherente con el usuario autenticado y el `schema.sql` del 
 3. busca el contribuyente del usuario
 4. exige `arca_cert` y `arca_key`
 5. crea instancia `Arca`
-6. consulta padrón
-7. devuelve `razon_social`, `domicilio` y un `condicion_iva` fijo
+6. consulta `registerInscriptionProofService.getTaxpayersDetails([cuit])`
+7. lee o renueva ticket en el bucket `padron`
+8. procesa la constancia de inscripción
+9. devuelve:
+   - `razon_social`
+   - `domicilio`
+   - `condicion_iva`
+   - `fiscal_profile`
+   - `fiscal_status_message`
+   - `fiscal_status_reliable`
+   - `fiscal_status_source`
 
-### Observación
+### Modo diagnóstico
 
-`condicion_iva` hoy no parece surgir del padrón: la función devuelve `'Responsable Monotributo'` de forma fija.
+Si recibe `debug: true`, devuelve además:
 
-## 4. ARCA SDK API
+- entorno ARCA activo
+- estado del ticket de padrón antes y después
+- `serverStatus`
+- diagnóstico de la llamada batch de constancia
 
-## Desde `arca-proxy`
+## 4. Constancia de inscripción y clasificación fiscal
+
+### Utilidad base
+
+`src/app/core/utils/constancia-inscripcion.util.ts` clasifica la constancia en perfiles:
+
+- `responsable-inscripto`
+- `monotributo`
+- `exento`
+- `no-inscripto`
+- `no-alcanzado`
+- `sin-datos`
+- `ambiguo`
+
+### Reglas observadas
+
+- si detecta monotributo activo, devuelve `Responsable Monotributo`
+- si detecta IVA activo, devuelve `IVA Responsable Inscripto`
+- si detecta estados `EX`, `NI` o equivalentes, devuelve `Exento`, `No Inscripto` o `No Alcanzado`
+- si detecta señales incompatibles, marca el resultado como no confiable
+
+## 5. Resolución del tipo de comprobante
+
+### Utilidad
+
+`src/app/core/utils/factura-cliente.util.ts` decide si emitir `FACTURA A`, `FACTURA B` o `FACTURA C`.
+
+### Reglas principales
+
+- si el emisor es monotributista o exento, siempre cae en `FACTURA C`
+- si el emisor es responsable inscripto:
+  - cliente con perfil `responsable-inscripto` => `FACTURA A`
+  - cliente monotributo, exento, no inscripto, no alcanzado o consumidor final => `FACTURA B`
+  - cliente ambiguo o sin datos suficientes => `FACTURA B` como fallback con revisión sugerida
+- si no puede clasificar al emisor, usa el tipo configurado como fallback
+
+## 6. Emisión de factura en la app
+
+1. `facturar-nuevo.component.ts` captura monto y fecha.
+2. opcionalmente expande el bloque de CUIT cliente.
+3. si se consulta un CUIT, llama `FacturacionService.buscarClientePorCuit()`.
+4. esa llamada usa `padron-lookup` y obtiene condición fiscal clasificada.
+5. la UI resuelve el tipo de comprobante y muestra si requiere revisión.
+6. `FacturacionService.emitirFactura()` valida contribuyente y fecha.
+7. obtiene un access token fresco de Supabase.
+8. llama `arca-proxy?action=crear-factura`.
+9. si ARCA autoriza, inserta un registro en `comprobantes` con datos del receptor.
+10. el resultado se muestra en UI y se habilita PDF local.
+
+## 7. Anulación con nota de crédito
+
+1. `listado.component.ts` pide confirmación.
+2. llama `FacturacionService.crearNotaCredito(...)`.
+3. el servicio consulta el comprobante original, incluyendo datos del receptor.
+4. llama `arca-proxy?action=crear-nota-credito`.
+5. inserta la nota de crédito en `comprobantes`.
+6. actualiza la factura original a estado `anulada`.
+7. refresca la vista del listado.
+
+## 8. ARCA SDK API
+
+### Desde `arca-proxy`
 
 Uso verificado:
 
@@ -97,41 +174,26 @@ Uso verificado:
 - `arca.electronicBillingService.getLastVoucher(...)`
 - `arca.electronicBillingService.createVoucher(...)`
 
-## Desde `padron-lookup`
+### Desde `padron-lookup`
 
 Uso verificado:
 
-- `arca.registerScopeThirteenService.getTaxpayerDetails(...)`
+- `new Arca({...})`
+- `arca.registerInscriptionProofService.getTaxpayersDetails(...)`
+- `arca.registerInscriptionProofService.getServerStatus()`
 
-## Persistencia del ticket
+## 9. Persistencia de tickets ARCA
 
-Supuesto según el código actual:
+La app usa `handleTicket: true` y persiste el ticket en `contribuyentes.arca_ticket`.
 
-- el SDK usa `handleTicket: true`
-- la implementación de `AuthRepository` guarda el ticket en `contribuyentes.arca_ticket`
+El almacenamiento está bucketizado:
 
-El ticket se guarda en la misma fila de `contribuyentes`, no en una tabla separada.
+- `wsfe` para facturación
+- `padron` para constancia
 
-## 5. Emisión de factura en la app
+Además, si cambian certificados o entorno ARCA desde configuración, la app limpia `arca_ticket`.
 
-1. `facturar-nuevo.component.ts` captura monto y fecha.
-2. `facturacion.service.ts` valida contribuyente y fecha.
-3. obtiene un access token fresco de Supabase.
-4. llama `arca-proxy?action=crear-factura`.
-5. si ARCA autoriza, inserta un registro en `comprobantes`.
-6. el resultado se muestra en UI y se habilita PDF local.
-
-## 6. Anulación con nota de crédito
-
-1. `listado.component.ts` pide confirmación.
-2. llama `facturacion.service.crearNotaCredito(...)`.
-3. el servicio consulta el comprobante original.
-4. llama `arca-proxy?action=crear-nota-credito`.
-5. inserta la nota de crédito en `comprobantes`.
-6. actualiza la factura original a estado `anulada`.
-7. refresca la vista del listado.
-
-## 7. PDF
+## 10. PDF
 
 ### Flujo principal actual
 

@@ -1,25 +1,28 @@
 # FACTOS-NG
 
-Aplicación privada de facturación electrónica construida con Angular y Supabase para operar con clientes reales.
+Aplicación privada de facturación electrónica construida con Angular, Supabase y ARCA para operar con clientes reales.
 
-No es un proyecto open source listo para reutilizar, exponer públicamente ni desplegar sin revisión. La documentación de este repositorio describe el estado actual del código, no una solución endurecida para terceros.
+No es un proyecto open source listo para reutilizar, exponer públicamente ni desplegar sin revisión. La documentación describe el estado actual del código y sus supuestos operativos.
 
-## Estado del proyecto
+## Estado actual
 
-- Uso previsto: operación personal / controlada.
-- Estado funcional: autenticación, configuración del contribuyente, emisión de comprobantes, anulación con nota de crédito, consulta de padrón ARCA y generación local de PDF.
-- Estado operativo: hay inconsistencias entre código, schema y documentación previa; este README y `docs/` reflejan únicamente lo verificado en el repositorio.
+- Uso previsto: operación personal o controlada.
+- Estado funcional: autenticación, configuración del contribuyente, gestión de certificados ARCA, emisión de facturas A/B/C, anulación con nota de crédito, consulta de constancia de inscripción y generación local de PDF.
+- Estado documental: este README y `docs/` reflejan el código vigente en `src/` y `supabase/`.
 
 ## Stack real
 
-- Angular 20 con standalone components, signals y reactive forms
+- Angular 21 con standalone components, signals y reactive forms
 - Supabase:
   - Auth
-  - tablas `contribuyentes` y `comprobantes`
+  - Postgres con `contribuyentes` y `comprobantes`
   - Edge Functions `arca-proxy` y `padron-lookup`
-- `@arcasdk/core` en las Edge Functions
-- `pdfmake` para generar tickets PDF en el cliente
-- PDF.js cargado desde CDN para vista e impresión
+- `@arcasdk/core@0.3.6` en las Edge Functions
+- Tailwind CSS 4
+- `pdfmake` para generar tickets PDF localmente
+- PDF.js cargado desde CDN para visualización e impresión
+- ESLint 9 + `angular-eslint`
+- Vitest para utilidades y reglas de negocio
 
 ## Estructura relevante
 
@@ -54,12 +57,23 @@ docs/
 ## Módulos principales
 
 - `auth`: login por email/password con Supabase Auth.
-- `configuracion`: alta/edición del contribuyente, carga de certificados ARCA, lookup de padrón, cambio de email/password y tema.
-- `facturar`: emite facturas y muestra las últimas tres emitidas.
-- `listado`: consulta comprobantes por fecha, permite ver/descargar/compartir/imprimir y anular facturas.
-- `totales`: resume importes y cantidades por período.
-- `core/services/facturacion.service.ts`: orquesta emisión y nota de crédito contra `arca-proxy` y persistencia en Supabase.
-- `core/services/pdf.service.ts` + `factura-pdf.service.ts`: generan el ticket PDF localmente.
+- `configuracion`: alta o edición del contribuyente, carga de certificados ARCA, consulta de constancia de inscripción por CUIT, cambio de email/password y tema.
+- `facturar`: emisión de comprobantes con búsqueda opcional de CUIT cliente y resolución automática de `FACTURA A`, `B` o `C`.
+- `listado`: consulta comprobantes por fecha, visualización, descarga, compartido, impresión y anulación con nota de crédito.
+- `totales`: resumen de importes y cantidades por período.
+- `core/services/facturacion.service.ts`: orquesta lookup fiscal del cliente, emisión, nota de crédito y persistencia.
+- `core/utils/constancia-inscripcion.util.ts`: clasifica la condición fiscal devuelta por la constancia.
+- `core/utils/factura-cliente.util.ts`: normaliza condición IVA, documento del receptor y reglas de selección A/B/C.
+- `core/utils/arca-ticket.util.ts`: separa el caché de tickets ARCA en buckets `wsfe` y `padron`.
+
+## Flujos cubiertos
+
+- Auth con Supabase y guards de ruta.
+- Configuración del emisor y certificados ARCA en `contribuyentes`.
+- Consulta de constancia de inscripción por CUIT usando `padron-lookup`.
+- Clasificación fiscal del cliente y resolución del tipo de comprobante.
+- Emisión y anulación vía `arca-proxy`.
+- Generación de PDF local con `pdfmake`.
 
 ## Cómo leer la documentación
 
@@ -67,10 +81,11 @@ docs/
 - [Flujos clave](./docs/flujos-clave.md)
 - [Sectores a documentar mejor](./docs/sectores-a-documentar.md)
 
-## Inconsistencias detectadas
+## Observaciones e inconsistencias vigentes
 
-- `src/environments/environment*.ts` todavía conserva una sección `tusFacturas`, pero el flujo actual usa ARCA vía `arca-proxy`.
-- `supabase/config.toml` tiene `verify_jwt = false`, aunque las funciones igualmente dependen del header `Authorization` y del usuario autenticado para resolver el contribuyente.
+- `supabase/config.toml` mantiene `verify_jwt = false`, aunque ambas funciones validan al usuario usando el token recibido por `Authorization`.
+- `src/environments/environment*.ts` contiene credenciales embebidas del proyecto actual.
+- PDF.js se carga desde CDN; ese comportamiento depende de conectividad hacia `jsdelivr` o `unpkg`.
 
 ## Puesta en marcha local
 
@@ -92,13 +107,19 @@ Build de producción:
 npm run build
 ```
 
+Lint:
+
+```bash
+npm run lint
+```
+
 ## Configuración esperada
 
 ### Frontend
 
-La app lee la configuración de Supabase desde `src/environments/environment.ts` y `src/environments/environment.prod.ts`.
+La app lee Supabase desde `src/environments/environment.ts` y `src/environments/environment.prod.ts`.
 
-Supuesto: hoy esos archivos se usan tal como están en el repo. No hay un mecanismo separado de `environment.local.ts` implementado en la configuración de Angular.
+Supuesto: hoy esos archivos se usan tal como están y no hay un mecanismo alternativo versionado en Angular para entornos locales.
 
 ### Supabase / Edge Functions
 
@@ -106,12 +127,12 @@ Según el código, las Edge Functions necesitan al menos:
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` para el camino de lectura privilegiada en `padron-lookup`
+- `SUPABASE_SERVICE_ROLE_KEY` para el acceso privilegiado de lectura en `padron-lookup`
 
-Además, los certificados ARCA no se leen desde secrets globales en las funciones actuales: se guardan en la fila del contribuyente y se recuperan desde la tabla `contribuyentes`.
+Los certificados ARCA y el ticket WSAA no se leen desde secrets globales: se guardan en la fila del contribuyente.
 
 ## Alcance y límites
 
-- La documentación describe el comportamiento actual del código.
-- No asume que el diseño sea seguro para terceros.
-- No recomienda publicar este repositorio ni reutilizarlo sin una revisión técnica y de seguridad específica.
+- La documentación describe comportamiento real verificado en el repositorio.
+- No afirma que el diseño sea seguro para terceros.
+- No recomienda publicar este repositorio ni reutilizarlo sin revisión técnica y de seguridad específica.

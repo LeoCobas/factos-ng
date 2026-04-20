@@ -220,7 +220,7 @@ interface Factura {
                         <div>CUIT: {{ formatearCuitVista(factura.cliente_cuit) }}</div>
                       }
                       @if (factura.cliente_condicion_iva) {
-                        <div>CondiciÃ³n IVA: {{ factura.cliente_condicion_iva }}</div>
+                        <div>Condici&oacute;n IVA: {{ factura.cliente_condicion_iva }}</div>
                       }
                       @if (factura.cliente_domicilio) {
                         <div>Domicilio: {{ factura.cliente_domicilio }}</div>
