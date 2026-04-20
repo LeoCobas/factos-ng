@@ -1,26 +1,33 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormControl,
+  FormGroup,
+  NonNullableFormBuilder,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import {
   PdfViewerComponent,
   PdfViewerConfig,
 } from '../../shared/components/ui/pdf-viewer.component';
-import { ClienteLookupResult, FacturacionService } from '../../core/services/facturacion.service';
+import {
+  ClienteLookupResult,
+  FacturacionService,
+  FacturaReciente,
+} from '../../core/services/facturacion.service';
 import { PdfService } from '../../core/services/pdf.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
-import { supabase } from '../../core/services/supabase.service';
+import { Comprobante } from '../../core/types/database.types';
 import {
   resolveTipoComprobanteDetallado,
   sanitizeCuit,
 } from '../../core/utils/factura-cliente.util';
 
-interface FacturaReciente {
-  id: string;
-  fecha: string;
-  tipo_comprobante: string;
-  total: number;
-  numero_comprobante: string;
-  created_at?: string;
+interface FacturaFormModel {
+  monto: FormControl<number | ''>;
+  fecha: FormControl<string>;
+  cliente_cuit: FormControl<string>;
 }
 
 @Component({
@@ -178,6 +185,7 @@ interface FacturaReciente {
             <div>
               <label class="block text-sm font-medium text-foreground mb-4"> Monto Total </label>
               <input
+                #montoInput
                 id="monto"
                 type="text"
                 inputmode="decimal"
@@ -189,10 +197,10 @@ interface FacturaReciente {
                 (input)="onMontoInput($event)"
                 class="form-input w-full text-2xl sm:text-3xl text-center py-2 sm:py-4 px-3"
                 [class.border-red-500]="
-                  formFactura.get('monto')?.invalid && formFactura.get('monto')?.touched
+                  formFactura.controls.monto.invalid && formFactura.controls.monto.touched
                 "
               />
-              @if (formFactura.get('monto')?.invalid && formFactura.get('monto')?.touched) {
+              @if (formFactura.controls.monto.invalid && formFactura.controls.monto.touched) {
                 <p class="text-red-500 text-sm mt-1">El monto es requerido y debe ser mayor a 0</p>
               }
             </div>
@@ -208,10 +216,10 @@ interface FacturaReciente {
                 [min]="minFecha()"
                 [max]="maxFecha()"
                 [class.border-red-500]="
-                  formFactura.get('fecha')?.invalid && formFactura.get('fecha')?.touched
+                  formFactura.controls.fecha.invalid && formFactura.controls.fecha.touched
                 "
               />
-              @if (formFactura.get('fecha')?.invalid && formFactura.get('fecha')?.touched) {
+              @if (formFactura.controls.fecha.invalid && formFactura.controls.fecha.touched) {
                 <p class="text-red-500 text-sm mt-1">La fecha es requerida</p>
               }
             </div>
@@ -354,20 +362,21 @@ interface FacturaReciente {
   `,
 })
 export class FacturarNuevoComponent {
-  private readonly fb = inject(FormBuilder);
+  private readonly fb = inject(NonNullableFormBuilder);
   private readonly facturacionService = inject(FacturacionService);
   private readonly pdfService = inject(PdfService);
   private readonly contribuyenteService = inject(ContribuyenteService);
+  private readonly montoInputRef = viewChild<HTMLInputElement>('montoInput');
 
-  formFactura: FormGroup;
-  isSubmitting = signal(false);
-  mensaje = signal<string | null>(null);
-  esExito = signal(false);
-  facturaEmitida = signal<any>(null);
+  readonly formFactura: FormGroup<FacturaFormModel>;
+  readonly isSubmitting = signal(false);
+  readonly mensaje = signal<string | null>(null);
+  readonly esExito = signal(false);
+  readonly facturaEmitida = signal<Comprobante | null>(null);
 
-  pdfViewing = signal<any>(null);
-  pdfViewingConfig = signal<PdfViewerConfig | null>(null);
-  pdfViewingBlobUrl = signal<string | null>(null);
+  readonly pdfViewing = signal<Comprobante | null>(null);
+  readonly pdfViewingConfig = signal<PdfViewerConfig | null>(null);
+  readonly pdfViewingBlobUrl = signal<string | null>(null);
 
   actividad = signal<'bienes' | 'servicios' | null>(null);
   clienteExpandido = signal(false);
@@ -379,10 +388,10 @@ export class FacturarNuevoComponent {
   _minFecha = signal<string>('');
   _maxFecha = signal<string>('');
 
-  rawMonto = signal('');
-  displayMonto = signal('');
-  facturasRecientes = signal<FacturaReciente[]>([]);
-  cargandoFacturasRecientes = signal(false);
+  readonly rawMonto = signal('');
+  readonly displayMonto = signal('');
+  readonly facturasRecientes = signal<FacturaReciente[]>([]);
+  readonly cargandoFacturasRecientes = signal(false);
 
   readonly clienteCuitValido = computed(
     () => sanitizeCuit(this.clienteCuitIngresado()).length === 11,
@@ -443,11 +452,11 @@ export class FacturarNuevoComponent {
 
   constructor() {
     this.formFactura = this.fb.group({
-      monto: ['', [Validators.required, Validators.min(0.01)]],
-      fecha: [this.obtenerFechaHoy(), Validators.required],
-      cliente_cuit: [''],
+      monto: this.fb.control<number | ''>('', [Validators.required, Validators.min(0.01)]),
+      fecha: this.fb.control(this.obtenerFechaHoy(), Validators.required),
+      cliente_cuit: this.fb.control(''),
     });
-    this.clienteCuitIngresado.set(this.formFactura.get('cliente_cuit')?.value || '');
+    this.clienteCuitIngresado.set(this.formFactura.controls.cliente_cuit.value);
 
     effect(() => {
       const contribuyente = this.contribuyenteService.contribuyente();
@@ -465,7 +474,7 @@ export class FacturarNuevoComponent {
   }
 
   async buscarCliente(): Promise<void> {
-    const cuit = sanitizeCuit(this.formFactura.get('cliente_cuit')?.value);
+    const cuit = sanitizeCuit(this.formFactura.controls.cliente_cuit.value);
     if (cuit.length !== 11) {
       this.setMensajeCliente('Ingresá un CUIT válido de 11 dígitos.', 'error');
       return;
@@ -504,7 +513,7 @@ export class FacturarNuevoComponent {
   }
 
   onClienteCuitInput() {
-    const rawValue = this.formFactura.get('cliente_cuit')?.value || '';
+    const rawValue = this.formFactura.controls.cliente_cuit.value || '';
     this.clienteCuitIngresado.set(rawValue);
     const cuitIngresado = sanitizeCuit(rawValue);
     if (cuitIngresado !== (this.clienteSeleccionado()?.cuit || '')) {
@@ -532,12 +541,13 @@ export class FacturarNuevoComponent {
     this._maxFecha.set(max);
     this._minFecha.set(min);
 
-    const fechaActual = this.formFactura.get('fecha')?.value;
+    const fechaActual = this.formFactura.controls.fecha.value;
+    const fechaControl = this.formFactura.controls.fecha;
     if (fechaActual) {
       if (fechaActual > max) {
-        this.formFactura.get('fecha')?.setValue(max);
+        fechaControl.setValue(max);
       } else if (fechaActual < min) {
-        this.formFactura.get('fecha')?.setValue(min);
+        fechaControl.setValue(min);
       }
     }
   }
@@ -569,7 +579,7 @@ export class FacturarNuevoComponent {
     this.facturaEmitida.set(null);
 
     try {
-      const { monto, fecha } = this.formFactura.value;
+      const { monto, fecha } = this.formFactura.getRawValue();
       const fechaFormateada = this.convertirFechaADDMMYYYY(fecha);
       const resultado = await this.facturacionService.emitirFactura({
         monto: Number(monto),
@@ -582,7 +592,7 @@ export class FacturarNuevoComponent {
         tipo_comprobante_resuelto: this.tipoComprobanteResuelto(),
       });
 
-      if (resultado.success) {
+      if (resultado.success && resultado.comprobante) {
         this.esExito.set(true);
         this.mensaje.set(
           `Factura emitida exitosamente. Numero: ${resultado.comprobante.numero_comprobante}`,
@@ -613,7 +623,7 @@ export class FacturarNuevoComponent {
     }
   }
 
-  obtenerTipoComprobante(factura: any): string {
+  obtenerTipoComprobante(factura: Pick<Comprobante, 'tipo_comprobante'> | FacturaReciente): string {
     if (factura.tipo_comprobante === 'FACTURA A') return 'FC A';
     if (factura.tipo_comprobante === 'FACTURA B') return 'FC B';
     if (factura.tipo_comprobante === 'FACTURA C') return 'FC C';
@@ -627,12 +637,12 @@ export class FacturarNuevoComponent {
     return numeroCompleto?.replace(/^0+/, '') || '0';
   }
 
-  obtenerNumeroComprobante(factura: any): string {
-    return factura?.numero_comprobante || factura?.numero_factura || '0000-00000000';
+  obtenerNumeroComprobante(factura: Partial<Comprobante> & { numero_factura?: string }): string {
+    return factura.numero_comprobante || factura.numero_factura || '0000-00000000';
   }
 
-  obtenerMontoComprobante(factura: any): number {
-    return Number(factura?.total ?? factura?.monto ?? 0);
+  obtenerMontoComprobante(factura: Partial<Comprobante> & { monto?: number }): number {
+    return Number(factura.total ?? factura.monto ?? 0);
   }
 
   formatearMonto(monto: number): string {
@@ -666,30 +676,8 @@ export class FacturarNuevoComponent {
     this.cargandoFacturasRecientes.set(true);
 
     try {
-      const { data, error } = await supabase
-        .from('comprobantes')
-        .select('id, fecha, tipo_comprobante, total, numero_comprobante, created_at')
-        .eq('contribuyente_id', contribuyente.id)
-        .eq('estado', 'emitida')
-        .in('tipo_comprobante', ['FACTURA A', 'FACTURA B', 'FACTURA C'])
-        .order('created_at', { ascending: false })
-        .limit(3);
-
-      if (error) {
-        console.error('Error al cargar facturas recientes:', error);
-        this.facturasRecientes.set([]);
-        return;
-      }
-
       this.facturasRecientes.set(
-        (data || []).map((factura) => ({
-          id: factura.id,
-          fecha: factura.fecha,
-          tipo_comprobante: factura.tipo_comprobante,
-          total: Number(factura.total ?? 0),
-          numero_comprobante: factura.numero_comprobante,
-          created_at: factura.created_at,
-        })),
+        await this.facturacionService.cargarFacturasRecientes(contribuyente.id),
       );
     } catch (error) {
       console.error('Error inesperado al cargar facturas recientes:', error);
@@ -707,7 +695,7 @@ export class FacturarNuevoComponent {
 
     this.rawMonto.set(nextRawValue);
     this.displayMonto.set(this.formatMontoInput(nextRawValue));
-    this.formFactura.get('monto')?.setValue(parsedValue ?? '');
+    this.formFactura.controls.monto.setValue(parsedValue ?? '');
 
     queueMicrotask(() => {
       const cursorPosition = this.displayMonto().length;
@@ -862,9 +850,6 @@ export class FacturarNuevoComponent {
     this.mensaje.set(null);
     this.esExito.set(false);
 
-    setTimeout(() => {
-      const montoInput = document.querySelector('#monto') as HTMLInputElement | null;
-      montoInput?.focus();
-    }, 100);
+    setTimeout(() => this.montoInputRef()?.focus(), 100);
   }
 }

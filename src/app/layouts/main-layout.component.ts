@@ -1,6 +1,7 @@
-import { Component, signal, computed, effect, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import { ContribuyenteService } from '../core/services/contribuyente.service';
+import { ThemeService } from '../core/services/theme.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -114,37 +115,12 @@ import { ContribuyenteService } from '../core/services/contribuyente.service';
 export class MainLayoutComponent implements OnInit {
   private readonly router = inject(Router);
   readonly contribuyenteService = inject(ContribuyenteService);
-  
-  isDarkTheme = signal(false);
+  readonly themeService = inject(ThemeService);
 
-  logoSrc = computed(() => {
-    return this.isDarkTheme() ? '/logob.png' : '/logo.png';
-  });
-
-  constructor() {
-    this.updateTheme();
-
-    effect(() => {
-      const observer = new MutationObserver(() => {
-        this.updateTheme();
-      });
-
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['class']
-      });
-
-      return () => observer.disconnect();
-    });
-  }
+  readonly logoSrc = computed(() => (this.themeService.isDark() ? '/logob.png' : '/logo.png'));
 
   async ngOnInit() {
     await this.contribuyenteService.cargarContribuyente();
-  }
-
-  private updateTheme() {
-    const isDark = document.documentElement.classList.contains('dark-theme');
-    this.isDarkTheme.set(isDark);
   }
 
   navigate(path: string) {

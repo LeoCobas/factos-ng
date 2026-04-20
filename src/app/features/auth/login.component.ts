@@ -1,9 +1,19 @@
-import { Component, signal, computed, effect, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
+
 import { AuthService } from '../../core/services/auth.service';
+import { ThemeService } from '../../core/services/theme.service';
+
+interface LoginFormModel {
+  email: FormControl<string>;
+  password: FormControl<string>;
+}
 
 @Component({
   selector: 'app-login',
   standalone: true,
+  imports: [ReactiveFormsModule],
   template: `
     <div
       class="min-h-screen flex items-center justify-center bg-background px-4 py-8 sm:px-6 lg:px-8"
@@ -15,39 +25,33 @@ import { AuthService } from '../../core/services/auth.service';
               <img [src]="logoSrc()" alt="Factos Logo" class="h-12 w-auto" />
             </div>
             <h2 class="text-2xl font-semibold leading-none tracking-tight text-foreground">
-              Iniciar Sesión
+              Iniciar Sesion
             </h2>
             <p class="text-sm text-muted-foreground mt-2">Ingresa a tu cuenta de FACTOS</p>
           </div>
 
           <div class="p-6 pt-0">
-            <div class="space-y-4">
+            <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-4">
               <div>
                 <label for="email" class="form-label">Email</label>
                 <input
                   type="email"
                   id="email"
-                  name="email"
+                  formControlName="email"
                   placeholder="tu@email.com"
                   autocomplete="email"
-                  [value]="emailValue()"
-                  (input)="onEmailInput($event)"
-                  (focus)="syncFromDOM()"
                   class="form-input flex h-10 w-full px-3 py-2 text-sm"
                 />
               </div>
 
               <div>
-                <label for="password" class="form-label">Contraseña</label>
+                <label for="password" class="form-label">Contrasena</label>
                 <input
                   type="password"
                   id="password"
-                  name="password"
-                  placeholder="••••••••"
+                  formControlName="password"
+                  placeholder="********"
                   autocomplete="current-password"
-                  [value]="passwordValue()"
-                  (input)="onPasswordInput($event)"
-                  (focus)="syncFromDOM()"
                   class="form-input flex h-10 w-full px-3 py-2 text-sm"
                 />
               </div>
@@ -59,9 +63,8 @@ import { AuthService } from '../../core/services/auth.service';
               }
 
               <button
-                type="button"
-                (click)="onSubmit()"
-                [disabled]="loading() || !isFormValid()"
+                type="submit"
+                [disabled]="loading() || form.invalid"
                 class="btn-primary w-full inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 @if (loading()) {
@@ -69,109 +72,58 @@ import { AuthService } from '../../core/services/auth.service';
                     class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"
                   ></span>
                 }
-                {{ loading() ? 'Iniciando sesión...' : 'Iniciar Sesión' }}
+                {{ loading() ? 'Iniciando sesion...' : 'Iniciar Sesion' }}
               </button>
-            </div>
+            </form>
           </div>
         </div>
       </div>
     </div>
   `,
-  imports: [],
 })
 export class LoginComponent {
   private readonly authService = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
+  readonly themeService = inject(ThemeService);
 
-  loading = signal(false);
-  error = signal<string | null>(null);
-
-  emailValue = signal('');
-  passwordValue = signal('');
-
-  // Signal para detectar el tema actual
-  isDarkTheme = signal(false);
-
-  // Computed para el logo según el tema
-  logoSrc = computed(() => {
-    return this.isDarkTheme() ? '/logob.png' : '/logo.png';
+  readonly form = new FormGroup<LoginFormModel>({
+    email: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.email],
+    }),
+    password: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
   });
-
-  isFormValid = computed(() => {
-    const email = this.emailValue();
-    const password = this.passwordValue();
-    const emailValid = email.length > 3 && email.includes('@') && email.includes('.');
-    return emailValid && password.length > 0;
-  });
+  readonly loading = signal(false);
+  readonly error = signal<string | null>(null);
+  readonly logoSrc = computed(() => (this.themeService.isDark() ? '/logob.png' : '/logo.png'));
 
   constructor() {
-    // Detectar tema inicial
-    this.updateTheme();
-
-    // Observar cambios en el tema
-    effect(() => {
-      const observer = new MutationObserver(() => {
-        this.updateTheme();
-      });
-
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['class'],
-      });
-
-      // Cleanup en destroy
-      return () => observer.disconnect();
-    });
+    const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+    this.authService.setRedirectUrl(returnUrl);
   }
 
-  private updateTheme() {
-    const isDark = document.documentElement.classList.contains('dark-theme');
-    this.isDarkTheme.set(isDark);
-  }
-
-  syncFromDOM() {
-    const emailInput = document.getElementById('email') as HTMLInputElement;
-    const passwordInput = document.getElementById('password') as HTMLInputElement;
-
-    if (emailInput?.value && !this.emailValue()) {
-      this.emailValue.set(emailInput.value);
-    }
-    if (passwordInput?.value && !this.passwordValue()) {
-      this.passwordValue.set(passwordInput.value);
-    }
-  }
-
-  onEmailInput(event: Event) {
-    const value = (event.target as HTMLInputElement).value;
-    this.emailValue.set(value);
-  }
-
-  onPasswordInput(event: Event) {
-    const value = (event.target as HTMLInputElement).value;
-    this.passwordValue.set(value);
-  }
-
-  async onSubmit() {
-    // Sincronizar una última vez para capturar autocompletado
-    this.syncFromDOM();
-
-    if (!this.isFormValid()) {
+  async onSubmit(): Promise<void> {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
       return;
     }
 
     this.loading.set(true);
     this.error.set(null);
 
-    const email = this.emailValue();
-    const password = this.passwordValue();
+    const { email, password } = this.form.getRawValue();
 
     try {
       const { error } = await this.authService.signIn(email, password);
 
       if (error) {
-        this.error.set(error.message || 'Error al iniciar sesión');
+        this.error.set(error.message || 'Error al iniciar sesion');
       }
     } catch {
-      this.error.set('Error inesperado. Inténtalo de nuevo.');
+      this.error.set('Error inesperado. Intentalo de nuevo.');
     } finally {
       this.loading.set(false);
     }
