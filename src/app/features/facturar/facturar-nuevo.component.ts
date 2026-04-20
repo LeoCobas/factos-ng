@@ -23,6 +23,7 @@ import {
   resolveTipoComprobanteDetallado,
   sanitizeCuit,
 } from '../../core/utils/factura-cliente.util';
+import { FacturaEmitidaPanelComponent } from './factura-emitida-panel.component';
 
 interface FacturaFormModel {
   monto: FormControl<number | ''>;
@@ -33,7 +34,11 @@ interface FacturaFormModel {
 @Component({
   selector: 'app-facturar-nuevo',
   standalone: true,
-  imports: [ReactiveFormsModule, PdfViewerComponent],
+  imports: [
+    ReactiveFormsModule,
+    PdfViewerComponent,
+    FacturaEmitidaPanelComponent,
+  ],
   template: `
     <div class="max-w-5xl mx-auto">
       <div
@@ -237,56 +242,17 @@ interface FacturaFormModel {
             </button>
           </form>
 
-          @if (facturaEmitida()) {
-            <div class="mt-4 p-4 card-factura-emitida">
-              <div class="text-center mb-4">
-                <h3 class="text-lg font-semibold mb-2">Factura emitida:</h3>
-                <div class="text-xl font-bold text-primary">
-                  {{ obtenerTipoComprobante(facturaEmitida()!) }}
-                  {{ obtenerNumeroSinCeros(obtenerNumeroComprobante(facturaEmitida()!)) }}
-                  {{ formatearMonto(obtenerMontoComprobante(facturaEmitida()!)) }}
-                </div>
-                @if (facturaEmitida()?.cliente_nombre) {
-                  <div class="mt-2 text-sm text-muted-foreground">
-                    {{ facturaEmitida()?.cliente_nombre }} -
-                    {{ facturaEmitida()?.cliente_condicion_iva }}
-                  </div>
-                }
-              </div>
-              <div class="grid grid-cols-2 gap-2 mb-3">
-                <button
-                  (click)="verPDF()"
-                  class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-                >
-                  Ver
-                </button>
-                <button
-                  (click)="compartir()"
-                  class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-                >
-                  Compartir
-                </button>
-                <button
-                  (click)="descargar()"
-                  class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-                >
-                  Descargar
-                </button>
-                <button
-                  (click)="imprimir()"
-                  class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-                >
-                  Imprimir
-                </button>
-              </div>
-              <button
-                (click)="volver()"
-                class="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-              >
-                Volver
-              </button>
-            </div>
-          }
+          <app-factura-emitida-panel
+            [factura]="facturaEmitida()"
+            [tipoComprobante]="facturaEmitida() ? obtenerTipoComprobante(facturaEmitida()!) : ''"
+            [numeroComprobante]="facturaEmitida() ? obtenerNumeroSinCeros(obtenerNumeroComprobante(facturaEmitida()!)) : ''"
+            [monto]="facturaEmitida() ? formatearMonto(obtenerMontoComprobante(facturaEmitida()!)) : ''"
+            (ver)="verPDF()"
+            (compartir)="compartir()"
+            (descargar)="descargar()"
+            (imprimir)="imprimir()"
+            (volver)="volver()"
+          />
 
           @if (mensaje() && !esExito()) {
             <div class="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">

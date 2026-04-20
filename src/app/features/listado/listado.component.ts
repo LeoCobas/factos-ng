@@ -15,6 +15,7 @@ import { supabase } from '../../core/services/supabase.service';
 import { PdfService } from '../../core/services/pdf.service';
 import { FacturacionService } from '../../core/services/facturacion.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
+import { Comprobante } from '../../core/types/database.types';
 
 import { PdfViewerComponent, PdfViewerConfig } from '../../shared/components/ui/pdf-viewer.component';
 
@@ -43,6 +44,33 @@ interface Factura {
   factura_anulada?: string;
   comprobante_asociado_id?: string;
   nota_credito_anuladora?: string;
+}
+
+interface NotaCreditoEmitida {
+  numero?: string;
+  cae?: string;
+  vencimiento_cae?: string;
+  pdf_url?: string;
+  monto: number;
+  facturaOriginal: string;
+  tipo_comprobante?: string;
+  notaCredito?: Comprobante;
+}
+
+interface PdfFacturaLike {
+  numero_comprobante: string;
+  tipo_comprobante: string;
+  monto?: number;
+  total?: number;
+  fecha: string;
+  cae?: string | null;
+  vencimiento_cae?: string | null;
+}
+
+interface ComprobanteListadoRow extends Comprobante {
+  comprobante_asociado?: {
+    numero_comprobante: string;
+  } | null;
 }
 
 @Component({

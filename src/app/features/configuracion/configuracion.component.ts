@@ -1,51 +1,22 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
-import {
-  FormControl,
-  FormGroup,
-  ReactiveFormsModule,
-  Validators,
-  NonNullableFormBuilder,
-} from '@angular/forms';
+import { FormGroup, ReactiveFormsModule, Validators, NonNullableFormBuilder } from '@angular/forms';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import type { CreateContribuyentePayload } from '../../core/services/contribuyente.service';
 import { ThemeService, ThemeMode } from '../../core/services/theme.service';
 import { supabase } from '../../core/services/supabase.service';
 import { environment } from '../../../environments/environment';
 import { ContribuyenteUpdate } from '../../core/types/database.types';
-
-type TabId = 'facturacion' | 'certificado' | 'cuenta';
-
-interface MensajeEstado {
-  texto: string;
-  tipo: 'success' | 'error';
-}
-
-type Actividad = 'bienes' | 'servicios';
-
-interface FacturacionFormModel {
-  cuit: FormControl<string>;
-  razon_social: FormControl<string>;
-  nombre_fantasia: FormControl<string>;
-  domicilio: FormControl<string>;
-  condicion_iva: FormControl<string>;
-  ingresos_brutos: FormControl<string>;
-  inicio_actividades: FormControl<string>;
-  punto_venta: FormControl<number | null>;
-  tipo_comprobante_default: FormControl<string>;
-  concepto: FormControl<string>;
-  iva_porcentaje: FormControl<string>;
-  actividad: FormControl<Actividad>;
-}
-
-interface CertFormModel {
-  arca_production: FormControl<boolean>;
-}
-
-interface AccountFormModel {
-  nuevoEmail: FormControl<string>;
-  nuevaPassword: FormControl<string>;
-  confirmarPassword: FormControl<string>;
-}
+import {
+  AccountFormModel,
+  Actividad,
+  CertFormModel,
+  FacturacionFormModel,
+  MensajeEstado,
+  TabId,
+} from './configuracion.types';
+import { ConfiguracionFacturacionFormComponent } from './configuracion-facturacion-form.component';
+import { ConfiguracionCertificadoFormComponent } from './configuracion-certificado-form.component';
+import { ConfiguracionCuentaFormComponent } from './configuracion-cuenta-form.component';
 
 @Component({
   selector: 'app-configuracion',
@@ -90,380 +61,55 @@ interface AccountFormModel {
         </div>
       } @else {
         @if (tabActiva() === 'facturacion') {
-          <form [formGroup]="facturacionForm" (ngSubmit)="guardarFacturacion()" class="space-y-5">
-            <div class="card-surface">
-              <div class="card-header">
-                <h3 class="card-title">Datos del Emisor</h3>
-                <p class="form-section-description">Estos datos aparecen en tus comprobantes. Los campos con badge son obligatorios.</p>
-              </div>
-              <div class="p-4 sm:p-6 space-y-5">
-                <div class="form-field">
-                  <div class="form-label-row">
-                    <label class="form-label">CUIT</label>
-                    <span class="form-required-badge">Obligatorio</span>
-                  </div>
-                  <div class="flex flex-col gap-3 sm:flex-row">
-                    <input type="text" formControlName="cuit" maxlength="11" placeholder="20332398181" class="form-input flex-1"
-                      [class.error]="facturacionForm.get('cuit')?.invalid && facturacionForm.get('cuit')?.touched">
-                    <button type="button" (click)="buscarCuit()"
-                      [disabled]="buscandoCuit() || facturacionForm.get('cuit')?.invalid"
-                      class="btn-primary min-w-[8.5rem] rounded-lg px-4 py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
-                      {{ buscandoCuit() ? 'Buscando...' : 'Buscar CUIT' }}
-                    </button>
-                  </div>
-                  <p class="form-help">Us&aacute; la constancia de inscripci&oacute;n ARCA para autocompletar raz&oacute;n social, domicilio fiscal y condici&oacute;n frente al IVA.</p>
-                  @if (facturacionForm.get('cuit')?.invalid && facturacionForm.get('cuit')?.touched) {
-                    <p class="form-error">El CUIT debe tener 11 d&iacute;gitos.</p>
-                  }
-                  @if (mensajePadron()) {
-                    <p class="form-help" [class]="mensajePadron()!.tipo === 'success' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'">
-                      {{ mensajePadron()!.texto }}
-                    </p>
-                  }
-                </div>
-
-                <div class="form-field">
-                  <div class="form-label-row">
-                    <label class="form-label">Raz&oacute;n Social</label>
-                    <span class="form-required-badge">Obligatorio</span>
-                  </div>
-                  <input type="text" formControlName="razon_social" placeholder="APELLIDO NOMBRE" class="form-input">
-                </div>
-
-                <div class="form-field">
-                  <div class="form-label-row">
-                    <label class="form-label">Nombre de Fantas&iacute;a</label>
-                    <span class="form-optional-text">Opcional</span>
-                  </div>
-                  <input type="text" formControlName="nombre_fantasia" placeholder="Mi Negocio" class="form-input">
-                  <p class="form-help">Si se completa, aparece destacado en el ticket con mayor tama&ntilde;o visual.</p>
-                </div>
-
-                <div class="form-field">
-                  <div class="form-label-row">
-                    <label class="form-label">Domicilio Comercial</label>
-                  </div>
-                  <input type="text" formControlName="domicilio" placeholder="Av. Siempre Viva 742, Springfield" class="form-input">
-                  <p class="form-help">Obligatorio en el comprobante. Pod&eacute;s modificarlo si ten&eacute;s varios puntos de venta.</p>
-                </div>
-
-                <div class="grid gap-5 lg:grid-cols-2">
-                  <div class="form-field">
-                    <div class="form-label-row">
-                      <label class="form-label">Condici&oacute;n frente al IVA</label>
-                    </div>
-                    <select formControlName="condicion_iva" class="form-select">
-                      <option value="Responsable Monotributo">Responsable Monotributo</option>
-                      <option value="IVA Responsable Inscripto">IVA Responsable Inscripto</option>
-                      <option value="IVA Sujeto Exento">IVA Sujeto Exento</option>
-                    </select>
-                  </div>
-
-                  <div class="form-field">
-                    <div class="form-label-row">
-                      <label class="form-label">Ingresos Brutos</label>
-                    </div>
-                    <input type="text" formControlName="ingresos_brutos" placeholder="20332398181" class="form-input">
-                    <p class="form-help">Generalmente coincide con el CUIT en Convenio Multilateral.</p>
-                  </div>
-                </div>
-
-                <div class="form-field">
-                  <div class="form-label-row">
-                    <label class="form-label">Fecha de Inicio de Actividades</label>
-                  </div>
-                  <input type="date" formControlName="inicio_actividades" class="form-input">
-                </div>
-              </div>
-            </div>
-
-            <div class="card-surface">
-              <div class="card-header">
-                <h3 class="card-title">Preferencias de Facturaci&oacute;n</h3>
-                <p class="form-section-description">Defin&iacute; c&oacute;mo se completa cada comprobante por defecto.</p>
-              </div>
-              <div class="p-4 sm:p-6 space-y-5">
-                <div class="grid gap-5 lg:grid-cols-2">
-                  <div class="form-field">
-                    <div class="form-label-row">
-                      <label class="form-label">Punto de Venta</label>
-                      <span class="form-required-badge">Obligatorio</span>
-                    </div>
-                    <input type="number" formControlName="punto_venta" min="1" max="9999" placeholder="4" class="form-input">
-                    <p class="form-help">Se usa como valor inicial al emitir comprobantes.</p>
-                  </div>
-
-                  <div class="form-field">
-                    <div class="form-label-row">
-                      <label class="form-label">Tipo de Comprobante</label>
-                    </div>
-                    <select formControlName="tipo_comprobante_default" class="form-select">
-                      <option value="FACTURA B">Factura B / NC B (Responsable Inscripto)</option>
-                      <option value="FACTURA C">Factura C / NC C (Monotributista)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div class="form-field">
-                  <div class="form-label-row">
-                    <label class="form-label">Concepto a Facturar</label>
-                    <span class="form-required-badge">Obligatorio</span>
-                  </div>
-                  <input type="text" formControlName="concepto" placeholder="Honorarios Profesionales" class="form-input">
-                  <p class="form-help">Se propone autom&aacute;ticamente al iniciar una nueva factura.</p>
-                </div>
-
-                <div class="grid gap-5 lg:grid-cols-2">
-                  <div class="form-field">
-                    <div class="form-label-row">
-                      <label class="form-label">IVA</label>
-                    </div>
-                    <select formControlName="iva_porcentaje" class="form-select">
-                      <option value="21.00">21%</option>
-                      <option value="10.50">10.5%</option>
-                    </select>
-                  </div>
-
-                  <div class="form-field">
-                    <div class="form-label-row">
-                      <label class="form-label">Actividad</label>
-                    </div>
-                    <select formControlName="actividad" class="form-select">
-                      <option value="bienes">Bienes (-5 d&iacute;as)</option>
-                      <option value="servicios">Servicios (-10 d&iacute;as)</option>
-                    </select>
-                    <p class="form-help">Define cu&aacute;ntos d&iacute;as hacia atr&aacute;s se pueden emitir facturas.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            @if (mensaje()) {
-              <div class="p-3 rounded-lg border text-sm"
-                   [class]="mensaje()?.tipo === 'success' ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-700'">
-                {{ mensaje()?.texto }}
-              </div>
-            }
-
-            <button type="submit" [disabled]="facturacionForm.invalid || guardando()"
-              class="btn-primary w-full rounded-lg px-4 py-3 font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-              {{ guardando() ? 'Guardando...' : 'Guardar Datos de Facturaci&oacute;n' }}
-            </button>
-          </form>
+          <app-configuracion-facturacion-form
+            [form]="facturacionForm"
+            [buscandoCuit]="buscandoCuit()"
+            [guardando]="guardando()"
+            [mensajePadron]="mensajePadron()"
+            [mensaje]="mensaje()"
+            (buscarCuit)="buscarCuit()"
+            (guardar)="guardarFacturacion()"
+          />
         }
 
         @if (tabActiva() === 'certificado') {
-          <form [formGroup]="certForm" (ngSubmit)="guardarCertificado()" class="space-y-5">
-            <div class="card-surface">
-              <div class="card-header">
-                <div class="flex items-start gap-3">
-                  <svg class="mt-1 h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                  </svg>
-                  <div>
-                    <h3 class="card-title">Certificados ARCA (AFIP)</h3>
-                    <p class="form-section-description">Necesarios para emitir comprobantes electr&oacute;nicos desde tu cuenta.</p>
-                  </div>
-                </div>
-              </div>
-              <div class="p-4 sm:p-6 space-y-5">
-                <div class="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-sm text-amber-700 dark:text-amber-300">
-                  <p class="font-medium mb-1">Archivos sensibles</p>
-                  <p>Los certificados se almacenan de forma segura asociados a tu cuenta.</p>
-                </div>
-
-                <div class="form-field">
-                  <div class="form-label-row">
-                    <label class="form-label">Certificado (.crt)</label>
-                  </div>
-                  <div class="flex items-center gap-3">
-                    <label
-                      class="file-dropzone flex-1"
-                      [class]="tieneCert()
-                        ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
-                        : 'border-border text-muted-foreground hover:text-foreground'">
-                      <input type="file" accept=".crt,.pem,.cer" class="hidden" (change)="onCertFileSelected($event)">
-                      @if (tieneCert()) {
-                        <span class="text-sm font-medium">Certificado cargado</span>
-                      } @else {
-                        <span class="text-sm">Seleccionar archivo .crt</span>
-                      }
-                    </label>
-                    @if (tieneCert()) {
-                      <button type="button" (click)="borrarCert()" class="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Eliminar">
-                        &times;
-                      </button>
-                    }
-                  </div>
-                  <p class="form-help">Sub&iacute; el certificado p&uacute;blico emitido para tu CUIT.</p>
-                  @if (certFileName()) {
-                    <p class="form-help">{{ certFileName() }}</p>
-                  }
-                </div>
-
-                <div class="form-field">
-                  <div class="form-label-row">
-                    <label class="form-label">Clave Privada (.key)</label>
-                  </div>
-                  <div class="flex items-center gap-3">
-                    <label
-                      class="file-dropzone flex-1"
-                      [class]="tieneKey()
-                        ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
-                        : 'border-border text-muted-foreground hover:text-foreground'">
-                      <input type="file" accept=".key,.pem" class="hidden" (change)="onKeyFileSelected($event)">
-                      @if (tieneKey()) {
-                        <span class="text-sm font-medium">Clave privada cargada</span>
-                      } @else {
-                        <span class="text-sm">Seleccionar archivo .key</span>
-                      }
-                    </label>
-                    @if (tieneKey()) {
-                      <button type="button" (click)="borrarKey()" class="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Eliminar">
-                        &times;
-                      </button>
-                    }
-                  </div>
-                  <p class="form-help">Sub&iacute; la clave privada asociada al certificado anterior.</p>
-                  @if (keyFileName()) {
-                    <p class="form-help">{{ keyFileName() }}</p>
-                  }
-                </div>
-
-                <div class="form-field">
-                  <div class="form-label-row">
-                    <label class="form-label">Entorno ARCA</label>
-                  </div>
-                  <select formControlName="arca_production" class="form-select">
-                    <option [ngValue]="false">Testing / Homologaci&oacute;n</option>
-                    <option [ngValue]="true">Producci&oacute;n</option>
-                  </select>
-                  <p class="form-help">Us&aacute; Testing para validar la integraci&oacute;n antes de pasar a producci&oacute;n.</p>
-                </div>
-
-                @if (tieneCert() && tieneKey()) {
-                  <div class="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700">
-                    <span class="text-sm font-medium text-green-700 dark:text-green-300">Certificados configurados. Ya pod&eacute;s facturar.</span>
-                  </div>
-                } @else {
-                  <div class="flex items-center gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700">
-                    <span class="text-sm text-yellow-700 dark:text-yellow-300">Sub&iacute; ambos archivos para poder facturar.</span>
-                  </div>
-                }
-              </div>
-            </div>
-
-            @if (mensaje()) {
-              <div class="p-3 rounded-lg border text-sm"
-                   [class]="mensaje()?.tipo === 'success' ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-700'">
-                {{ mensaje()?.texto }}
-              </div>
-            }
-
-            <button type="submit" [disabled]="guardando()"
-              class="btn-primary w-full rounded-lg px-4 py-3 font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-              {{ guardando() ? 'Guardando...' : 'Guardar Certificado' }}
-            </button>
-          </form>
+          <app-configuracion-certificado-form
+            [form]="certForm"
+            [tieneCert]="tieneCert()"
+            [tieneKey]="tieneKey()"
+            [certFileName]="certFileName()"
+            [keyFileName]="keyFileName()"
+            [guardando]="guardando()"
+            [mensaje]="mensaje()"
+            (guardar)="guardarCertificado()"
+            (certSelected)="onCertFileSelected($event)"
+            (keySelected)="onKeyFileSelected($event)"
+            (borrarCert)="borrarCert()"
+            (borrarKey)="borrarKey()"
+          />
         }
 
         @if (tabActiva() === 'cuenta') {
-          <div class="space-y-5">
-            <div class="card-surface">
-              <div class="card-header">
-                <h3 class="card-title">Apariencia</h3>
-                <p class="form-section-description">Eleg&iacute; c&oacute;mo quer&eacute;s ver la aplicaci&oacute;n en este dispositivo.</p>
-              </div>
-              <div class="p-4 sm:p-6">
-                <div class="flex flex-col gap-2 rounded-xl bg-muted/60 p-2 sm:flex-row">
-                  <button type="button" (click)="setTheme('light')"
-                    [class]="themeService.theme() === 'light' ? 'bg-background text-foreground shadow-sm border border-border' : 'text-muted-foreground hover:text-foreground border border-transparent'"
-                    class="flex-1 rounded-lg px-3 py-3 text-sm font-semibold transition-all duration-200">
-                    Claro
-                  </button>
-                  <button type="button" (click)="setTheme('dark')"
-                    [class]="themeService.theme() === 'dark' ? 'bg-background text-foreground shadow-sm border border-border' : 'text-muted-foreground hover:text-foreground border border-transparent'"
-                    class="flex-1 rounded-lg px-3 py-3 text-sm font-semibold transition-all duration-200">
-                    Oscuro
-                  </button>
-                  <button type="button" (click)="setTheme('auto')"
-                    [class]="themeService.theme() === 'auto' ? 'bg-background text-foreground shadow-sm border border-border' : 'text-muted-foreground hover:text-foreground border border-transparent'"
-                    class="flex-1 rounded-lg px-3 py-3 text-sm font-semibold transition-all duration-200">
-                    Auto
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <form [formGroup]="accountForm" class="space-y-5">
-              <div class="card-surface">
-                <div class="card-header">
-                  <h3 class="card-title">Cambiar Email</h3>
-                  <p class="form-section-description">Actualiz&aacute; el correo principal asociado a tu cuenta.</p>
-                </div>
-                <div class="p-4 sm:p-6 space-y-5">
-                <div class="form-field">
-                  <div class="form-label-row">
-                    <label class="form-label">Email actual</label>
-                  </div>
-                  <input type="email" [value]="emailActual()" readonly class="form-input bg-muted/50 cursor-not-allowed">
-                  <p class="form-help">Este valor es s&oacute;lo lectura hasta confirmar el cambio.</p>
-                </div>
-                <div class="form-field">
-                  <div class="form-label-row">
-                    <label class="form-label">Nuevo email</label>
-                  </div>
-                  <input type="email" formControlName="nuevoEmail" placeholder="nuevo@email.com" class="form-input">
-                  <p class="form-help">Se enviar&aacute; un correo de confirmaci&oacute;n a ambas direcciones.</p>
-                </div>
-                <button type="button" (click)="cambiarEmail()"
-                  [disabled]="!accountForm.controls.nuevoEmail.value || guardando()"
-                  class="btn-primary w-full rounded-lg px-4 py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
-                  {{ guardando() ? 'Enviando...' : 'Cambiar Email' }}
-                </button>
-              </div>
-            </div>
-
-            <div class="card-surface">
-              <div class="card-header">
-                <h3 class="card-title">Cambiar Contrase&ntilde;a</h3>
-                <p class="form-section-description">Eleg&iacute; una contrase&ntilde;a nueva para el acceso a tu cuenta.</p>
-              </div>
-              <div class="p-4 sm:p-6 space-y-5">
-                <div class="form-field">
-                  <div class="form-label-row">
-                    <label class="form-label">Nueva contrase&ntilde;a</label>
-                  </div>
-                  <input type="password" formControlName="nuevaPassword" placeholder="M&iacute;nimo 6 caracteres" class="form-input">
-                  <p class="form-help">Us&aacute; al menos 6 caracteres para continuar.</p>
-                </div>
-                <div class="form-field">
-                  <div class="form-label-row">
-                    <label class="form-label">Confirmar contrase&ntilde;a</label>
-                  </div>
-                  <input type="password" formControlName="confirmarPassword" placeholder="Repetir contrase&ntilde;a" class="form-input">
-                </div>
-                <button type="button" (click)="cambiarPassword()"
-                  [disabled]="!accountForm.controls.nuevaPassword.value || !accountForm.controls.confirmarPassword.value || guardando()"
-                  class="btn-primary w-full rounded-lg px-4 py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
-                  {{ guardando() ? 'Cambiando...' : 'Cambiar Contrase&ntilde;a' }}
-                </button>
-              </div>
-            </div>
-
-            @if (mensaje()) {
-              <div class="p-3 rounded-lg border text-sm"
-                   [class]="mensaje()?.tipo === 'success' ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-700'">
-                {{ mensaje()?.texto }}
-              </div>
-            }
-            </form>
-          </div>
+          <app-configuracion-cuenta-form
+            [form]="accountForm"
+            [emailActual]="emailActual()"
+            [theme]="themeService.theme()"
+            [guardando]="guardando()"
+            [mensaje]="mensaje()"
+            (themeChange)="setTheme($event)"
+            (changeEmail)="cambiarEmail()"
+            (changePassword)="cambiarPassword()"
+          />
         }
       }
     </div>
   `,
-  imports: [ReactiveFormsModule],
+  imports: [
+    ReactiveFormsModule,
+    ConfiguracionFacturacionFormComponent,
+    ConfiguracionCertificadoFormComponent,
+    ConfiguracionCuentaFormComponent,
+  ],
   standalone: true
 })
 export class ConfiguracionComponent implements OnInit {
