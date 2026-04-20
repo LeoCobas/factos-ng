@@ -1,0 +1,72 @@
+import { Component, input, output } from '@angular/core';
+
+import { Comprobante } from '../../core/types/database.types';
+
+@Component({
+  selector: 'app-factura-emitida-panel',
+  standalone: true,
+  template: `
+    @if (factura()) {
+      <div class="mt-4 p-4 card-factura-emitida">
+        <div class="text-center mb-4">
+          <h3 class="text-lg font-semibold mb-2">Factura emitida:</h3>
+          <div class="text-xl font-bold text-primary">
+            {{ tipoComprobante() }}
+            {{ numeroComprobante() }}
+            {{ monto() }}
+          </div>
+          @if (factura()?.cliente_nombre) {
+            <div class="mt-2 text-sm text-muted-foreground">
+              {{ factura()?.cliente_nombre }} -
+              {{ factura()?.cliente_condicion_iva }}
+            </div>
+          }
+        </div>
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <button
+            (click)="ver.emit()"
+            class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+          >
+            Ver
+          </button>
+          <button
+            (click)="compartir.emit()"
+            class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+          >
+            Compartir
+          </button>
+          <button
+            (click)="descargar.emit()"
+            class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+          >
+            Descargar
+          </button>
+          <button
+            (click)="imprimir.emit()"
+            class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+          >
+            Imprimir
+          </button>
+        </div>
+        <button
+          (click)="volver.emit()"
+          class="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 font-medium py-2 px-3 rounded-lg transition-colors text-sm"
+        >
+          Volver
+        </button>
+      </div>
+    }
+  `,
+})
+export class FacturaEmitidaPanelComponent {
+  readonly factura = input.required<Comprobante | null>();
+  readonly tipoComprobante = input.required<string>();
+  readonly numeroComprobante = input.required<string>();
+  readonly monto = input.required<string>();
+
+  readonly ver = output<void>();
+  readonly compartir = output<void>();
+  readonly descargar = output<void>();
+  readonly imprimir = output<void>();
+  readonly volver = output<void>();
+}
