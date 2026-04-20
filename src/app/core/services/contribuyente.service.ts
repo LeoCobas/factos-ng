@@ -1,6 +1,8 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { supabase } from './supabase.service';
-import { Contribuyente, ContribuyenteUpdate } from '../types/database.types';
+import { Contribuyente, ContribuyenteInsert, ContribuyenteUpdate } from '../types/database.types';
+
+export type CreateContribuyentePayload = Omit<ContribuyenteInsert, 'user_id'>;
 
 @Injectable({
   providedIn: 'root'
@@ -49,7 +51,7 @@ export class ContribuyenteService {
     }
   }
 
-  async crearContribuyente(data: Omit<Contribuyente, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<{ success: boolean; error?: string }> {
+  async crearContribuyente(data: CreateContribuyentePayload): Promise<{ success: boolean; error?: string }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {

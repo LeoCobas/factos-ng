@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { supabase } from './supabase.service';
 import { ContribuyenteService } from './contribuyente.service';
 import { environment } from '../../../environments/environment';
-import { Contribuyente } from '../types/database.types';
+import { Comprobante, Contribuyente } from '../types/database.types';
 import {
   ClienteFiscalProfile,
   ClienteFacturaData,
@@ -40,7 +40,7 @@ export interface ArcaProxyResponse {
 
 export interface FacturaResult {
   success: boolean;
-  comprobante?: any;
+  comprobante?: Comprobante;
   error?: string;
 }
 
@@ -51,10 +51,19 @@ export interface NotaCreditoResult {
     cae?: string;
     vencimiento_cae?: string;
     pdf_url?: string;
-    comprobante: any;
+    comprobante: Comprobante;
   };
   error?: string;
   shouldRetry?: boolean;
+}
+
+export interface FacturaReciente {
+  id: string;
+  fecha: string;
+  tipo_comprobante: string;
+  total: number;
+  numero_comprobante: string;
+  created_at: string | null;
 }
 
 export interface ClienteLookupResult extends ClienteFacturaData {
@@ -468,6 +477,30 @@ export class FacturacionService {
       fiscal_status_reliable: result.data?.fiscal_status_reliable === true,
       fiscal_status_source: 'constancia_inscripcion',
     };
+  }
+
+  async cargarFacturasRecientes(contribuyenteId: string, limit = 3): Promise<FacturaReciente[]> {
+    const { data, error } = await supabase
+      .from('comprobantes')
+      .select('id, fecha, tipo_comprobante, total, numero_comprobante, created_at')
+      .eq('contribuyente_id', contribuyenteId)
+      .eq('estado', 'emitida')
+      .in('tipo_comprobante', ['FACTURA A', 'FACTURA B', 'FACTURA C'])
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      throw new Error('No se pudieron cargar las facturas recientes');
+    }
+
+    return (data || []).map((factura) => ({
+      id: factura.id,
+      fecha: factura.fecha,
+      tipo_comprobante: factura.tipo_comprobante,
+      total: Number(factura.total ?? 0),
+      numero_comprobante: factura.numero_comprobante,
+      created_at: factura.created_at,
+    }));
   }
 
   private buildClienteFacturaData(facturaData: FacturaRequestData) {

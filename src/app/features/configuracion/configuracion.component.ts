@@ -1,15 +1,50 @@
-import { Component, signal, inject, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { Component, inject, OnInit, signal } from '@angular/core';
+import {
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+  NonNullableFormBuilder,
+} from '@angular/forms';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
+import type { CreateContribuyentePayload } from '../../core/services/contribuyente.service';
 import { ThemeService, ThemeMode } from '../../core/services/theme.service';
 import { supabase } from '../../core/services/supabase.service';
 import { environment } from '../../../environments/environment';
+import { ContribuyenteUpdate } from '../../core/types/database.types';
 
 type TabId = 'facturacion' | 'certificado' | 'cuenta';
 
 interface MensajeEstado {
   texto: string;
   tipo: 'success' | 'error';
+}
+
+type Actividad = 'bienes' | 'servicios';
+
+interface FacturacionFormModel {
+  cuit: FormControl<string>;
+  razon_social: FormControl<string>;
+  nombre_fantasia: FormControl<string>;
+  domicilio: FormControl<string>;
+  condicion_iva: FormControl<string>;
+  ingresos_brutos: FormControl<string>;
+  inicio_actividades: FormControl<string>;
+  punto_venta: FormControl<number | null>;
+  tipo_comprobante_default: FormControl<string>;
+  concepto: FormControl<string>;
+  iva_porcentaje: FormControl<string>;
+  actividad: FormControl<Actividad>;
+}
+
+interface CertFormModel {
+  arca_production: FormControl<boolean>;
+}
+
+interface AccountFormModel {
+  nuevoEmail: FormControl<string>;
+  nuevaPassword: FormControl<string>;
+  confirmarPassword: FormControl<string>;
 }
 
 @Component({
@@ -360,12 +395,13 @@ interface MensajeEstado {
               </div>
             </div>
 
-            <div class="card-surface">
-              <div class="card-header">
-                <h3 class="card-title">Cambiar Email</h3>
-                <p class="form-section-description">Actualiz&aacute; el correo principal asociado a tu cuenta.</p>
-              </div>
-              <div class="p-4 sm:p-6 space-y-5">
+            <form [formGroup]="accountForm" class="space-y-5">
+              <div class="card-surface">
+                <div class="card-header">
+                  <h3 class="card-title">Cambiar Email</h3>
+                  <p class="form-section-description">Actualiz&aacute; el correo principal asociado a tu cuenta.</p>
+                </div>
+                <div class="p-4 sm:p-6 space-y-5">
                 <div class="form-field">
                   <div class="form-label-row">
                     <label class="form-label">Email actual</label>
@@ -377,11 +413,11 @@ interface MensajeEstado {
                   <div class="form-label-row">
                     <label class="form-label">Nuevo email</label>
                   </div>
-                  <input type="email" [(ngModel)]="nuevoEmail" placeholder="nuevo@email.com" class="form-input">
+                  <input type="email" formControlName="nuevoEmail" placeholder="nuevo@email.com" class="form-input">
                   <p class="form-help">Se enviar&aacute; un correo de confirmaci&oacute;n a ambas direcciones.</p>
                 </div>
                 <button type="button" (click)="cambiarEmail()"
-                  [disabled]="!nuevoEmail || guardando()"
+                  [disabled]="!accountForm.controls.nuevoEmail.value || guardando()"
                   class="btn-primary w-full rounded-lg px-4 py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
                   {{ guardando() ? 'Enviando...' : 'Cambiar Email' }}
                 </button>
@@ -398,17 +434,17 @@ interface MensajeEstado {
                   <div class="form-label-row">
                     <label class="form-label">Nueva contrase&ntilde;a</label>
                   </div>
-                  <input type="password" [(ngModel)]="nuevaPassword" placeholder="M&iacute;nimo 6 caracteres" class="form-input">
+                  <input type="password" formControlName="nuevaPassword" placeholder="M&iacute;nimo 6 caracteres" class="form-input">
                   <p class="form-help">Us&aacute; al menos 6 caracteres para continuar.</p>
                 </div>
                 <div class="form-field">
                   <div class="form-label-row">
                     <label class="form-label">Confirmar contrase&ntilde;a</label>
                   </div>
-                  <input type="password" [(ngModel)]="confirmarPassword" placeholder="Repetir contrase&ntilde;a" class="form-input">
+                  <input type="password" formControlName="confirmarPassword" placeholder="Repetir contrase&ntilde;a" class="form-input">
                 </div>
                 <button type="button" (click)="cambiarPassword()"
-                  [disabled]="!nuevaPassword || !confirmarPassword || guardando()"
+                  [disabled]="!accountForm.controls.nuevaPassword.value || !accountForm.controls.confirmarPassword.value || guardando()"
                   class="btn-primary w-full rounded-lg px-4 py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
                   {{ guardando() ? 'Cambiando...' : 'Cambiar Contrase&ntilde;a' }}
                 </button>
@@ -421,16 +457,17 @@ interface MensajeEstado {
                 {{ mensaje()?.texto }}
               </div>
             }
+            </form>
           </div>
         }
       }
     </div>
   `,
-  imports: [ReactiveFormsModule, FormsModule],
+  imports: [ReactiveFormsModule],
   standalone: true
 })
 export class ConfiguracionComponent implements OnInit {
-  private fb = inject(FormBuilder);
+  private readonly fb = inject(NonNullableFormBuilder);
   private readonly supabaseUrl = environment.supabase.url;
   readonly themeService = inject(ThemeService);
   readonly contribuyenteService = inject(ContribuyenteService);
@@ -453,33 +490,38 @@ export class ConfiguracionComponent implements OnInit {
   private certModified = false;
   private keyModified = false;
 
-  // Cuenta - ngModel bindings
-  nuevoEmail = '';
-  nuevaPassword = '';
-  confirmarPassword = '';
-
-  // Forms
-  readonly facturacionForm: FormGroup;
-  readonly certForm: FormGroup;
+  readonly facturacionForm: FormGroup<FacturacionFormModel>;
+  readonly certForm: FormGroup<CertFormModel>;
+  readonly accountForm: FormGroup<AccountFormModel>;
 
   constructor() {
     this.facturacionForm = this.fb.group({
-      cuit: ['', [Validators.required, Validators.pattern(/^[0-9]{11}$/)]],
-      razon_social: ['', Validators.required],
-      nombre_fantasia: [''],
-      domicilio: [''],
-      condicion_iva: ['Responsable Monotributo'],
-      ingresos_brutos: [''],
-      inicio_actividades: [''],
-      punto_venta: ['', [Validators.required, Validators.min(1), Validators.max(9999)]],
-      tipo_comprobante_default: ['FACTURA C'],
-      concepto: ['', Validators.required],
-      iva_porcentaje: ['21.00'],
-      actividad: ['servicios'],
+      cuit: this.fb.control('', [Validators.required, Validators.pattern(/^[0-9]{11}$/)]),
+      razon_social: this.fb.control('', Validators.required),
+      nombre_fantasia: this.fb.control(''),
+      domicilio: this.fb.control(''),
+      condicion_iva: this.fb.control('Responsable Monotributo'),
+      ingresos_brutos: this.fb.control(''),
+      inicio_actividades: this.fb.control(''),
+      punto_venta: this.fb.control<number | null>(null, [
+        Validators.required,
+        Validators.min(1),
+        Validators.max(9999),
+      ]),
+      tipo_comprobante_default: this.fb.control('FACTURA C'),
+      concepto: this.fb.control('', Validators.required),
+      iva_porcentaje: this.fb.control('21.00'),
+      actividad: this.fb.control<Actividad>('servicios'),
     });
 
     this.certForm = this.fb.group({
-      arca_production: [false],
+      arca_production: this.fb.control(false),
+    });
+
+    this.accountForm = this.fb.group({
+      nuevoEmail: this.fb.control('', [Validators.email]),
+      nuevaPassword: this.fb.control(''),
+      confirmarPassword: this.fb.control(''),
     });
   }
 
@@ -541,11 +583,11 @@ export class ConfiguracionComponent implements OnInit {
           condicion_iva: c.condicion_iva || 'Responsable Monotributo',
           ingresos_brutos: c.ingresos_brutos || '',
           inicio_actividades: c.inicio_actividades || '',
-          punto_venta: c.punto_venta?.toString() || '4',
+          punto_venta: c.punto_venta ?? 4,
           tipo_comprobante_default: c.tipo_comprobante_default || 'FACTURA C',
           concepto: c.concepto || '',
           iva_porcentaje: Number(c.iva_porcentaje).toFixed(2),
-          actividad: c.actividad || 'servicios',
+          actividad: (c.actividad as Actividad) || 'servicios',
         });
 
         this.certForm.patchValue({
@@ -566,7 +608,7 @@ export class ConfiguracionComponent implements OnInit {
 
   // ==================== BUSCAR CUIT ====================
   async buscarCuit() {
-    const cuit = this.facturacionForm.get('cuit')?.value;
+    const cuit = this.facturacionForm.controls.cuit.value;
     if (!cuit || cuit.length !== 11) return;
 
     this.buscandoCuit.set(true);
@@ -609,7 +651,7 @@ export class ConfiguracionComponent implements OnInit {
           this.facturacionForm.patchValue({ condicion_iva: datos.condicion_iva });
         }
         // Autocompletar IIBB = CUIT
-        if (!this.facturacionForm.get('ingresos_brutos')?.value) {
+        if (!this.facturacionForm.controls.ingresos_brutos.value) {
           this.facturacionForm.patchValue({ ingresos_brutos: cuit });
         }
 
@@ -636,21 +678,7 @@ export class ConfiguracionComponent implements OnInit {
     this.guardando.set(true);
 
     try {
-      const f = this.facturacionForm.value;
-      const payload: any = {
-        cuit: f.cuit,
-        razon_social: f.razon_social,
-        nombre_fantasia: f.nombre_fantasia || null,
-        domicilio: f.domicilio || null,
-        condicion_iva: f.condicion_iva || 'Responsable Monotributo',
-        ingresos_brutos: f.ingresos_brutos || null,
-        inicio_actividades: f.inicio_actividades || null,
-        punto_venta: parseInt(f.punto_venta),
-        tipo_comprobante_default: f.tipo_comprobante_default,
-        concepto: f.concepto,
-        iva_porcentaje: parseFloat(f.iva_porcentaje),
-        actividad: f.actividad as 'bienes' | 'servicios',
-      };
+      const payload = this.buildContribuyentePayload();
 
       const contribuyente = this.contribuyenteService.contribuyente();
 
@@ -673,8 +701,8 @@ export class ConfiguracionComponent implements OnInit {
     this.guardando.set(true);
 
     try {
-      const nextArcaProduction = this.certForm.get('arca_production')?.value ?? false;
-      const payload: any = {
+      const nextArcaProduction = this.certForm.controls.arca_production.value;
+      const payload: ContribuyenteUpdate = {
         arca_production: nextArcaProduction,
       };
       if (this.certModified) payload.arca_cert = this.certContent;
@@ -689,21 +717,7 @@ export class ConfiguracionComponent implements OnInit {
           );
           return;
         }
-        const f = this.facturacionForm.value;
-        const createPayload: any = {
-          cuit: f.cuit,
-          razon_social: f.razon_social,
-          nombre_fantasia: f.nombre_fantasia || null,
-          domicilio: f.domicilio || null,
-          condicion_iva: f.condicion_iva || 'Responsable Monotributo',
-          ingresos_brutos: f.ingresos_brutos || null,
-          inicio_actividades: f.inicio_actividades || null,
-          punto_venta: parseInt(f.punto_venta, 10),
-          tipo_comprobante_default: f.tipo_comprobante_default,
-          concepto: f.concepto,
-          iva_porcentaje: parseFloat(f.iva_porcentaje),
-          actividad: f.actividad as 'bienes' | 'servicios',
-        };
+        const createPayload = this.buildContribuyentePayload();
         const created = await this.contribuyenteService.crearContribuyente(createPayload);
         if (!created.success) {
           this.mostrarMensaje(created.error || 'No se pudo crear el perfil de contribuyente.', 'error');
@@ -742,16 +756,17 @@ export class ConfiguracionComponent implements OnInit {
 
   // ==================== CUENTA ====================
   async cambiarEmail() {
-    if (!this.nuevoEmail) return;
+    const nuevoEmail = this.accountForm.controls.nuevoEmail.value.trim();
+    if (!nuevoEmail || this.accountForm.controls.nuevoEmail.invalid) return;
     this.guardando.set(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({ email: this.nuevoEmail });
+      const { error } = await supabase.auth.updateUser({ email: nuevoEmail });
       if (error) {
         this.mostrarMensaje(error.message, 'error');
       } else {
         this.mostrarMensaje('\u2714 Se envi\u00f3 un email de confirmaci\u00f3n a ambas direcciones.', 'success');
-        this.nuevoEmail = '';
+        this.accountForm.controls.nuevoEmail.reset('');
       }
     } catch {
       this.mostrarMensaje('Error al cambiar email.', 'error');
@@ -761,25 +776,28 @@ export class ConfiguracionComponent implements OnInit {
   }
 
   async cambiarPassword() {
-    if (!this.nuevaPassword || !this.confirmarPassword) return;
-    if (this.nuevaPassword !== this.confirmarPassword) {
+    const { nuevaPassword, confirmarPassword } = this.accountForm.getRawValue();
+    if (!nuevaPassword || !confirmarPassword) return;
+    if (nuevaPassword !== confirmarPassword) {
       this.mostrarMensaje('Las contrase\u00f1as no coinciden.', 'error');
       return;
     }
-    if (this.nuevaPassword.length < 6) {
+    if (nuevaPassword.length < 6) {
       this.mostrarMensaje('La contrase\u00f1a debe tener al menos 6 caracteres.', 'error');
       return;
     }
 
     this.guardando.set(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: this.nuevaPassword });
+      const { error } = await supabase.auth.updateUser({ password: nuevaPassword });
       if (error) {
         this.mostrarMensaje(error.message, 'error');
       } else {
         this.mostrarMensaje('\u2714 Contrase\u00f1a cambiada correctamente.', 'success');
-        this.nuevaPassword = '';
-        this.confirmarPassword = '';
+        this.accountForm.patchValue({
+          nuevaPassword: '',
+          confirmarPassword: '',
+        });
       }
     } catch {
       this.mostrarMensaje('Error al cambiar contrase\u00f1a.', 'error');
@@ -833,6 +851,29 @@ export class ConfiguracionComponent implements OnInit {
   private mostrarMensaje(texto: string, tipo: 'success' | 'error'): void {
     this.mensaje.set({ texto, tipo });
     setTimeout(() => this.mensaje.set(null), 5000);
+  }
+
+  private buildContribuyentePayload(): CreateContribuyentePayload {
+    const raw = this.facturacionForm.getRawValue();
+
+    return {
+      cuit: raw.cuit,
+      razon_social: raw.razon_social,
+      nombre_fantasia: raw.nombre_fantasia || null,
+      domicilio: raw.domicilio || null,
+      condicion_iva: raw.condicion_iva || 'Responsable Monotributo',
+      ingresos_brutos: raw.ingresos_brutos || null,
+      inicio_actividades: raw.inicio_actividades || null,
+      punto_venta: raw.punto_venta ?? null,
+      tipo_comprobante_default: raw.tipo_comprobante_default,
+      concepto: raw.concepto,
+      iva_porcentaje: Number.parseFloat(raw.iva_porcentaje),
+      actividad: raw.actividad,
+      arca_cert: null,
+      arca_key: null,
+      arca_production: false,
+      arca_ticket: null,
+    };
   }
 
   setTheme(theme: ThemeMode): void {
