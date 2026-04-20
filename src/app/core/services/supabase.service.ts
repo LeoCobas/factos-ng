@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
+
+import { getRuntimeConfig } from '../config/runtime-config';
 import { Database } from '../types/database.types';
-import { environment } from '../../../environments/environment';
 
 // Storage que evita completamente los navigator locks
 const lockFreeStorage = {
@@ -27,20 +28,21 @@ const lockFreeStorage = {
   },
 };
 
-export const supabase = createClient<Database>(
-  environment.supabase.url,
-  environment.supabase.anonKey,
-  {
+let client: ReturnType<typeof createSupabaseClient> | null = null;
+
+function createSupabaseClient() {
+  const config = getRuntimeConfig();
+
+  return createClient<Database>(config.supabase.url, config.supabase.anonKey, {
     auth: {
       storage: lockFreeStorage,
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      // Usar un storageKey único para esta app
+      // Usar un storageKey unico para esta app
       storageKey: 'factos-ng-supabase-auth',
-      // Deshabilitar completamente el lock manager
-      lock: async (name: string, acquireTimeout: number, fn: () => Promise<any>) => {
-        // Ejecutar directamente sin locks para evitar conflictos
+      // Ejecutar sin lock manager para evitar conflictos con navigator.locks
+      lock: async <T>(_name: string, _acquireTimeout: number, fn: () => Promise<T>) => {
         return await fn();
       },
     },
@@ -49,5 +51,22 @@ export const supabase = createClient<Database>(
         'X-Client-Info': 'factos-ng@1.0.0',
       },
     },
+  });
+}
+
+export function getSupabaseClient() {
+  if (!client) {
+    client = createSupabaseClient();
   }
-);
+
+  return client;
+}
+
+export const supabase = {
+  get auth() {
+    return getSupabaseClient().auth;
+  },
+  from(...args: Parameters<ReturnType<typeof createSupabaseClient>['from']>) {
+    return getSupabaseClient().from(...args);
+  },
+};

@@ -1,10 +1,10 @@
 // Utilidad para obtener la fecha local en formato YYYY-MM-DD
 function getFechaLocalArgentina(): string {
   const hoy = new Date();
-  const año = hoy.getFullYear();
+  const anio = hoy.getFullYear();
   const mes = String(hoy.getMonth() + 1).padStart(2, '0');
   const dia = String(hoy.getDate()).padStart(2, '0');
-  return `${año}-${mes}-${dia}`;
+  return `${anio}-${mes}-${dia}`;
 }
 import { Component, signal, computed, inject, effect } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -12,7 +12,6 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CurrencyPipe } from '@angular/common';
 import { ComprobantesService } from '../../core/services/comprobantes.service';
-import { supabase } from '../../core/services/supabase.service';
 import { PdfService } from '../../core/services/pdf.service';
 import { FacturacionService } from '../../core/services/facturacion.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
@@ -68,12 +67,6 @@ interface PdfFacturaLike {
   fecha: string;
   cae?: string | null;
   vencimiento_cae?: string | null;
-}
-
-interface ComprobanteListadoRow extends Comprobante {
-  comprobante_asociado?: {
-    numero_comprobante: string;
-  } | null;
 }
 
 @Component({
@@ -708,92 +701,6 @@ export class ListadoComponent {
       await this.actualizarUltimaFechaConFacturas(fecha, comprobantes);
       return;
 
-      /*
-      const { data: comprobantesLegacy, error } = await supabase
-        .from('comprobantes')
-        .select(`
-          *,
-          comprobante_asociado:comprobante_asociado_id (
-            numero_comprobante
-          )
-        `)
-        .eq('contribuyente_id', contribuyente.id)
-        .eq('fecha', fecha)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error al cargar comprobantes:', error);
-        return;
-      }
-
-      const comprobantesRows = (comprobantes || []) as ComprobanteListadoRow[];
-
-      const idsFacturasAnuladas = comprobantesRows
-        .filter(
-          c => c.estado === 'anulada' && !String(c.tipo_comprobante).includes('NOTA DE CREDITO')
-        )
-        .map(c => c.id);
-
-      const mapaNotasCreditoPorAsociado = new Map<string, string>();
-
-      if (idsFacturasAnuladas.length > 0) {
-        const { data: notasCreditoAsociadas, error: notasError } = await supabase
-          .from('comprobantes')
-          .select('comprobante_asociado_id, numero_comprobante, created_at')
-          .eq('contribuyente_id', contribuyente.id)
-          .in('comprobante_asociado_id', idsFacturasAnuladas)
-          .like('tipo_comprobante', 'NOTA DE CREDITO%')
-          .order('created_at', { ascending: false });
-
-        if (notasError) {
-          console.error('Error al cargar notas de crédito asociadas:', notasError);
-        } else {
-          for (const nc of (notasCreditoAsociadas || []) as Pick<
-            Comprobante,
-            'comprobante_asociado_id' | 'numero_comprobante' | 'created_at'
-          >[]) {
-            if (!nc.comprobante_asociado_id || !nc.numero_comprobante) continue;
-            if (!mapaNotasCreditoPorAsociado.has(nc.comprobante_asociado_id)) {
-              mapaNotasCreditoPorAsociado.set(nc.comprobante_asociado_id, nc.numero_comprobante);
-            }
-          }
-        }
-      }
-
-      // Convertir al formato esperado por el template
-      const comprobantesFormateados: Factura[] = comprobantesRows.map(c => {
-        const esNC = c.tipo_comprobante.includes('NOTA DE CREDITO');
-        return {
-          id: c.id,
-          numero_factura: c.numero_comprobante,
-          fecha: c.fecha,
-          monto: Number(c.total),
-          estado: c.estado as 'emitida' | 'anulada',
-          cae: c.cae || undefined,
-          vencimiento_cae: c.vencimiento_cae || undefined,
-          tipo_comprobante: c.tipo_comprobante,
-          pdf_url: c.pdf_url || undefined,
-          concepto: c.concepto || undefined,
-          punto_venta: c.punto_venta || undefined,
-          cliente_cuit: c.cliente_cuit || undefined,
-          cliente_nombre: c.cliente_nombre || undefined,
-          cliente_domicilio: c.cliente_domicilio || undefined,
-          cliente_condicion_iva: c.cliente_condicion_iva || undefined,
-          cliente_doc_tipo: c.cliente_doc_tipo || undefined,
-          cliente_doc_nro: c.cliente_doc_nro || undefined,
-          created_at: c.created_at || undefined,
-          updated_at: c.updated_at || undefined,
-          comprobante_asociado_id: c.comprobante_asociado_id || undefined,
-          factura_anulada: esNC ? c.comprobante_asociado?.numero_comprobante || undefined : undefined,
-          nota_credito_anuladora: !esNC ? mapaNotasCreditoPorAsociado.get(c.id) : undefined
-        };
-      });
-      
-      this.cacheFacturasPorFecha.set(cacheKey, comprobantesFormateados);
-      this.facturas.set(comprobantesFormateados);
-      await this.actualizarUltimaFechaConFacturas(fecha, comprobantesFormateados);
-      */
-
     } catch (error) {
       console.error('Error inesperado al cargar comprobantes:', error);
     } finally {
@@ -911,24 +818,6 @@ export class ListadoComponent {
       this.ultimaFechaConFacturas.set(ultimaFecha);
       return;
 
-      /*
-      const { data, error } = await supabase
-        .from('comprobantes')
-        .select('fecha')
-        .eq('contribuyente_id', contribuyente.id)
-        .order('fecha', { ascending: false })
-        .limit(1);
-
-      if (error) {
-        console.error('Error al buscar última fecha con facturas:', error);
-        this.ultimaFechaConFacturas.set(null);
-        return;
-      }
-
-      const ultimaFecha = data?.[0]?.fecha ?? null;
-      this.cacheUltimaFechaConFacturas.set(cacheKey, ultimaFecha);
-      this.ultimaFechaConFacturas.set(ultimaFecha);
-      */
     } catch (error) {
       console.error('Error inesperado al buscar última fecha con facturas:', error);
       this.ultimaFechaConFacturas.set(null);

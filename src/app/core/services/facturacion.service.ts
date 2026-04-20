@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
+import { getRuntimeConfig } from '../config/runtime-config';
 import { supabase } from './supabase.service';
 import { ContribuyenteService } from './contribuyente.service';
-import { environment } from '../../../environments/environment';
 import { Comprobante, Contribuyente } from '../types/database.types';
 import {
   ClienteFiscalProfile,
@@ -78,9 +78,13 @@ export interface ClienteLookupResult extends ClienteFacturaData {
   providedIn: 'root',
 })
 export class FacturacionService {
-  private readonly supabaseUrl = environment.supabase.url;
   private readonly contribuyenteService = inject(ContribuyenteService);
 
+  /**
+   * Valida la ventana fiscal permitida antes de emitir el comprobante.
+   * Entrada: fecha del comprobante y actividad declarada.
+   * Salida: bandera de validez y mensaje listo para UI.
+   */
   private isValidInvoiceDate(
     fecha: Date,
     actividad: 'bienes' | 'servicios'
@@ -103,6 +107,10 @@ export class FacturacionService {
     return { isValid: true };
   }
 
+  /**
+   * Exige un contribuyente operativo con identidad minima cargada.
+   * Side effect: corta la emision si falta configuracion base del emisor.
+   */
   private getValidatedConfig(): Contribuyente {
     const contribuyente = this.contribuyenteService.contribuyente();
 
@@ -138,6 +146,10 @@ export class FacturacionService {
     return `${String(ptoVta).padStart(4, '0')}-${String(cbteNro).padStart(8, '0')}`;
   }
 
+  /**
+   * Obtiene un access token vigente para invocar Edge Functions protegidas.
+   * Refresca la sesion si vence en menos de 60 segundos.
+   */
   private async getFreshAccessToken(): Promise<string> {
     const {
       data: { session },
@@ -169,6 +181,11 @@ export class FacturacionService {
     return session.access_token;
   }
 
+  /**
+   * Contrato frontend -> backend para emitir factura.
+   * Entrada: monto, fecha DD/MM/YYYY y datos fiscales del receptor.
+   * Side effects: invoca `arca-proxy?action=crear-factura` y persiste en `comprobantes`.
+   */
   async emitirFactura(facturaData: FacturaRequestData): Promise<FacturaResult> {
     const contribuyente = this.getValidatedConfig();
     const cliente = this.buildClienteFacturaData(facturaData);
@@ -239,6 +256,10 @@ export class FacturacionService {
     };
   }
 
+  /**
+   * Normaliza el payload requerido por `arca-proxy?action=crear-factura`.
+   * Devuelve el contrato bruto de backend sin reinterpretar errores.
+   */
   private async llamarArca(
     contribuyente: Contribuyente,
     facturaData: FacturaRequestData,
@@ -272,7 +293,7 @@ export class FacturacionService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          apikey: environment.supabase.anonKey,
+          apikey: getRuntimeConfig().supabase.anonKey,
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(requestBody),
@@ -296,6 +317,10 @@ export class FacturacionService {
     }
   }
 
+  /**
+   * Contrato frontend -> backend para anular un comprobante via nota de credito.
+   * Side effects: consulta el comprobante original, llama a ARCA y persiste ambos cambios en `comprobantes`.
+   */
   async crearNotaCredito(
     comprobanteId: string,
     numeroComprobante: string,
@@ -343,7 +368,7 @@ export class FacturacionService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            apikey: environment.supabase.anonKey,
+            apikey: getRuntimeConfig().supabase.anonKey,
             Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({
@@ -438,6 +463,10 @@ export class FacturacionService {
     }
   }
 
+  /**
+   * Consulta `padron-lookup` y devuelve un perfil fiscal tipado para UI.
+   * Entrada: CUIT libre; salida: respuesta normalizada con documento y clasificacion fiscal.
+   */
   async buscarClientePorCuit(cuit: string): Promise<ClienteLookupResult> {
     const cuitSanitizado = sanitizeCuit(cuit);
 
@@ -451,7 +480,7 @@ export class FacturacionService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        apikey: environment.supabase.anonKey,
+        apikey: getRuntimeConfig().supabase.anonKey,
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({ cuit: cuitSanitizado }),
@@ -516,5 +545,9 @@ export class FacturacionService {
       cliente_domicilio: facturaData.cliente_domicilio?.trim() || null,
       cliente_condicion_iva: normalizeCondicionIva(facturaData.cliente_condicion_iva),
     };
+  }
+
+  private get supabaseUrl(): string {
+    return getRuntimeConfig().supabase.url;
   }
 }

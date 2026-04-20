@@ -210,6 +210,11 @@ function buildErrorResponse(errorMessage: string, extra?: Record<string, unknown
   });
 }
 
+/**
+ * Contrato operativo: emite una factura autorizada por ARCA para el contribuyente autenticado.
+ * Requiere JWT valido, contribuyente existente, certificados cargados y bucket `wsfe` operativo.
+ * Responde `success/data` en altas autorizadas y `success/error` para validacion, rechazo AFIP o error interno.
+ */
 async function handleCrearFactura(req: Request, body: any): Promise<Response> {
   const { punto_venta, tipo_comprobante, monto, fecha, concepto_afip, iva_porcentaje } = body;
   const { docTipo, docNro, condicionIvaReceptorId } = getDocPayload(body);
@@ -339,6 +344,11 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
   }
 }
 
+/**
+ * Contrato operativo: genera una nota de credito asociada a un comprobante previo.
+ * Mantiene el mismo contexto autenticado del emisor y persiste numeracion segun WSFE.
+ * La respuesta replica el shape de `crear-factura` para simplificar el adaptador frontend.
+ */
 async function handleCrearNotaCredito(req: Request, body: any): Promise<Response> {
   try {
     const { arca } = await getUserArcaInstance(req);
@@ -506,6 +516,10 @@ async function handleCrearNotaCredito(req: Request, body: any): Promise<Response
   }
 }
 
+/**
+ * Contrato operativo: consulta el ultimo numero emitido para un punto de venta y tipo de comprobante.
+ * Se usa como lectura administrativa y no persiste cambios locales salvo renovacion de ticket WSFE.
+ */
 async function handleUltimoComprobante(req: Request, body: any): Promise<Response> {
   try {
     const { arca } = await getUserArcaInstance(req);

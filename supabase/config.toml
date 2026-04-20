@@ -1,5 +1,5 @@
 [functions.arca-proxy]
-verify_jwt = false
+verify_jwt = true
 
 [functions.padron-lookup]
-verify_jwt = false
+verify_jwt = true

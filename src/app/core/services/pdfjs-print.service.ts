@@ -1,248 +1,91 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
-// PDF.js tipos usando el archivo centralizado
-/// <reference path="../../../types/pdfjs.d.ts" />
+import { PdfjsLoaderService, type PdfJsModule } from './pdfjs-loader.service';
 
 export interface DirectPrintOptions {
-  url: string;           // Blob URL del PDF generado localmente
-  filename: string;      // Nombre del archivo (para logs)
-  title?: string;        // Título (para logs)
+  url: string;
+  filename: string;
+  title?: string;
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class PdfJsPrintService {
-  
-  private pdfLibLoaded = false;
+  private readonly pdfjsLoader = inject(PdfjsLoaderService);
+  private pdfjs: PdfJsModule | null = null;
 
-  /**
-   * Inicializar PDF.js si no está cargado
-   */
-  private async ensurePdfJsLoaded(): Promise<void> {
-    if (this.pdfLibLoaded && window.pdfjsLib) {
-      console.log('📚 [DEBUG] PDF.js ya está cargado');
-      return;
+  private async ensurePdfJsLoaded(): Promise<PdfJsModule> {
+    if (!this.pdfjs) {
+      this.pdfjs = await this.pdfjsLoader.load();
     }
 
-    console.log('📚 [DEBUG] Inicializando PDF.js v5.4.54 para impresión directa...');
-    
-    // Cargar PDF.js si no está disponible
-    if (!window.pdfjsLib) {
-      console.log('⏳ [DEBUG] Cargando PDF.js desde CDN...');
-      await this.loadPdfJsLibrary();
-      
-      if (!window.pdfjsLib) {
-        throw new Error('No se pudo cargar PDF.js desde ningún CDN');
-      }
-      console.log('✅ [DEBUG] PDF.js library cargada');
-    }
-    
-    // Configurar el worker
-    console.log('🔧 [DEBUG] Configurando worker...');
-    this.setupWorker();
-    console.log('✅ [DEBUG] Worker configurado');
-    
-    this.pdfLibLoaded = true;
-    console.log('✅ PDF.js configurado exitosamente para impresión');
+    return this.pdfjs;
   }
 
   /**
-   * Cargar biblioteca PDF.js desde CDN
-   */
-  private async loadPdfJsLibrary(): Promise<void> {
-    // URLs de PDF.js v5.4.54 (versión estable más reciente)
-    const cdnSources = [
-      {
-        name: 'jsDelivr',
-        main: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.54/build/pdf.min.mjs',
-        worker: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.54/build/pdf.worker.min.mjs'
-      },
-      {
-        name: 'UNPKG',
-        main: 'https://unpkg.com/pdfjs-dist@5.4.54/build/pdf.min.mjs',
-        worker: 'https://unpkg.com/pdfjs-dist@5.4.54/build/pdf.worker.min.mjs'
-      }
-    ];
-    
-    for (const cdn of cdnSources) {
-      try {
-        console.log(`🔄 Intentando cargar desde ${cdn.name}...`);
-        
-        // Para ES modules (.mjs), necesitamos usar import dinámico
-        const module = await import(/* @vite-ignore */ cdn.main);
-        
-        // Asignar pdfjsLib al objeto global
-        window.pdfjsLib = module;
-        
-        // Guardar la URL del worker
-        (window as any).pdfWorkerSrc = cdn.worker;
-        
-        console.log(`✅ PDF.js v5.4.54 cargado desde ${cdn.name}`);
-        return;
-        
-      } catch (error) {
-        console.warn(`⚠️ Error cargando desde ${cdn.name}:`, error);
-        continue;
-      }
-    }
-    
-    throw new Error('No se pudo cargar PDF.js desde ningún CDN');
-  }
-
-  /**
-   * Configurar worker de PDF.js
-   */
-  private setupWorker(): void {
-    const workerSrc = (window as any).pdfWorkerSrc || 
-      'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.54/build/pdf.worker.min.mjs';
-    
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
-    console.log('✅ Worker configurado:', workerSrc);
-  }
-
-  /**
-   * Método principal para imprimir PDF directamente usando PDF.js Canvas
-   * Compatible con Android y optimizado para facturas
+   * Imprime la primera página del PDF generado localmente usando PDF.js cargado desde el bundle.
+   * No depende de CDN y reutiliza el mismo worker local que el visor.
    */
   async printPdfDirect(options: DirectPrintOptions): Promise<void> {
+    const pdfjs = await this.ensurePdfJsLoaded();
+    const loadingTask = pdfjs.getDocument({
+      url: options.url,
+      verbosity: 0,
+    });
+
+    const pdfDocument = await loadingTask.promise;
+
     try {
-      console.log(`🖨️ [DEBUG] Iniciando impresión directa con PDF.js:`, options.filename);
-      console.log(`🖨️ [DEBUG] URL del PDF:`, options.url);
-      
-      // Asegurar que PDF.js esté cargado
-      console.log(`🖨️ [DEBUG] Cargando PDF.js...`);
-      await this.ensurePdfJsLoaded();
-      console.log(`🖨️ [DEBUG] PDF.js cargado exitosamente`);
-      
-      // Cargar el PDF
-      console.log(`🖨️ [DEBUG] Cargando documento PDF...`);
-      const pdfDocument = await this.loadPdf(options.url);
-      console.log(`🖨️ [DEBUG] Documento PDF cargado:`, pdfDocument.numPages, 'páginas');
-      
       if (pdfDocument.numPages < 1) {
-        throw new Error('El PDF no tiene páginas para imprimir');
+        throw new Error('El PDF no tiene paginas para imprimir');
       }
-      
-      // Obtener solo la primera página (facturas)
-      console.log(`🖨️ [DEBUG] Obteniendo primera página...`);
+
       const page = await pdfDocument.getPage(1);
-      console.log(`🖨️ [DEBUG] Primera página obtenida`);
-      
-      // Renderizar página a canvas con alta calidad
-      console.log(`🖨️ [DEBUG] Renderizando página a canvas...`);
-      const { imageDataUrl, width, height: _height } = await this.renderPageToCanvas(page);
-      console.log(`🖨️ [DEBUG] Canvas renderizado. Dimensiones: ${width}x${_height}`);
-      console.log(`🖨️ [DEBUG] Data URL generado (primeros 100 chars):`, imageDataUrl.substring(0, 100));
-      
-      // Imprimir directamente usando la MISMA lógica del visor PDF.js
-      console.log(`🖨️ [DEBUG] Abriendo ventana de impresión...`);
-      this.openDirectPrintWindow(imageDataUrl, width, _height);
-      console.log(`🖨️ [DEBUG] Ventana de impresión abierta`);
-      
-      // Limpiar recursos
+      const { imageDataUrl, width, height } = await this.renderPageToCanvas(page);
+      this.openDirectPrintWindow(imageDataUrl, width, height);
+    } finally {
       pdfDocument.destroy();
-      
-      console.log('✅ Impresión directa completada');
-      
-    } catch (error) {
-      console.error('❌ [ERROR] Error en impresión directa:', error);
-      console.error('❌ [ERROR] Stack trace:', error instanceof Error ? error.stack : 'No stack available');
-      
-      console.error('❌ [ERROR] Error de PDF.js o rendering');
-      
-      throw error;
     }
   }
 
-  /**
-   * Cargar documento PDF desde el blob generado localmente.
-   */
-  private async loadPdf(pdfUrl: string): Promise<any> {
-    try {
-      console.log('📄 [DEBUG] Cargando PDF:', pdfUrl);
-      console.log('📄 [DEBUG] window.pdfjsLib disponible:', !!window.pdfjsLib);
-      console.log('📄 [DEBUG] getDocument disponible:', !!window.pdfjsLib?.getDocument);
+  private async renderPageToCanvas(
+    page: any,
+  ): Promise<{ imageDataUrl: string; width: number; height: number }> {
+    const viewport = page.getViewport({
+      scale: 2.0,
+      rotation: 0,
+    });
 
-      const loadingTask = window.pdfjsLib.getDocument({
-        url: pdfUrl,
-        verbosity: 0 // Reducir logs de PDF.js
-      });
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
 
-      console.log('📄 [DEBUG] LoadingTask creado desde blob URL:', !!loadingTask);
-      
-      const pdfDocument = await loadingTask.promise;
-      console.log(`✅ [DEBUG] PDF cargado exitosamente: ${pdfDocument.numPages} páginas`);
-      
-      return pdfDocument;
-      
-    } catch (error) {
-      console.error('❌ [ERROR] Error cargando PDF:', error);
-      console.error('❌ [ERROR] URL que falló:', pdfUrl);
-      console.error('❌ [ERROR] window.pdfjsLib:', window.pdfjsLib);
-      throw new Error(`No se pudo cargar el PDF: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+    if (!context) {
+      throw new Error('No se pudo obtener el contexto del canvas');
     }
+
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+
+    await page.render({
+      canvasContext: context,
+      viewport,
+    }).promise;
+
+    return {
+      imageDataUrl: canvas.toDataURL('image/png', 1.0),
+      width: viewport.width,
+      height: viewport.height,
+    };
   }
 
-  /**
-   * Renderizar página a canvas y obtener imagen (EXACTA implementación del visor PDF.js)
-   */
-  private async renderPageToCanvas(page: any): Promise<{imageDataUrl: string, width: number, height: number}> {
-    try {
-      // Configurar viewport para impresión optimizada (EXACTO como el visor)
-      const viewport = page.getViewport({ 
-        scale: 2.0,      // MISMA escala que el visor PDF.js
-        rotation: 0 
-      });
-
-      // Crear canvas temporal
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      
-      if (!context) {
-        throw new Error('No se pudo obtener el contexto del canvas');
-      }
-      
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-
-      // Renderizar la página en el canvas (EXACTO como el visor)
-      const renderContext = {
-        canvasContext: context,
-        viewport: viewport
-      };
-
-      await page.render(renderContext).promise;
-
-      // Convertir canvas a imagen de alta calidad (EXACTO como el visor)
-      const dataUrl = canvas.toDataURL('image/png', 1.0);
-      
-      console.log('✅ Página renderizada a canvas (usando lógica del visor PDF.js)');
-      
-      return {
-        imageDataUrl: dataUrl,
-        width: viewport.width,
-        height: viewport.height
-      };
-      
-    } catch (error) {
-      console.error('❌ Error renderizando página:', error);
-      throw new Error(`Error renderizando la página: ${error instanceof Error ? error.message : 'Error desconocido'}`);
-    }
-  }
-
-  /**
-   * Abrir ventana de impresión directa (EXACTA implementación del visor PDF.js)
-   */
   private openDirectPrintWindow(imageDataUrl: string, width: number, _height: number): void {
     const printWindow = window.open('', '_blank');
-    
+
     if (!printWindow) {
-      console.error('No se pudo abrir la ventana de impresión');
-      return;
+      throw new Error('No se pudo abrir la ventana de impresion');
     }
 
-    // HTML EXACTO del visor PDF.js que funciona perfecto en Android
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -253,29 +96,29 @@ export class PdfJsPrintService {
         <style>
           @page { margin: 5mm; size: auto; }
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { 
-            margin: 0; 
-            padding: 0; 
-            background: white; 
-            display: flex; 
-            justify-content: center; 
-            align-items: flex-start; 
+          body {
+            margin: 0;
+            padding: 0;
+            background: white;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
           }
-          .print-container { 
-            width: 100%; 
-            max-width: ${Math.min(width * 0.5, 400)}px; 
-            text-align: center; 
+          .print-container {
+            width: 100%;
+            max-width: ${Math.min(width * 0.5, 400)}px;
+            text-align: center;
           }
-          .print-image { 
-            width: 100%; 
-            height: auto; 
-            display: block; 
-            margin: 0 auto; 
+          .print-image {
+            width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
           }
           @media print {
-            .print-image { 
-              max-width: 100% !important; 
-              page-break-inside: avoid; 
+            .print-image {
+              max-width: 100% !important;
+              page-break-inside: avoid;
             }
           }
         </style>
@@ -300,19 +143,5 @@ export class PdfJsPrintService {
 
     printWindow.document.write(htmlContent);
     printWindow.document.close();
-  }
-
-  /**
-   * Detectar si el dispositivo es Android
-   */
-  private get isAndroid(): boolean {
-    return /Android/i.test(navigator.userAgent);
-  }
-
-  /**
-   * Detectar si es dispositivo móvil
-   */
-  private get isMobile(): boolean {
-    return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   }
 }

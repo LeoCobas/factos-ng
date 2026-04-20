@@ -3,8 +3,8 @@ import { FormGroup, ReactiveFormsModule, Validators, NonNullableFormBuilder } fr
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import type { CreateContribuyentePayload } from '../../core/services/contribuyente.service';
 import { ThemeService, ThemeMode } from '../../core/services/theme.service';
+import { getRuntimeConfig } from '../../core/config/runtime-config';
 import { supabase } from '../../core/services/supabase.service';
-import { environment } from '../../../environments/environment';
 import { ContribuyenteUpdate } from '../../core/types/database.types';
 import {
   AccountFormModel,
@@ -114,7 +114,6 @@ import { ConfiguracionCuentaFormComponent } from './configuracion-cuenta-form.co
 })
 export class ConfiguracionComponent implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
-  private readonly supabaseUrl = environment.supabase.url;
   readonly themeService = inject(ThemeService);
   readonly contribuyenteService = inject(ContribuyenteService);
 
@@ -277,7 +276,7 @@ export class ConfiguracionComponent implements OnInit {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          apikey: environment.supabase.anonKey,
+          apikey: getRuntimeConfig().supabase.anonKey,
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ cuit }),
@@ -316,6 +315,10 @@ export class ConfiguracionComponent implements OnInit {
     } finally {
       this.buscandoCuit.set(false);
     }
+  }
+
+  private get supabaseUrl(): string {
+    return getRuntimeConfig().supabase.url;
   }
 
   // ==================== GUARDAR FACTURACION ====================

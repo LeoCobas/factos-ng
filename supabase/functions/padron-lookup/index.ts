@@ -169,6 +169,11 @@ async function fetchTaxpayerFromArca(
   return null;
 }
 
+/**
+ * Contrato operativo: consulta constancia de inscripcion para un CUIT usando el contribuyente autenticado.
+ * Requiere JWT valido, contribuyente existente, certificados cargados y bucket `padron` operativo.
+ * Devuelve una respuesta normalizada para frontend con razon social, domicilio y clasificacion fiscal.
+ */
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });

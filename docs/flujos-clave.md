@@ -39,6 +39,7 @@
 - el `contribuyente` se busca por `user_id`
 - los `comprobantes` se buscan por `contribuyente_id`
 - las Edge Functions reciben `Authorization` y `apikey` explicitos desde frontend
+- la `anonKey` ya no vive en `environment*.ts`: el cliente la carga desde `public/app-config.json`
 
 ## 3. Edge Functions
 
@@ -207,3 +208,4 @@ Ademas, si cambian certificados o entorno ARCA desde configuracion, la app limpi
 3. `factura-pdf.service.ts` genera un PDF con `pdfmake`
 4. `pdf.service.ts` lo expone como blob para ver, compartir, descargar o imprimir
 5. `listado` y `facturar` reutilizan el mismo contrato tipado para evitar casts y objetos ad hoc
+6. `pdf-viewer.component.ts` y `pdfjs-print.service.ts` usan PDF.js empaquetado localmente, sin CDN publica

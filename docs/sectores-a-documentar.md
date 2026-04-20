@@ -81,7 +81,7 @@
 
 ## Inconsistencias o decisiones abiertas
 
-- definir si `verify_jwt = false` en `supabase/config.toml` es intencional o deuda tecnica
+- documentar que `arca-proxy` y `padron-lookup` requieren `verify_jwt = true` y JWT valido
 - revisar si las credenciales de `environment*.ts` deben seguir versionadas
 - revisar si la carga de PDF.js desde CDN es aceptable para el entorno operativo real
 - limpiar el bloque legacy comentado que sigue en `src/app/features/listado/listado.component.ts`

@@ -123,7 +123,7 @@ Esa separacion esta implementada en `src/app/core/utils/arca-ticket.util.ts`.
   - `PdfInfo<T>`
 - `factura-pdf.service.ts` arma un ticket 80 mm con `pdfmake` desde un contrato tipado.
 - `pdf.service.ts` genera blobs y maneja compartir, descarga e impresion usando ese mismo contrato.
-- `pdfjs-print.service.ts` y `pdf-viewer.component.ts` cargan PDF.js desde CDN.
+- `pdfjs-print.service.ts` y `pdf-viewer.component.ts` cargan PDF.js desde dependencia local del bundle.
 
 ## Modelo de datos real
 
@@ -135,6 +135,7 @@ Campos relevantes usados por frontend y Edge Functions:
 - datos visibles en ticket: `nombre_fantasia`, `domicilio`, `condicion_iva`, `ingresos_brutos`, `inicio_actividades`
 - defaults de emision: `concepto`, `actividad`, `iva_porcentaje`, `punto_venta`, `tipo_comprobante_default`
 - credenciales y estado ARCA: `arca_cert`, `arca_key`, `arca_production`, `arca_ticket`
+- configuracion cliente Supabase: `public/app-config.json`
 
 ### `comprobantes`
 

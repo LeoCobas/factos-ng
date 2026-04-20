@@ -1,0 +1,6 @@
+{
+  "supabase": {
+    "url": "https://REEMPLAZAR-EN-DEPLOY.supabase.co",
+    "anonKey": "REEMPLAZAR_EN_DEPLOY"
+  }
+}

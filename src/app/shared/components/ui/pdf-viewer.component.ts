@@ -1,21 +1,21 @@
 import {
-  Component,
-  input,
-  signal,
   AfterViewInit,
-  ViewChild,
+  Component,
   ElementRef,
   OnDestroy,
+  ViewChild,
+  input,
   output,
+  signal,
+  inject,
 } from '@angular/core';
 
-// PDF.js tipos usando el archivo centralizado
-/// <reference path="../../../../types/pdfjs.d.ts" />
+import { PdfjsLoaderService, type PdfJsModule } from '../../../core/services/pdfjs-loader.service';
 
 export interface PdfViewerConfig {
-  url: string; // Blob URL del PDF generado localmente
-  title: string; // Título para mostrar
-  filename: string; // Nombre del archivo
+  url: string;
+  title: string;
+  filename: string;
 }
 
 @Component({
@@ -24,7 +24,6 @@ export interface PdfViewerConfig {
   imports: [],
   template: `
     <div class="w-full h-full flex flex-col bg-gray-100 dark:bg-gray-900">
-      <!-- Header -->
       <div
         class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-2 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2"
       >
@@ -32,30 +31,18 @@ export interface PdfViewerConfig {
           <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
             {{ config().title }}
           </h3>
-          <!-- Eliminado: texto de página actual -->
         </div>
 
-        <!-- Controles -->
         <div class="flex items-center gap-1 sm:gap-2 flex-wrap w-full sm:w-auto justify-end">
-          <!-- Controles de zoom -->
           <button
+            type="button"
             (click)="zoomOut()"
             [disabled]="scale() <= 0.5"
             class="p-1.5 sm:p-2 rounded bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Alejar"
           >
-            <svg
-              class="w-4 h-4 sm:w-5 sm:h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M20 12H4"
-              ></path>
+            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
             </svg>
           </button>
 
@@ -66,17 +53,13 @@ export interface PdfViewerConfig {
           </span>
 
           <button
+            type="button"
             (click)="zoomIn()"
             [disabled]="scale() >= 3"
             class="p-1.5 sm:p-2 rounded bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Acercar"
           >
-            <svg
-              class="w-4 h-4 sm:w-5 sm:h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -86,18 +69,13 @@ export interface PdfViewerConfig {
             </svg>
           </button>
 
-          <!-- Botón imprimir -->
           <button
+            type="button"
             (click)="printFirstPage()"
             class="p-1.5 sm:p-2 rounded bg-orange-500 hover:bg-orange-600 text-white"
             title="Imprimir primera página"
           >
-            <svg
-              class="w-4 h-4 sm:w-5 sm:h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -107,30 +85,19 @@ export interface PdfViewerConfig {
             </svg>
           </button>
 
-          <!-- Botón cerrar -->
           <button
+            type="button"
             (click)="close()"
             class="p-1.5 sm:p-2 rounded bg-red-500 hover:bg-red-600 text-white"
             title="Cerrar"
           >
-            <svg
-              class="w-4 h-4 sm:w-5 sm:h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              ></path>
+            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
         </div>
       </div>
 
-      <!-- Área del PDF -->
       <div class="flex-1 overflow-auto relative">
         @if (loading()) {
           <div class="absolute inset-0 flex items-center justify-center">
@@ -147,12 +114,7 @@ export interface PdfViewerConfig {
           <div class="absolute inset-0 flex items-center justify-center p-4">
             <div class="text-center max-w-md mx-auto p-4 sm:p-6">
               <div class="text-red-500 mb-2 sm:mb-4">
-                <svg
-                  class="w-8 h-8 sm:w-12 sm:h-12 mx-auto"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg class="w-8 h-8 sm:w-12 sm:h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -166,6 +128,7 @@ export interface PdfViewerConfig {
               </h4>
               <p class="text-gray-600 dark:text-gray-400 mb-4 text-xs sm:text-sm">{{ error() }}</p>
               <button
+                type="button"
                 (click)="retryLoad()"
                 class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:px-4 sm:py-2 rounded transition-colors text-sm sm:text-base"
               >
@@ -175,14 +138,12 @@ export interface PdfViewerConfig {
           </div>
         }
 
-        <!-- Canvas para renderizar PDF -->
         <div class="flex justify-center p-2 sm:p-4">
           <canvas
             #pdfCanvas
             [style.display]="loading() || error() ? 'none' : 'block'"
             class="max-w-full shadow-lg border border-gray-200 dark:border-gray-700"
-          >
-          </canvas>
+          ></canvas>
         </div>
       </div>
     </div>
@@ -194,19 +155,16 @@ export interface PdfViewerConfig {
         height: auto;
       }
 
-      /* Mejoras responsive para mobile */
       @media (max-width: 640px) {
         .print-container {
           padding: 8px !important;
         }
 
-        /* Asegurar que los botones sean tocables en mobile */
         button {
           min-height: 44px;
           min-width: 44px;
         }
 
-        /* Mejorar legibilidad en pantallas pequeñas */
         .text-container {
           font-size: 14px !important;
           line-height: 1.4;
@@ -218,65 +176,36 @@ export interface PdfViewerConfig {
 export class PdfViewerComponent implements AfterViewInit, OnDestroy {
   @ViewChild('pdfCanvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
 
-  // Inputs
-  config = input.required<PdfViewerConfig>();
+  private readonly pdfjsLoader = inject(PdfjsLoaderService);
 
-  // Outputs
+  config = input.required<PdfViewerConfig>();
   closeRequested = output<void>();
 
-  // State signals
   loading = signal(true);
   error = signal<string | null>(null);
   currentPage = signal(1);
   totalPages = signal(0);
   scale = signal(1);
 
-  // PDF.js objects
+  Math = Math;
+
+  private pdfjs: PdfJsModule | null = null;
   private pdfDocument: any = null;
   private currentPageObject: any = null;
 
-  // Device capabilities
-  private get isAndroid() {
-    return /Android/i.test(navigator.userAgent);
+  ngAfterViewInit(): void {
+    void this.initializePdfJs();
   }
 
-  private get isMobile() {
-    return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  }
-
-  // Computed
-  Math = Math; // Para usar en template
-
-  ngAfterViewInit() {
-    this.initializePdfJs();
-  }
-
-  ngOnDestroy() {
+  ngOnDestroy(): void {
     this.cleanup();
   }
 
-  private async initializePdfJs() {
+  private async initializePdfJs(): Promise<void> {
     try {
-      console.log('📚 Inicializando PDF.js v5.4.54...');
-
-      // Cargar PDF.js si no está disponible
-      if (!window.pdfjsLib) {
-        console.log('⏳ Cargando PDF.js desde CDN...');
-        await this.loadPdfJsLibrary();
-
-        if (!window.pdfjsLib) {
-          throw new Error('No se pudo cargar PDF.js desde ningún CDN');
-        }
-      }
-
-      // Configurar el worker
-      this.setupWorker();
-
-      console.log('✅ PDF.js configurado exitosamente');
-
+      this.pdfjs = await this.pdfjsLoader.load();
       await this.loadPdf();
     } catch (error) {
-      console.error('❌ Error inicializando PDF.js:', error);
       this.error.set(
         `Error cargando PDF.js: ${error instanceof Error ? error.message : 'Error desconocido'}`,
       );
@@ -284,78 +213,25 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  private async loadPdfJsLibrary(): Promise<void> {
-    // URLs de PDF.js v5.4.54 (versión estable más reciente)
-    const cdnSources = [
-      {
-        name: 'jsDelivr',
-        main: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.54/build/pdf.min.mjs',
-        worker: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.54/build/pdf.worker.min.mjs',
-      },
-      {
-        name: 'UNPKG',
-        main: 'https://unpkg.com/pdfjs-dist@5.4.54/build/pdf.min.mjs',
-        worker: 'https://unpkg.com/pdfjs-dist@5.4.54/build/pdf.worker.min.mjs',
-      },
-    ];
-
-    for (const cdn of cdnSources) {
-      try {
-        console.log(`🔄 Intentando cargar desde ${cdn.name}...`);
-
-        // Para ES modules (.mjs), necesitamos usar import dinámico
-        const module = await import(cdn.main);
-
-        // Asignar pdfjsLib al objeto global
-        window.pdfjsLib = module;
-
-        // Guardar la URL del worker
-        (window as any).pdfWorkerSrc = cdn.worker;
-
-        console.log(`✅ PDF.js v5.4.54 cargado desde ${cdn.name}`);
-        return;
-      } catch (error) {
-        console.warn(`⚠️ Error cargando desde ${cdn.name}:`, error);
-        continue;
-      }
-    }
-
-    throw new Error('No se pudo cargar PDF.js desde ningún CDN');
-  }
-
-  private setupWorker(): void {
-    const workerSrc =
-      (window as any).pdfWorkerSrc ||
-      'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.54/build/pdf.worker.min.mjs';
-
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
-    console.log('✅ Worker configurado:', workerSrc);
-  }
-
-  private async loadPdf() {
+  private async loadPdf(): Promise<void> {
     try {
       this.loading.set(true);
       this.error.set(null);
 
-      const pdfUrl = this.config().url;
-      console.log('📄 Cargando PDF:', pdfUrl);
+      if (!this.pdfjs) {
+        throw new Error('PDF.js no está inicializado');
+      }
 
-      const loadingTask = window.pdfjsLib.getDocument({
-        url: pdfUrl,
+      const loadingTask = this.pdfjs.getDocument({
+        url: this.config().url,
         verbosity: 0,
       });
 
       this.pdfDocument = await loadingTask.promise;
       this.totalPages.set(this.pdfDocument.numPages);
-
-      console.log(`✅ PDF cargado: ${this.totalPages()} páginas`);
-
-      // Renderizar la primera página
       await this.renderPage(1);
-
       this.loading.set(false);
     } catch (error) {
-      console.error('❌ Error cargando PDF:', error);
       this.error.set(
         `No se pudo cargar el PDF: ${error instanceof Error ? error.message : 'Error desconocido'}`,
       );
@@ -363,18 +239,16 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  private async renderPage(pageNumber: number) {
+  private async renderPage(pageNumber: number): Promise<void> {
     if (!this.pdfDocument || pageNumber < 1 || pageNumber > this.totalPages()) {
       return;
     }
 
     try {
-      // Limpiar página anterior
       if (this.currentPageObject) {
         this.currentPageObject.cleanup();
       }
 
-      // Obtener la página
       this.currentPageObject = await this.pdfDocument.getPage(pageNumber);
 
       const canvas = this.canvasRef.nativeElement;
@@ -384,97 +258,70 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
         throw new Error('No se pudo obtener el contexto del canvas');
       }
 
-      // Calcular la escala para ajustar al contenedor
       const containerWidth = canvas.parentElement?.clientWidth || window.innerWidth - 32;
       const viewport = this.currentPageObject.getViewport({ scale: 1 });
-      const baseScale = Math.min(containerWidth / viewport.width, 2); // Máximo 2x
+      const baseScale = Math.min(containerWidth / viewport.width, 2);
       const finalScale = baseScale * this.scale();
-
-      // Configurar el viewport con la escala final
       const scaledViewport = this.currentPageObject.getViewport({ scale: finalScale });
-
-      // Configurar canvas para alta resolución
       const outputScale = window.devicePixelRatio || 1;
 
       canvas.width = Math.floor(scaledViewport.width * outputScale);
       canvas.height = Math.floor(scaledViewport.height * outputScale);
-      canvas.style.width = Math.floor(scaledViewport.width) + 'px';
-      canvas.style.height = Math.floor(scaledViewport.height) + 'px';
+      canvas.style.width = `${Math.floor(scaledViewport.width)}px`;
+      canvas.style.height = `${Math.floor(scaledViewport.height)}px`;
 
       const transform = outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null;
 
-      // Renderizar la página
-      const renderContext = {
+      await this.currentPageObject.render({
         canvasContext: context,
         viewport: scaledViewport,
-        transform: transform,
-      };
+        transform,
+      }).promise;
 
-      await this.currentPageObject.render(renderContext).promise;
       this.currentPage.set(pageNumber);
-    } catch (error) {
-      console.error('❌ Error renderizando página:', error);
+    } catch {
       this.error.set(`Error renderizando la página ${pageNumber}`);
     }
   }
 
-  // Navegación
-  async previousPage() {
+  async previousPage(): Promise<void> {
     if (this.currentPage() > 1) {
       await this.renderPage(this.currentPage() - 1);
     }
   }
 
-  async nextPage() {
+  async nextPage(): Promise<void> {
     if (this.currentPage() < this.totalPages()) {
       await this.renderPage(this.currentPage() + 1);
     }
   }
 
-  // Zoom
-  async zoomIn() {
-    const newScale = Math.min(this.scale() * 1.2, 3);
-    this.scale.set(newScale);
+  async zoomIn(): Promise<void> {
+    this.scale.set(Math.min(this.scale() * 1.2, 3));
     await this.renderPage(this.currentPage());
   }
 
-  async zoomOut() {
-    const newScale = Math.max(this.scale() / 1.2, 0.5);
-    this.scale.set(newScale);
+  async zoomOut(): Promise<void> {
+    this.scale.set(Math.max(this.scale() / 1.2, 0.5));
     await this.renderPage(this.currentPage());
   }
 
-  async retryLoad() {
+  async retryLoad(): Promise<void> {
     await this.initializePdfJs();
   }
 
-  close() {
+  close(): void {
     this.closeRequested.emit();
   }
 
-  /**
-   * Imprime solo la primera página del PDF
-   * Método directo sin cuadros de diálogo adicionales
-   */
   async printFirstPage(): Promise<void> {
     if (!this.pdfDocument) {
-      console.error('❌ No hay documento PDF cargado para imprimir');
       return;
     }
 
     try {
-      console.log(`🖨️ Iniciando impresión directa de primera página`);
-
-      // Obtener solo la primera página
       const page = await this.pdfDocument.getPage(1);
-
-      // Configurar viewport para impresión optimizada
-      const viewport = page.getViewport({
-        scale: 2.0,
-        rotation: 0,
-      });
-
-      // Crear canvas temporal
+      const viewport = page.getViewport({ scale: 2.0, rotation: 0 });
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
 
@@ -485,36 +332,25 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
       canvas.height = viewport.height;
       canvas.width = viewport.width;
 
-      // Renderizar la página en el canvas
-      const renderContext = {
+      await page.render({
         canvasContext: context,
-        viewport: viewport,
-      };
+        viewport,
+      }).promise;
 
-      await page.render(renderContext).promise;
-
-      // Convertir canvas a imagen
-      const dataUrl = canvas.toDataURL('image/png', 1.0);
-
-      // Imprimir directamente sin cuadros de diálogo
-      this.openDirectPrintWindow(dataUrl, viewport.width, viewport.height);
-    } catch (error) {
-      console.error('❌ Error al imprimir primera página:', error);
+      this.openDirectPrintWindow(canvas.toDataURL('image/png', 1.0), viewport.width, viewport.height);
+    } catch {
+      this.error.set('No se pudo preparar la impresión del PDF.');
     }
   }
 
-  /**
-   * Ventana de impresión directa y simplificada
-   */
   private openDirectPrintWindow(imageDataUrl: string, width: number, _height: number): void {
     const printWindow = window.open('', '_blank');
 
     if (!printWindow) {
-      console.error('No se pudo abrir la ventana de impresión');
+      this.error.set('No se pudo abrir la ventana de impresión.');
       return;
     }
 
-    // HTML simplificado para impresión directa
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -525,29 +361,29 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
         <style>
           @page { margin: 5mm; size: auto; }
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { 
-            margin: 0; 
-            padding: 0; 
-            background: white; 
-            display: flex; 
-            justify-content: center; 
-            align-items: flex-start; 
+          body {
+            margin: 0;
+            padding: 0;
+            background: white;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
           }
-          .print-container { 
-            width: 100%; 
-            max-width: ${Math.min(width * 0.5, 400)}px; 
-            text-align: center; 
+          .print-container {
+            width: 100%;
+            max-width: ${Math.min(width * 0.5, 400)}px;
+            text-align: center;
           }
-          .print-image { 
-            width: 100%; 
-            height: auto; 
-            display: block; 
-            margin: 0 auto; 
+          .print-image {
+            width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
           }
           @media print {
-            .print-image { 
-              max-width: 100% !important; 
-              page-break-inside: avoid; 
+            .print-image {
+              max-width: 100% !important;
+              page-break-inside: avoid;
             }
           }
         </style>
@@ -574,12 +410,15 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
     printWindow.document.close();
   }
 
-  private cleanup() {
+  private cleanup(): void {
     if (this.currentPageObject) {
       this.currentPageObject.cleanup();
     }
+
     if (this.pdfDocument) {
       this.pdfDocument.destroy();
     }
+
+    this.pdfjs = null;
   }
 }
