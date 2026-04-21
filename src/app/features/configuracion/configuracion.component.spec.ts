@@ -73,6 +73,54 @@ describe('ConfiguracionComponent', () => {
     );
   });
 
+  it('no borra certificados al guardar datos de facturacion de un contribuyente existente', async () => {
+    const fixture = TestBed.createComponent(ConfiguracionComponent);
+    const component = fixture.componentInstance;
+    const service = TestBed.inject(ContribuyenteService) as unknown as ReturnType<
+      typeof createContribuyenteServiceStub
+    >;
+
+    service.contribuyente.set({
+      id: 'cont-1',
+      user_id: 'user-1',
+      cuit: '20123456789',
+      razon_social: 'Comercio Demo',
+      nombre_fantasia: null,
+      domicilio: null,
+      condicion_iva: 'Responsable Monotributo',
+      ingresos_brutos: null,
+      inicio_actividades: null,
+      concepto: 'Servicios',
+      actividad: 'servicios',
+      iva_porcentaje: 21,
+      punto_venta: 4,
+      monto_maximo_factura: 0,
+      arca_cert: 'CERT',
+      arca_key: 'KEY',
+      arca_production: false,
+      arca_ticket: null,
+      created_at: null,
+      updated_at: null,
+    });
+
+    component.facturacionForm.patchValue({
+      cuit: '20123456789',
+      razon_social: 'Comercio Demo',
+      punto_venta: 4,
+      concepto: 'Servicios',
+      monto_maximo_factura: 0,
+    });
+
+    await component.guardarFacturacion();
+
+    expect(service.actualizarContribuyente).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        arca_cert: null,
+        arca_key: null,
+      }),
+    );
+  });
+
   it('usa un formulario reactivo para cuenta', async () => {
     const fixture = TestBed.createComponent(ConfiguracionComponent);
     const component = fixture.componentInstance;

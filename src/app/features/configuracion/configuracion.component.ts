@@ -331,7 +331,7 @@ export class ConfiguracionComponent implements OnInit {
     this.guardando.set(true);
 
     try {
-      const payload = this.buildContribuyentePayload();
+      const payload = this.buildFacturacionPayload();
 
       const contribuyente = this.contribuyenteService.contribuyente();
 
@@ -370,7 +370,7 @@ export class ConfiguracionComponent implements OnInit {
           );
           return;
         }
-        const createPayload = this.buildContribuyentePayload();
+        const createPayload = this.buildCreateContribuyentePayload();
         const created = await this.contribuyenteService.crearContribuyente(createPayload);
         if (!created.success) {
           this.mostrarMensaje(created.error || 'No se pudo crear el perfil de contribuyente.', 'error');
@@ -506,7 +506,7 @@ export class ConfiguracionComponent implements OnInit {
     setTimeout(() => this.mensaje.set(null), 5000);
   }
 
-  private buildContribuyentePayload(): CreateContribuyentePayload {
+  private buildFacturacionPayload(): ContribuyenteUpdate {
     const raw = this.facturacionForm.getRawValue();
 
     return {
@@ -524,6 +524,12 @@ export class ConfiguracionComponent implements OnInit {
       monto_maximo_factura: raw.monto_maximo_factura && raw.monto_maximo_factura > 0
         ? raw.monto_maximo_factura
         : 0,
+    };
+  }
+
+  private buildCreateContribuyentePayload(): CreateContribuyentePayload {
+    return {
+      ...this.buildFacturacionPayload(),
       arca_cert: null,
       arca_key: null,
       arca_production: false,
