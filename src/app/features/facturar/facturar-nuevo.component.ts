@@ -156,13 +156,18 @@ interface FacturaRecienteView {
             <button
               type="submit"
               [disabled]="isSubmitting() || formFactura.invalid"
+              [class.premium-submit-btn--submitting]="isSubmitting()"
+              [attr.aria-busy]="isSubmitting()"
               class="btn-primary premium-submit-btn w-full rounded-xl px-4 py-3.5 text-sm font-semibold tracking-[0.01em] shadow-[0_12px_28px_rgba(29,78,216,0.18)] disabled:shadow-none"
             >
-              @if (isSubmitting()) {
-                <span>Procesando...</span>
-              } @else {
-                <span>Emitir {{ tipoComprobanteResueltoLabel() }}</span>
-              }
+              <span class="premium-submit-btn__content">
+                @if (isSubmitting()) {
+                  <span class="premium-submit-btn__spinner" aria-hidden="true"></span>
+                  <span>Procesando emisi&oacute;n...</span>
+                } @else {
+                  <span>Emitir {{ tipoComprobanteResueltoLabel() }}</span>
+                }
+              </span>
             </button>
           </form>
 
