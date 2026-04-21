@@ -215,6 +215,35 @@ import type { FacturacionFormModel } from './configuracion.types';
               </p>
             </div>
           </div>
+
+          <div class="form-field">
+            <div class="form-label-row">
+              <label class="form-label">Monto m&aacute;ximo por factura</label>
+              <span class="form-optional-text">0 = sin l&iacute;mite</span>
+            </div>
+            <input
+              type="number"
+              formControlName="monto_maximo_factura"
+              min="0"
+              step="0.01"
+              placeholder="0"
+              class="form-input"
+              [class.error]="
+                form().controls.monto_maximo_factura.invalid &&
+                form().controls.monto_maximo_factura.touched
+              "
+            />
+            <p class="form-help">
+              Si carg&aacute;s un monto mayor a 0, al intentar emitir una factura por encima de ese
+              valor se pedir&aacute; una confirmaci&oacute;n adicional antes de continuar.
+            </p>
+            @if (
+              form().controls.monto_maximo_factura.invalid &&
+              form().controls.monto_maximo_factura.touched
+            ) {
+              <p class="form-error">Ingres&aacute; un monto igual o mayor a 0.</p>
+            }
+          </div>
         </div>
       </div>
 

@@ -25,6 +25,7 @@ export interface Database {
           iva_porcentaje: number | null;
           punto_venta: number | null;
           tipo_comprobante_default: string | null;
+          monto_maximo_factura: number | null;
           arca_cert: string | null;
           arca_key: string | null;
           arca_production: boolean | null;
@@ -47,6 +48,7 @@ export interface Database {
           iva_porcentaje?: number | null;
           punto_venta?: number | null;
           tipo_comprobante_default?: string | null;
+          monto_maximo_factura?: number | null;
           arca_cert?: string | null;
           arca_key?: string | null;
           arca_production?: boolean | null;
@@ -69,6 +71,7 @@ export interface Database {
           iva_porcentaje?: number | null;
           punto_venta?: number | null;
           tipo_comprobante_default?: string | null;
+          monto_maximo_factura?: number | null;
           arca_cert?: string | null;
           arca_key?: string | null;
           arca_production?: boolean | null;

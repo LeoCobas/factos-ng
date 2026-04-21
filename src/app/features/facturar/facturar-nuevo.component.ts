@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, inject, OnDestroy, signal, viewChild } from '@angular/core';
 import {
   FormControl,
   FormGroup,
@@ -190,10 +190,71 @@ interface FacturaRecienteView {
           </div>
         </div>
       }
+
+      @if (mostrandoConfirmacionMonto()) {
+        <div
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          (click)="cancelarConfirmacionMonto()"
+        >
+          <div
+            class="w-full max-w-md rounded-2xl border border-amber-500/30 bg-card p-5 shadow-2xl"
+            (click)="$event.stopPropagation()"
+          >
+            <div class="mb-4 inline-flex rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-300">
+              Atenci&oacute;n
+            </div>
+
+            <div class="space-y-3">
+              <h3 class="text-lg font-semibold text-foreground">
+                El monto supera tu l&iacute;mite configurado
+              </h3>
+              <p class="text-sm leading-6 text-muted-foreground">
+                Est&aacute;s por emitir una {{ tipoComprobanteResueltoLabel() }} por
+                <span class="font-semibold text-foreground">
+                  {{ formatearMonto(montoExcedidoPendiente() || 0) }}
+                </span>
+                y tu tope configurado es
+                <span class="font-semibold text-foreground">
+                  {{ formatearMonto(montoMaximoFacturaConfigurado()) }}
+                </span>.
+              </p>
+              <p class="text-sm leading-6 text-muted-foreground">
+                Revis&aacute; el importe. Si igual quer&eacute;s continuar, el bot&oacute;n se
+                habilita en {{ confirmacionMontoCountdown() }} segundo{{
+                  confirmacionMontoCountdown() === 1 ? '' : 's'
+                }}.
+              </p>
+            </div>
+
+            <div class="mt-5 flex flex-col gap-3 sm:flex-row-reverse">
+              <button
+                type="button"
+                (click)="confirmarEmisionMontoExcedido()"
+                [disabled]="confirmacionMontoCountdown() > 0 || isSubmitting()"
+                class="btn-primary w-full rounded-lg px-4 py-3 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                @if (confirmacionMontoCountdown() > 0) {
+                  <span>Emitir en {{ confirmacionMontoCountdown() }}s</span>
+                } @else {
+                  <span>Emitir igual</span>
+                }
+              </button>
+
+              <button
+                type="button"
+                (click)="cancelarConfirmacionMonto()"
+                class="w-full rounded-lg border border-border bg-background px-4 py-3 font-semibold text-foreground transition-colors hover:bg-muted"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `,
 })
-export class FacturarNuevoComponent {
+export class FacturarNuevoComponent implements OnDestroy {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly facturacionService = inject(FacturacionService);
   private readonly pdfService = inject(PdfService);
@@ -224,6 +285,10 @@ export class FacturarNuevoComponent {
   readonly displayMonto = signal('');
   readonly facturasRecientes = signal<FacturaReciente[]>([]);
   readonly cargandoFacturasRecientes = signal(false);
+  readonly mostrandoConfirmacionMonto = signal(false);
+  readonly confirmacionMontoCountdown = signal(0);
+  readonly montoExcedidoPendiente = signal<number | null>(null);
+  readonly montoExcedidoConfirmado = signal<number | null>(null);
 
   readonly clienteCuitValido = computed(
     () => sanitizeCuit(this.clienteCuitIngresado()).length === 11,
@@ -281,6 +346,11 @@ export class FacturarNuevoComponent {
   readonly montoFacturaEmitida = computed(() =>
     this.facturaEmitida() ? this.formatearMonto(this.facturaEmitida()!.total) : '',
   );
+  readonly montoMaximoFacturaConfigurado = computed(() => {
+    const contribuyente = this.contribuyenteService.contribuyente();
+    const monto = Number(contribuyente?.monto_maximo_factura ?? 0);
+    return Number.isFinite(monto) && monto > 0 ? monto : 0;
+  });
 
   constructor() {
     this.formFactura = this.fb.group({
@@ -299,6 +369,12 @@ export class FacturarNuevoComponent {
         this.facturasRecientes.set([]);
       }
     });
+  }
+
+  private confirmacionMontoTimer: ReturnType<typeof setInterval> | null = null;
+
+  ngOnDestroy(): void {
+    this.clearConfirmacionMontoTimer();
   }
 
   toggleCliente() {
@@ -363,6 +439,12 @@ export class FacturarNuevoComponent {
       return;
     }
 
+    const montoActual = Number(this.formFactura.controls.monto.value);
+    if (this.requiereConfirmacionMontoExtra(montoActual)) {
+      this.abrirConfirmacionMonto(montoActual);
+      return;
+    }
+
     this.isSubmitting.set(true);
     this.mensaje.set(null);
     this.facturaEmitida.set(null);
@@ -399,6 +481,8 @@ export class FacturarNuevoComponent {
       this.rawMonto.set('');
       this.displayMonto.set('');
       this.clienteSeleccionado.set(null);
+      this.montoExcedidoConfirmado.set(null);
+      this.montoExcedidoPendiente.set(null);
       this.setMensajeCliente(null, 'success');
     } catch (error) {
       console.error('Error al emitir factura:', error);
@@ -409,6 +493,28 @@ export class FacturarNuevoComponent {
     } finally {
       this.isSubmitting.set(false);
     }
+  }
+
+  cancelarConfirmacionMonto(): void {
+    this.clearConfirmacionMontoTimer();
+    this.mostrandoConfirmacionMonto.set(false);
+    this.confirmacionMontoCountdown.set(0);
+    this.montoExcedidoPendiente.set(null);
+  }
+
+  async confirmarEmisionMontoExcedido(): Promise<void> {
+    if (this.confirmacionMontoCountdown() > 0 || this.isSubmitting()) {
+      return;
+    }
+
+    const montoPendiente = this.montoExcedidoPendiente();
+    if (montoPendiente === null) {
+      return;
+    }
+
+    this.montoExcedidoConfirmado.set(montoPendiente);
+    this.cancelarConfirmacionMonto();
+    await this.emitirFactura();
   }
 
   async cargarFacturasRecientes(): Promise<void> {
@@ -441,6 +547,7 @@ export class FacturarNuevoComponent {
     this.rawMonto.set(nextRawValue);
     this.displayMonto.set(this.formatMontoInput(nextRawValue));
     this.formFactura.controls.monto.setValue(parsedValue ?? '');
+    this.resetMontoExcedidoConfirmado(parsedValue);
 
     queueMicrotask(() => {
       const cursorPosition = this.displayMonto().length;
@@ -560,6 +667,51 @@ export class FacturarNuevoComponent {
   private setMensajeCliente(message: string | null, tipo: 'success' | 'warning' | 'error') {
     this.mensajeCliente.set(message);
     this.mensajeClienteTipo.set(tipo);
+  }
+
+  private requiereConfirmacionMontoExtra(monto: number): boolean {
+    const montoMaximo = this.montoMaximoFacturaConfigurado();
+    if (!Number.isFinite(monto) || monto <= 0 || montoMaximo <= 0) {
+      return false;
+    }
+
+    return monto > montoMaximo && this.montoExcedidoConfirmado() !== monto;
+  }
+
+  private abrirConfirmacionMonto(monto: number): void {
+    this.clearConfirmacionMontoTimer();
+    this.montoExcedidoPendiente.set(monto);
+    this.mostrandoConfirmacionMonto.set(true);
+    this.confirmacionMontoCountdown.set(5);
+
+    this.confirmacionMontoTimer = setInterval(() => {
+      const nextValue = this.confirmacionMontoCountdown() - 1;
+      if (nextValue <= 0) {
+        this.confirmacionMontoCountdown.set(0);
+        this.clearConfirmacionMontoTimer();
+        return;
+      }
+
+      this.confirmacionMontoCountdown.set(nextValue);
+    }, 1000);
+  }
+
+  private clearConfirmacionMontoTimer(): void {
+    if (this.confirmacionMontoTimer !== null) {
+      clearInterval(this.confirmacionMontoTimer);
+      this.confirmacionMontoTimer = null;
+    }
+  }
+
+  private resetMontoExcedidoConfirmado(parsedValue: number | null): void {
+    const montoActual = parsedValue ?? null;
+    if (this.montoExcedidoConfirmado() !== montoActual) {
+      this.montoExcedidoConfirmado.set(null);
+    }
+
+    if (this.mostrandoConfirmacionMonto() && this.montoExcedidoPendiente() !== montoActual) {
+      this.cancelarConfirmacionMonto();
+    }
   }
 
   private actualizarLimitesFecha(actividad: 'bienes' | 'servicios') {

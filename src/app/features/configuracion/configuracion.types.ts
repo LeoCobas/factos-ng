@@ -21,6 +21,7 @@ export interface FacturacionFormModel {
   concepto: FormControl<string>;
   iva_porcentaje: FormControl<string>;
   actividad: FormControl<Actividad>;
+  monto_maximo_factura: FormControl<number | null>;
 }
 
 export interface CertFormModel {

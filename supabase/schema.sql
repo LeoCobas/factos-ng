@@ -23,6 +23,7 @@ CREATE TABLE contribuyentes (
   iva_porcentaje NUMERIC DEFAULT 21.00,
   punto_venta INTEGER DEFAULT 4,
   tipo_comprobante_default TEXT DEFAULT 'FACTURA C',
+  monto_maximo_factura NUMERIC DEFAULT 0 CHECK (monto_maximo_factura >= 0),
   -- Credenciales ARCA + cache de ticket WSAA
   arca_cert TEXT,
   arca_key TEXT,

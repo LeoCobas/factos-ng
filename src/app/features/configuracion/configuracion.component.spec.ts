@@ -51,6 +51,28 @@ describe('ConfiguracionComponent', () => {
     expect(component.facturacionForm.controls.concepto.hasError('required')).toBe(true);
   });
 
+  it('guarda el monto maximo de factura en 0 cuando se deja sin limite', async () => {
+    const fixture = TestBed.createComponent(ConfiguracionComponent);
+    const component = fixture.componentInstance;
+    const service = TestBed.inject(ContribuyenteService) as unknown as ReturnType<
+      typeof createContribuyenteServiceStub
+    >;
+
+    component.facturacionForm.patchValue({
+      cuit: '20123456789',
+      razon_social: 'Comercio Demo',
+      punto_venta: 4,
+      concepto: 'Servicios',
+      monto_maximo_factura: 0,
+    });
+
+    await component.guardarFacturacion();
+
+    expect(service.crearContribuyente).toHaveBeenCalledWith(
+      expect.objectContaining({ monto_maximo_factura: 0 }),
+    );
+  });
+
   it('usa un formulario reactivo para cuenta', async () => {
     const fixture = TestBed.createComponent(ConfiguracionComponent);
     const component = fixture.componentInstance;

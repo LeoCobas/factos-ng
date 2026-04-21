@@ -146,4 +146,47 @@ describe('FacturarNuevoComponent', () => {
     expect(component.mensaje()).toContain('no hay conexion a internet');
     expect(component.esExito()).toBe(false);
   });
+
+  it('pide confirmacion con temporizador si el monto supera el limite configurado', async () => {
+    vi.useFakeTimers();
+
+    try {
+      const fixture = TestBed.createComponent(FacturarNuevoComponent);
+      const component = fixture.componentInstance;
+      const service = TestBed.inject(FacturacionService) as unknown as ReturnType<
+        typeof createFacturacionServiceStub
+      >;
+      const contribuyenteService = TestBed.inject(
+        ContribuyenteService,
+      ) as unknown as { contribuyente: ReturnType<typeof signal> };
+
+      contribuyenteService.contribuyente.set({
+        id: 'cont-1',
+        actividad: 'servicios',
+        condicion_iva: 'Monotributo',
+        tipo_comprobante_default: 'FACTURA C',
+        monto_maximo_factura: 10000,
+      });
+
+      component.formFactura.setValue({
+        monto: 12000,
+        fecha: '2026-04-20',
+        cliente_cuit: '',
+      });
+
+      await component.emitirFactura();
+
+      expect(component.mostrandoConfirmacionMonto()).toBe(true);
+      expect(component.confirmacionMontoCountdown()).toBe(5);
+      expect(service.emitirFactura).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(5000);
+      await component.confirmarEmisionMontoExcedido();
+
+      expect(component.mostrandoConfirmacionMonto()).toBe(false);
+      expect(service.emitirFactura).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

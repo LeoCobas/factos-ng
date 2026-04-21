@@ -158,6 +158,7 @@ export class ConfiguracionComponent implements OnInit {
       concepto: this.fb.control('', Validators.required),
       iva_porcentaje: this.fb.control('21.00'),
       actividad: this.fb.control<Actividad>('servicios'),
+      monto_maximo_factura: this.fb.control<number | null>(0, [Validators.min(0)]),
     });
 
     this.certForm = this.fb.group({
@@ -234,6 +235,7 @@ export class ConfiguracionComponent implements OnInit {
           concepto: c.concepto || '',
           iva_porcentaje: Number(c.iva_porcentaje).toFixed(2),
           actividad: (c.actividad as Actividad) || 'servicios',
+          monto_maximo_factura: Number(c.monto_maximo_factura ?? 0),
         });
 
         this.certForm.patchValue({
@@ -522,6 +524,9 @@ export class ConfiguracionComponent implements OnInit {
       concepto: raw.concepto,
       iva_porcentaje: Number.parseFloat(raw.iva_porcentaje),
       actividad: raw.actividad,
+      monto_maximo_factura: raw.monto_maximo_factura && raw.monto_maximo_factura > 0
+        ? raw.monto_maximo_factura
+        : 0,
       arca_cert: null,
       arca_key: null,
       arca_production: false,
