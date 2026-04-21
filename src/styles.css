@@ -851,6 +851,26 @@ input[type="date"].form-input:focus {
   background: rgb(var(--muted) / 0.62);
 }
 
+.header-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 1px solid rgb(var(--border) / 0.9);
+  border-radius: 999px;
+  background: rgb(var(--muted) / 0.42);
+  color: rgb(var(--muted-foreground));
+  transition: all 0.2s ease;
+}
+
+.header-icon-btn:hover,
+.header-icon-btn[aria-expanded='true'] {
+  color: rgb(var(--foreground));
+  border-color: rgb(var(--primary) / 0.24);
+  background: rgb(var(--muted) / 0.64);
+}
+
 .contribuyente-badge {
   display: flex;
   align-items: center;
@@ -863,6 +883,24 @@ input[type="date"].form-input:focus {
   background: linear-gradient(180deg, rgb(var(--muted) / 0.55), rgb(var(--muted) / 0.28));
   text-align: left;
   transition: all 0.2s ease;
+}
+
+.contribuyente-preview {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  width: min(22rem, calc(100vw - 2rem));
+  opacity: 0;
+  transform: translateY(-0.5rem) scale(0.97);
+  pointer-events: none;
+  transition: opacity 0.24s ease, transform 0.24s ease;
+  z-index: 10;
+}
+
+.contribuyente-preview--visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
 }
 
 .contribuyente-badge:hover {

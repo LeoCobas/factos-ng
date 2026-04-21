@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import { ContribuyenteService } from '../core/services/contribuyente.service';
 import { ThemeService } from '../core/services/theme.service';
@@ -9,7 +9,7 @@ import { ThemeService } from '../core/services/theme.service';
     <div class="min-h-screen bg-background flex flex-col">
       <div class="border-b border-border/80 bg-card/96 px-3 py-3 shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur sm:px-4 sm:py-4">
         <div class="mx-auto flex max-w-5xl flex-col gap-3">
-          <div class="flex items-center justify-between gap-3">
+          <div class="relative flex items-center justify-between gap-3">
             <div class="flex min-w-0 items-center flex-shrink-0">
               <img
                 [src]="logoSrc()"
@@ -19,42 +19,66 @@ import { ThemeService } from '../core/services/theme.service';
               />
             </div>
 
-            <button
-              (click)="navigate('/configuracion')"
-              class="header-btn ml-auto"
-              [class.nav-btn-active]="isActive('/configuracion')"
-              [class.header-btn-idle]="!isActive('/configuracion')"
-            >
-              <svg class="h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                <circle cx="12" cy="12" r="4"/>
-              </svg>
-              <span class="truncate">Configuraci&oacute;n</span>
-            </button>
+            <div class="ml-auto flex items-center gap-2">
+              @if (contribuyenteService.inicializado() && contribuyenteService.contribuyente()) {
+                <button
+                  type="button"
+                  (click)="toggleContribuyentePreview()"
+                  class="header-icon-btn"
+                  [attr.aria-expanded]="mostrarContribuyentePreview()"
+                  aria-label="Ver datos del contribuyente"
+                  title="Ver datos del contribuyente"
+                >
+                  <svg class="h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4"></path>
+                  </svg>
+                </button>
+              }
+
+              <button
+                (click)="navigate('/configuracion')"
+                class="header-btn"
+                [class.nav-btn-active]="isActive('/configuracion')"
+                [class.header-btn-idle]="!isActive('/configuracion')"
+              >
+                <svg class="h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                  <circle cx="12" cy="12" r="4"/>
+                </svg>
+                <span class="truncate">Configuraci&oacute;n</span>
+              </button>
+            </div>
+
+            @if (contribuyenteService.inicializado() && contribuyenteService.contribuyente()) {
+              <div
+                class="contribuyente-preview"
+                [class.contribuyente-preview--visible]="mostrarContribuyentePreview()"
+              >
+                <button
+                  type="button"
+                  (click)="irAConfiguracionContribuyente()"
+                  class="contribuyente-badge"
+                >
+                  <span class="contribuyente-badge__icon">
+                    <svg class="h-4 w-4 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4"></path>
+                    </svg>
+                  </span>
+                  <span class="min-w-0">
+                    <span class="block truncate text-sm font-semibold text-foreground">
+                      {{ contribuyenteService.contribuyente()!.razon_social }}
+                    </span>
+                    <span class="block truncate text-[0.72rem] uppercase tracking-[0.18em] text-muted-foreground/90">
+                      CUIT {{ formatCuit(contribuyenteService.contribuyente()!.cuit) }}
+                    </span>
+                  </span>
+                </button>
+              </div>
+            }
           </div>
 
           @if (contribuyenteService.inicializado()) {
-            @if (contribuyenteService.contribuyente()) {
-              <button
-                type="button"
-                (click)="navigate('/configuracion')"
-                class="contribuyente-badge"
-              >
-                <span class="contribuyente-badge__icon">
-                  <svg class="h-4 w-4 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                  </svg>
-                </span>
-                <span class="min-w-0">
-                  <span class="block truncate text-sm font-semibold text-foreground">
-                    {{ contribuyenteService.contribuyente()!.razon_social }}
-                  </span>
-                  <span class="block truncate text-[0.72rem] uppercase tracking-[0.18em] text-muted-foreground/90">
-                    CUIT {{ formatCuit(contribuyenteService.contribuyente()!.cuit) }}
-                  </span>
-                </span>
-              </button>
-            } @else {
+            @if (!contribuyenteService.contribuyente()) {
               <div class="flex items-center gap-2 rounded-xl border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-sm text-destructive cursor-pointer" (click)="navigate('/configuracion')">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
@@ -123,15 +147,23 @@ import { ThemeService } from '../core/services/theme.service';
   `,
   imports: [RouterOutlet],
 })
-export class MainLayoutComponent implements OnInit {
+export class MainLayoutComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   readonly contribuyenteService = inject(ContribuyenteService);
   readonly themeService = inject(ThemeService);
 
   readonly logoSrc = computed(() => (this.themeService.isDark() ? '/logob.png' : '/logo.png'));
+  readonly mostrarContribuyentePreview = signal(false);
+
+  private contribuyentePreviewTimer: ReturnType<typeof setTimeout> | null = null;
 
   async ngOnInit() {
     await this.contribuyenteService.cargarContribuyente();
+    this.mostrarPreviewContribuyente();
+  }
+
+  ngOnDestroy(): void {
+    this.clearContribuyentePreviewTimer();
   }
 
   navigate(path: string) {
@@ -145,6 +177,45 @@ export class MainLayoutComponent implements OnInit {
   formatCuit(cuit: string): string {
     if (!cuit || cuit.length !== 11) return cuit;
     return `${cuit.slice(0, 2)}-${cuit.slice(2, 10)}-${cuit.slice(10)}`;
+  }
+
+  toggleContribuyentePreview(): void {
+    if (this.mostrarContribuyentePreview()) {
+      this.ocultarPreviewContribuyente();
+      return;
+    }
+
+    this.mostrarPreviewContribuyente();
+  }
+
+  irAConfiguracionContribuyente(): void {
+    this.ocultarPreviewContribuyente();
+    this.navigate('/configuracion');
+  }
+
+  private mostrarPreviewContribuyente(): void {
+    if (!this.contribuyenteService.contribuyente()) {
+      return;
+    }
+
+    this.clearContribuyentePreviewTimer();
+    this.mostrarContribuyentePreview.set(true);
+    this.contribuyentePreviewTimer = setTimeout(() => {
+      this.mostrarContribuyentePreview.set(false);
+      this.contribuyentePreviewTimer = null;
+    }, 3000);
+  }
+
+  private ocultarPreviewContribuyente(): void {
+    this.clearContribuyentePreviewTimer();
+    this.mostrarContribuyentePreview.set(false);
+  }
+
+  private clearContribuyentePreviewTimer(): void {
+    if (this.contribuyentePreviewTimer !== null) {
+      clearTimeout(this.contribuyentePreviewTimer);
+      this.contribuyentePreviewTimer = null;
+    }
   }
 
   async signOut() {
