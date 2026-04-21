@@ -313,7 +313,11 @@ export class FacturacionService {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Error desconocido',
+        error: getFriendlyNetworkErrorMessage(
+          error,
+          error instanceof Error ? error.message : 'Error desconocido al emitir factura',
+          'No se pudo emitir la factura porque no hay conexion a internet. Verifica la red e intenta nuevamente.'
+        ),
       };
     }
   }
@@ -458,7 +462,11 @@ export class FacturacionService {
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Error desconocido',
+        error: getFriendlyNetworkErrorMessage(
+          error,
+          error instanceof Error ? error.message : 'Error desconocido al crear nota de credito',
+          'No se pudo crear la nota de credito porque no hay conexion a internet. Verifica la red e intenta nuevamente.'
+        ),
         shouldRetry: isRetryable,
       };
     }

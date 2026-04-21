@@ -122,4 +122,28 @@ describe('FacturarNuevoComponent', () => {
     expect(component.facturaEmitida()?.numero_comprobante).toBe('0001-00000015');
     expect(component.formFactura.controls.monto.value).toBe('');
   });
+
+  it('muestra el error especifico del servicio al fallar la emision', async () => {
+    const fixture = TestBed.createComponent(FacturarNuevoComponent);
+    const component = fixture.componentInstance;
+    const service = TestBed.inject(FacturacionService) as unknown as ReturnType<
+      typeof createFacturacionServiceStub
+    >;
+
+    service.emitirFactura.mockResolvedValue({
+      success: false,
+      error: 'No se pudo emitir la factura porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+    });
+
+    component.formFactura.setValue({
+      monto: 12000,
+      fecha: '2026-04-20',
+      cliente_cuit: '',
+    });
+
+    await component.emitirFactura();
+
+    expect(component.mensaje()).toContain('no hay conexion a internet');
+    expect(component.esExito()).toBe(false);
+  });
 });

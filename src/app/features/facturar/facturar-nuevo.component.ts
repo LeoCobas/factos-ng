@@ -381,7 +381,7 @@ export class FacturarNuevoComponent {
       });
 
       if (!resultado.success || !resultado.comprobante) {
-        throw new Error('Error al emitir factura');
+        throw new Error(resultado.error || 'Error al emitir factura');
       }
 
       this.esExito.set(true);
