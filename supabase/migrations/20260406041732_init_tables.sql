@@ -17,7 +17,6 @@ CREATE TABLE contribuyentes (
   actividad TEXT DEFAULT 'servicios' CHECK (actividad IN ('bienes', 'servicios')),
   iva_porcentaje NUMERIC DEFAULT 21.00,
   punto_venta INTEGER DEFAULT 4,
-  tipo_comprobante_default TEXT DEFAULT 'FACTURA C',
   -- Credenciales TusFacturas API (temporal, se migrará a afip.js)
   api_token TEXT,
   api_key TEXT,

@@ -18,7 +18,6 @@ import { ConfiguracionFacturacionFormComponent } from './configuracion-facturaci
 import { ConfiguracionCertificadoFormComponent } from './configuracion-certificado-form.component';
 import { ConfiguracionCuentaFormComponent } from './configuracion-cuenta-form.component';
 import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.util';
-import { getTipoComprobanteDefaultFromCondicionIva } from '../../core/utils/factura-cliente.util';
 
 @Component({
   selector: 'app-configuracion',
@@ -519,7 +518,6 @@ export class ConfiguracionComponent implements OnInit {
       ingresos_brutos: raw.ingresos_brutos || null,
       inicio_actividades: raw.inicio_actividades || null,
       punto_venta: raw.punto_venta ?? null,
-      tipo_comprobante_default: getTipoComprobanteDefaultFromCondicionIva(raw.condicion_iva),
       concepto: raw.concepto,
       iva_porcentaje: Number.parseFloat(raw.iva_porcentaje),
       actividad: raw.actividad,

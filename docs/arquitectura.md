@@ -133,7 +133,7 @@ Campos relevantes usados por frontend y Edge Functions:
 
 - identidad fiscal: `cuit`, `razon_social`
 - datos visibles en ticket: `nombre_fantasia`, `domicilio`, `condicion_iva`, `ingresos_brutos`, `inicio_actividades`
-- defaults de emision: `concepto`, `actividad`, `iva_porcentaje`, `punto_venta`, `tipo_comprobante_default`
+- defaults de emision: `concepto`, `actividad`, `iva_porcentaje`, `punto_venta`
 - credenciales y estado ARCA: `arca_cert`, `arca_key`, `arca_production`, `arca_ticket`
 - configuracion cliente Supabase: `public/app-config.json`
 
