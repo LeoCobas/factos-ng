@@ -7,7 +7,10 @@ import { ThemeService } from '../core/services/theme.service';
   selector: 'app-main-layout',
   template: `
     <div class="min-h-screen bg-background flex flex-col">
-      <div class="border-b border-border/80 bg-card/96 px-3 py-3 shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur sm:px-4 sm:py-4">
+      <div
+        data-app-header
+        class="border-b border-border/80 bg-card/96 px-3 py-3 shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur sm:px-4 sm:py-4"
+      >
         <div class="mx-auto flex max-w-5xl flex-col gap-3">
           <div class="relative flex items-center justify-between gap-3">
             <div class="flex min-w-0 items-center flex-shrink-0">

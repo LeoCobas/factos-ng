@@ -200,4 +200,54 @@ describe('FacturarNuevoComponent', () => {
       vi.useRealTimers();
     }
   });
+
+  it('ubica la confirmacion debajo del header en desktop aunque no haya teclado', () => {
+    const fixture = TestBed.createComponent(FacturarNuevoComponent);
+    const component = fixture.componentInstance as any;
+    const querySelectorSpy = vi
+      .spyOn(document, 'querySelector')
+      .mockReturnValue({
+        getBoundingClientRect: () => ({ bottom: 132 }),
+      } as HTMLElement);
+
+    component.actualizarPosicionConfirmacionMonto();
+
+    expect(component.confirmacionMontoTopOffset()).toBe(144);
+    querySelectorSpy.mockRestore();
+  });
+
+  it('sube la confirmacion hacia arriba si el viewport visible queda chico en mobile', () => {
+    const originalVisualViewport = window.visualViewport;
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: {
+        height: 260,
+        offsetTop: 0,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      },
+    });
+
+    try {
+      const fixture = TestBed.createComponent(FacturarNuevoComponent);
+      const component = fixture.componentInstance as any;
+      const querySelectorSpy = vi
+        .spyOn(document, 'querySelector')
+        .mockReturnValue({
+          getBoundingClientRect: () => ({ bottom: 140 }),
+        } as HTMLElement);
+
+      component.confirmacionMontoCardRef = () => ({ nativeElement: { offsetHeight: 240 } });
+
+      component.actualizarPosicionConfirmacionMonto();
+
+      expect(component.confirmacionMontoTopOffset()).toBe(12);
+      querySelectorSpy.mockRestore();
+    } finally {
+      Object.defineProperty(window, 'visualViewport', {
+        configurable: true,
+        value: originalVisualViewport,
+      });
+    }
+  });
 });

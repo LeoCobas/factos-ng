@@ -1,4 +1,13 @@
-import { Component, computed, effect, inject, OnDestroy, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  inject,
+  OnDestroy,
+  signal,
+  viewChild,
+} from '@angular/core';
 import {
   FormControl,
   FormGroup,
@@ -203,12 +212,13 @@ interface FacturaRecienteView {
 
       @if (mostrandoConfirmacionMonto()) {
         <div
-          class="fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-4 pb-0 pt-4 sm:p-4"
-          [style.paddingBottom.px]="confirmacionMontoBottomOffset()"
+          class="fixed inset-0 z-50 flex items-start justify-center bg-black/60 px-4 pb-4"
+          [style.paddingTop.px]="confirmacionMontoTopOffset()"
           (click)="cancelarConfirmacionMonto()"
         >
           <div
-            class="w-full max-w-md rounded-t-2xl border border-amber-500/30 bg-card p-5 shadow-2xl sm:rounded-2xl"
+            #confirmacionMontoCard
+            class="w-full max-w-md rounded-2xl border border-amber-500/30 bg-card p-5 shadow-2xl"
             (click)="$event.stopPropagation()"
           >
             <div class="mb-4 inline-flex rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-300">
@@ -271,6 +281,8 @@ export class FacturarNuevoComponent implements OnDestroy {
   private readonly pdfService = inject(PdfService);
   private readonly contribuyenteService = inject(ContribuyenteService);
   private readonly montoInputRef = viewChild<HTMLInputElement>('montoInput');
+  private readonly confirmacionMontoCardRef =
+    viewChild<ElementRef<HTMLDivElement>>('confirmacionMontoCard');
 
   readonly formFactura: FormGroup<FacturaFormModel>;
   readonly isSubmitting = signal(false);
@@ -300,7 +312,7 @@ export class FacturarNuevoComponent implements OnDestroy {
   readonly confirmacionMontoCountdown = signal(0);
   readonly montoExcedidoPendiente = signal<number | null>(null);
   readonly montoExcedidoConfirmado = signal<number | null>(null);
-  readonly confirmacionMontoBottomOffset = signal(16);
+  readonly confirmacionMontoTopOffset = signal(96);
 
   readonly clienteCuitValido = computed(
     () => sanitizeCuit(this.clienteCuitIngresado()).length === 11,
@@ -385,7 +397,7 @@ export class FacturarNuevoComponent implements OnDestroy {
   private confirmacionMontoTimer: ReturnType<typeof setInterval> | null = null;
   private readonly visualViewport =
     typeof window !== 'undefined' ? window.visualViewport : null;
-  private readonly onViewportChange = () => this.actualizarConfirmacionMontoBottomOffset();
+  private readonly onViewportChange = () => this.actualizarPosicionConfirmacionMonto();
 
   ngOnDestroy(): void {
     this.clearConfirmacionMontoTimer();
@@ -516,7 +528,7 @@ export class FacturarNuevoComponent implements OnDestroy {
     this.mostrandoConfirmacionMonto.set(false);
     this.confirmacionMontoCountdown.set(0);
     this.montoExcedidoPendiente.set(null);
-    this.confirmacionMontoBottomOffset.set(16);
+    this.confirmacionMontoTopOffset.set(96);
   }
 
   async confirmarEmisionMontoExcedido(): Promise<void> {
@@ -701,7 +713,8 @@ export class FacturarNuevoComponent implements OnDestroy {
     this.mostrandoConfirmacionMonto.set(true);
     this.confirmacionMontoCountdown.set(5);
     this.attachViewportListeners();
-    this.actualizarConfirmacionMontoBottomOffset();
+    this.actualizarPosicionConfirmacionMonto();
+    requestAnimationFrame(() => this.actualizarPosicionConfirmacionMonto());
 
     this.confirmacionMontoTimer = setInterval(() => {
       const nextValue = this.confirmacionMontoCountdown() - 1;
@@ -744,23 +757,37 @@ export class FacturarNuevoComponent implements OnDestroy {
     this.visualViewport?.removeEventListener('scroll', this.onViewportChange);
   }
 
-  private actualizarConfirmacionMontoBottomOffset(): void {
+  private actualizarPosicionConfirmacionMonto(): void {
     if (typeof window === 'undefined') {
-      this.confirmacionMontoBottomOffset.set(16);
+      this.confirmacionMontoTopOffset.set(96);
       return;
     }
 
+    const topSafeMargin = 12;
+    const bottomSafeMargin = 12;
     const viewport = this.visualViewport;
-    if (!viewport) {
-      this.confirmacionMontoBottomOffset.set(16);
-      return;
+    const viewportTop = viewport?.offsetTop ?? 0;
+    const viewportHeight = viewport?.height ?? window.innerHeight;
+    const viewportBottom = viewportTop + viewportHeight;
+    const headerBottom = this.obtenerHeaderBottom();
+    const desiredTop = Math.max(topSafeMargin, headerBottom + 12);
+    const cardHeight = this.confirmacionMontoCardRef()?.nativeElement.offsetHeight ?? 0;
+    const maxTop = Math.max(topSafeMargin, Math.floor(viewportBottom - cardHeight - bottomSafeMargin));
+
+    this.confirmacionMontoTopOffset.set(Math.min(desiredTop, maxTop));
+  }
+
+  private obtenerHeaderBottom(): number {
+    if (typeof document === 'undefined') {
+      return 72;
     }
 
-    const keyboardHeight = Math.max(
-      0,
-      Math.round(window.innerHeight - viewport.height - viewport.offsetTop),
-    );
-    this.confirmacionMontoBottomOffset.set(Math.max(16, keyboardHeight + 16));
+    const header = document.querySelector<HTMLElement>('[data-app-header]');
+    if (!header) {
+      return 72;
+    }
+
+    return Math.round(header.getBoundingClientRect().bottom);
   }
 
   private resetMontoExcedidoConfirmado(parsedValue: number | null): void {
