@@ -178,6 +178,23 @@ interface PeriodoTotal {
       line-height: 1;
     }
 
+    @media (min-width: 1024px) {
+      .totales-period-card__layout {
+        grid-template-columns: minmax(0, 1fr);
+        align-content: start;
+      }
+
+      .totales-period-card__metric {
+        margin-top: auto;
+        padding-top: 0.35rem;
+        text-align: left;
+      }
+
+      .totales-period-card .period-amount {
+        white-space: normal;
+      }
+    }
+
     @media (max-width: 767px) {
       .totales-period-card {
         min-height: auto;
