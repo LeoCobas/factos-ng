@@ -909,6 +909,18 @@ input[type="date"].form-input:focus {
   pointer-events: auto;
 }
 
+@media (min-width: 1024px) {
+  .contribuyente-preview {
+    top: 50%;
+    right: calc(100% + 0.75rem);
+    transform: translateY(-50%) translateX(0.5rem) scale(0.97);
+  }
+
+  .contribuyente-preview--visible {
+    transform: translateY(-50%) translateX(0) scale(1);
+  }
+}
+
 .contribuyente-badge:hover {
   border-color: rgb(var(--primary) / 0.24);
   background: linear-gradient(180deg, rgb(var(--muted) / 0.68), rgb(var(--muted) / 0.38));

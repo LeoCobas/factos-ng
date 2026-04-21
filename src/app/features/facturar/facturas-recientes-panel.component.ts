@@ -13,13 +13,10 @@ interface FacturaRecienteView {
   standalone: true,
   template: `
     <aside class="card-surface p-3.5 sm:p-4">
-      <div class="mb-3 flex items-center justify-between gap-3">
+      <div class="mb-3">
         <h3 class="text-sm font-semibold tracking-[-0.01em] text-foreground sm:text-[0.98rem]">
           &Uacute;ltimas facturas
         </h3>
-        <span class="rounded-full border border-border/80 bg-muted/35 px-2 py-0.5 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-          Recientes
-        </span>
       </div>
 
       @if (cargando) {
