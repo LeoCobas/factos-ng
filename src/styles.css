@@ -595,6 +595,46 @@ input[type="number"][formcontrolname="monto"] {
   border-color: rgb(var(--border));
 }
 
+.theme-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.45rem;
+  border-radius: 0.85rem;
+  background: rgb(var(--muted) / 0.5);
+}
+
+.theme-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  border-radius: 0.7rem;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.theme-mode-btn-active {
+  background: rgb(var(--background));
+  color: rgb(var(--foreground));
+  border-color: rgb(var(--border));
+  box-shadow: 0 6px 16px rgb(15 23 42 / 0.12);
+}
+
+.theme-mode-btn-inactive {
+  color: rgb(var(--muted-foreground));
+}
+
+.theme-mode-btn-inactive:hover {
+  color: rgb(var(--foreground));
+  background: rgb(var(--muted) / 0.75);
+}
+
+.theme-mode-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
 .form-field {
   display: flex;
   flex-direction: column;
