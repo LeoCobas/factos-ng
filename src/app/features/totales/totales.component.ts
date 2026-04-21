@@ -18,7 +18,7 @@ interface PeriodoTotal {
 @Component({
   selector: 'app-totales',
   template: `
-    <div class="space-y-3">
+    <div class="totales-view space-y-3">
       @if (cargando()) {
         <div class="text-center py-8">
           <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -27,13 +27,13 @@ interface PeriodoTotal {
       } @else {
         <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
           @for (periodo of periodos(); track periodo.nombre) {
-            <div class="card-surface p-4" [class]="'border-l-4 border-l-' + periodo.color + '-500'">
-              <div class="flex items-center justify-between">
-                <div>
+            <div class="card-surface totales-period-card p-4" [class]="'border-l-4 border-l-' + periodo.color + '-500'">
+              <div class="totales-period-card__layout">
+                <div class="totales-period-card__copy">
                   <p class="period-title">{{ periodo.nombre }}</p>
-                  <p class="period-sub mt-1">{{ periodo.fechaTexto }}</p>
+                  <p class="period-sub">{{ periodo.fechaTexto }}</p>
                 </div>
-                <div class="text-right">
+                <div class="totales-period-card__metric text-right">
                   <p class="period-amount">
                     {{ periodo.total | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
                   </p>
@@ -48,20 +48,20 @@ interface PeriodoTotal {
 
         <div class="bg-muted rounded-lg border border-border p-4">
           <div class="text-center">
-            <h3 class="period-title mb-2">Resumen del Año {{ getAnoActual() }}</h3>
+            <h3 class="period-title totales-section-title mb-2">Resumen del Año {{ getAnoActual() }}</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
               <div class="text-center">
-                <p class="period-amount">
+                <p class="period-amount totales-hero-amount">
                   {{ totalAnual() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
                 </p>
                 <p class="period-sub">Total facturado</p>
               </div>
               <div class="text-center">
-                <p class="period-amount">{{ comprobantesAnuales() }}</p>
+                <p class="period-amount totales-hero-amount">{{ comprobantesAnuales() }}</p>
                 <p class="period-sub">Comprobantes emitidos</p>
               </div>
               <div class="text-center">
-                <p class="period-amount">
+                <p class="period-amount totales-hero-amount">
                   {{ promedioMensual() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
                 </p>
                 <p class="period-sub">Promedio mensual</p>
@@ -71,11 +71,11 @@ interface PeriodoTotal {
         </div>
 
         <div class="grid gap-3 md:grid-cols-2">
-          <div class="card-surface p-4">
-            <h3 class="period-title mb-4">Día Más Productivo</h3>
+          <div class="card-surface totales-detail-card p-4">
+            <h3 class="period-title totales-section-title mb-4">Día Más Productivo</h3>
             @if (mejorDia()) {
               <div class="text-center">
-                <p class="period-amount">
+                <p class="period-amount totales-detail-amount">
                   {{ mejorDia()?.total | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
                 </p>
                 <p class="period-sub">{{ mejorDia()?.fecha }}</p>
@@ -86,10 +86,10 @@ interface PeriodoTotal {
             }
           </div>
 
-          <div class="card-surface p-4">
-            <h3 class="period-title mb-4">Ticket Promedio</h3>
+          <div class="card-surface totales-detail-card p-4">
+            <h3 class="period-title totales-section-title mb-4">Ticket Promedio</h3>
             <div class="text-center">
-              <p class="period-amount">
+              <p class="period-amount totales-detail-amount">
                 {{ ticketPromedio() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
               </p>
               <p class="period-sub">Por comprobante</p>
@@ -103,6 +103,102 @@ interface PeriodoTotal {
     </div>
   `,
   imports: [CurrencyPipe],
+  styles: [`
+    .totales-view .period-sub {
+      line-height: 1.35;
+    }
+
+    .totales-period-card {
+      min-height: 10.5rem;
+    }
+
+    .totales-period-card__layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 0.9rem;
+      height: 100%;
+    }
+
+    .totales-period-card__copy,
+    .totales-period-card__metric {
+      min-width: 0;
+    }
+
+    .totales-period-card__copy {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .totales-period-card .period-title {
+      font-size: clamp(1.05rem, 0.92rem + 0.4vw, 1.35rem);
+      font-weight: 650;
+      line-height: 1.12;
+      letter-spacing: -0.015em;
+    }
+
+    .totales-period-card .period-amount {
+      font-size: clamp(1.55rem, 1.3rem + 1vw, 2.15rem);
+      font-weight: 700;
+      line-height: 0.96;
+      letter-spacing: -0.03em;
+      white-space: nowrap;
+    }
+
+    .totales-period-card .period-sub {
+      font-size: 0.96rem;
+    }
+
+    .totales-period-card__metric .period-sub {
+      margin-top: 0.45rem;
+      font-size: 0.9rem;
+    }
+
+    .totales-section-title {
+      font-size: clamp(1.22rem, 1.08rem + 0.45vw, 1.55rem);
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+
+    .totales-hero-amount {
+      font-size: clamp(2.15rem, 1.8rem + 1vw, 2.85rem);
+      font-weight: 750;
+      line-height: 1;
+    }
+
+    .totales-detail-card {
+      min-height: 13.25rem;
+    }
+
+    .totales-detail-amount {
+      font-size: clamp(2rem, 1.75rem + 0.85vw, 2.55rem);
+      font-weight: 750;
+      line-height: 1;
+    }
+
+    @media (max-width: 767px) {
+      .totales-period-card {
+        min-height: auto;
+      }
+
+      .totales-period-card__layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.8rem;
+      }
+
+      .totales-period-card__metric {
+        text-align: left;
+      }
+
+      .totales-period-card .period-amount,
+      .totales-hero-amount,
+      .totales-detail-amount {
+        white-space: normal;
+      }
+    }
+  `],
 })
 export class TotalesComponent {
   readonly facturas = signal<ComprobanteMetricRow[]>([]);
