@@ -1,9 +1,13 @@
 [build]
   publish = "dist/factos-ng/browser"
-  command = "npm run build"
+  command = "npm run netlify:build"
 
 [build.environment]
   NODE_VERSION = "20"
+  # Optional overrides for runtime-config generation.
+  # If omitted, the build falls back to the current Supabase project defaults in scripts/generate-runtime-config.mjs.
+  # SUPABASE_URL = "https://your-project.supabase.co"
+  # SUPABASE_ANON_KEY = "your-anon-key"
 
 [[redirects]]
   from = "/*"
