@@ -188,6 +188,7 @@ async function fetchTaxpayerFromArca(
  * Contrato operativo: consulta constancia de inscripcion para un CUIT usando el contribuyente autenticado.
  * La plataforma no valida JWT en gateway: la function exige Bearer token y valida sesion en codigo.
  * Requiere contribuyente existente, certificados cargados y bucket `padron` operativo.
+ * Aun con `service_role`, la lectura se limita a las columnas estrictamente necesarias.
  * Devuelve una respuesta normalizada para frontend con razon social, domicilio y clasificacion fiscal.
  */
 Deno.serve(async (req: Request) => {
@@ -207,7 +208,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: contribuyente, error: contribErr } = await db
       .from('contribuyentes')
-      .select('*')
+      .select('cuit, arca_cert, arca_key, arca_production, arca_ticket')
       .eq('user_id', user.id)
       .maybeSingle();
 
