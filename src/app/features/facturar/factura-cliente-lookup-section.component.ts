@@ -18,6 +18,7 @@ import { ClienteLookupResult } from '../../core/services/facturacion.service';
             maxlength="11"
             [formControl]="clienteCuitControl"
             (input)="clienteCuitInput.emit()"
+            (keydown.enter)="onClienteCuitEnter($event)"
             placeholder="Ingresar CUIT"
             class="form-input w-full"
           />
@@ -142,4 +143,15 @@ export class FacturaClienteLookupSectionComponent {
   @Output() readonly buscarCliente = new EventEmitter<void>();
   @Output() readonly limpiarCliente = new EventEmitter<void>();
   @Output() readonly clienteCuitInput = new EventEmitter<void>();
+
+  onClienteCuitEnter(event: Event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!this.clienteCuitValido || this.buscandoCliente) {
+      return;
+    }
+
+    this.buscarCliente.emit();
+  }
 }

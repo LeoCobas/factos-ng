@@ -43,4 +43,30 @@ describe('FacturaClienteLookupSectionComponent', () => {
     expect(text).toContain('Revisar condición');
     expect(text).toContain('FC C');
   });
+  it('dispara la busqueda al presionar Enter en el campo CUIT', () => {
+    const fixture = TestBed.createComponent(FacturaClienteLookupSectionComponent);
+    fixture.componentRef.setInput(
+      'clienteCuitControl',
+      new FormControl('20123456789', { nonNullable: true }),
+    );
+    fixture.componentRef.setInput('clienteCuitValido', true);
+    fixture.componentRef.setInput('buscandoCliente', false);
+
+    const buscarSpy = vi.fn();
+    fixture.componentInstance.buscarCliente.subscribe(buscarSpy);
+
+    fixture.detectChanges();
+
+    const input = (fixture.nativeElement as HTMLElement).querySelector('input');
+    const event = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+    });
+
+    input?.dispatchEvent(event);
+
+    expect(buscarSpy).toHaveBeenCalledTimes(1);
+    expect(event.defaultPrevented).toBe(true);
+  });
 });
