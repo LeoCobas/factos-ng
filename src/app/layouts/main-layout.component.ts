@@ -8,8 +8,8 @@ import { ThemeService } from '../core/services/theme.service';
   template: `
     <div class="min-h-screen bg-background flex flex-col">
       <!-- Header with logo, contribuyente badge and config -->
-      <div class="bg-card border-b border-border shadow-sm p-3 sm:p-4">
-        <div class="flex items-center justify-between mb-3 sm:mb-4">
+      <div class="bg-card border-b border-border shadow-sm p-2.5 sm:p-4">
+        <div class="flex items-center justify-between mb-2.5 sm:mb-4">
           <!-- Logo que cambia según el tema -->
           <div class="flex items-center flex-shrink-0">
             <img 
@@ -36,7 +36,7 @@ import { ThemeService } from '../core/services/theme.service';
         <!-- Contribuyente badge (simple, 1:1) -->
         @if (contribuyenteService.inicializado()) {
           @if (contribuyenteService.contribuyente()) {
-            <div class="flex items-center gap-2 bg-muted rounded-lg px-3 py-2 text-sm mb-3 sm:mb-4">
+            <div class="flex items-center gap-2 bg-muted rounded-lg px-3 py-2 text-sm mb-2.5 sm:mb-4">
               <svg class="w-4 h-4 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
               </svg>
@@ -48,7 +48,7 @@ import { ThemeService } from '../core/services/theme.service';
               </span>
             </div>
           } @else {
-            <div class="flex items-center gap-2 bg-destructive/10 rounded-lg px-3 py-2 text-sm text-destructive mb-3 sm:mb-4 cursor-pointer" (click)="navigate('/configuracion')">
+            <div class="flex items-center gap-2 bg-destructive/10 rounded-lg px-3 py-2 text-sm text-destructive mb-2.5 sm:mb-4 cursor-pointer" (click)="navigate('/configuracion')">
               <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
               </svg>
@@ -105,7 +105,7 @@ import { ThemeService } from '../core/services/theme.service';
       </div>
 
       <!-- Main Content -->
-      <main class="flex-1 p-3 sm:p-4 bg-background">
+      <main class="flex-1 p-2.5 sm:p-4 bg-background">
         <router-outlet></router-outlet>
       </main>
     </div>

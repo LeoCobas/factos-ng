@@ -57,17 +57,17 @@ interface FacturaRecienteView {
       <div
         class="grid gap-4 lg:grid-cols-[minmax(0,28rem)_minmax(20rem,24rem)] lg:items-start lg:justify-center"
       >
-        <section class="card-surface px-4 pb-5 pt-4 sm:p-6">
+        <section class="card-surface px-3 pb-4 pt-3 sm:p-6">
           <form
             [formGroup]="formFactura"
             (ngSubmit)="emitirFactura()"
             class="space-y-3 sm:space-y-4"
           >
-            <div class="flex items-center justify-end">
+            <div class="flex items-start justify-end">
               <button
                 type="button"
                 (click)="toggleCliente()"
-                class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted sm:px-3 sm:py-2 sm:text-sm"
+                class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted sm:px-3 sm:py-2 sm:text-sm"
               >
                 <span>{{ clienteExpandido() ? '- CUIT' : '+ CUIT' }}</span>
               </button>
@@ -93,7 +93,7 @@ interface FacturaRecienteView {
             }
 
             <div>
-              <label class="block text-sm font-medium text-foreground mb-4">Monto total</label>
+              <label class="block text-sm font-medium text-foreground mb-2 sm:mb-3">Monto total</label>
               <input
                 #montoInput
                 id="monto"
@@ -116,7 +116,7 @@ interface FacturaRecienteView {
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-foreground mb-4">
+              <label class="block text-sm font-medium text-foreground mb-2 sm:mb-3">
                 Fecha de facturación
               </label>
               <input
