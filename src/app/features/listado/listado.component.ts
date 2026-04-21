@@ -17,6 +17,7 @@ import { FacturacionService } from '../../core/services/facturacion.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import { Comprobante } from '../../core/types/database.types';
 import { PdfComprobanteData } from '../../core/types/pdf.types';
+import { isLikelyNetworkErrorMessage } from '../../core/utils/network-error.util';
 
 import { PdfViewerComponent, PdfViewerConfig } from '../../shared/components/ui/pdf-viewer.component';
 
@@ -990,7 +991,7 @@ export class ListadoComponent {
           `Por favor, intenta nuevamente en unos minutos.\n\n` +
           `Error: ${errorMessage}`
         );
-      } else if (errorMessage.includes('red') || errorMessage.includes('network') || errorMessage.includes('fetch')) {
+      } else if (isLikelyNetworkErrorMessage(errorMessage)) {
         alert(
           `🌐 Error de conexión\n\n` +
           `No se pudo conectar con el servidor de facturación.\n` +

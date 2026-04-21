@@ -3,11 +3,16 @@ import { Router } from '@angular/router';
 import { AuthChangeEvent, AuthError, Session, User } from '@supabase/supabase-js';
 
 import { supabase } from './supabase.service';
+import { getFriendlyNetworkErrorMessage } from '../utils/network-error.util';
 
 export interface AuthState {
   user: User | null;
   session: Session | null;
   loading: boolean;
+}
+
+export interface AuthServiceError {
+  message: string;
 }
 
 @Injectable({
@@ -47,42 +52,106 @@ export class AuthService {
     this.redirectUrl.set(url);
   }
 
-  async signIn(email: string, password: string): Promise<{ error: AuthError | null }> {
+  async signIn(email: string, password: string): Promise<{ error: AuthServiceError | null }> {
     this.authState.update((state) => ({ ...state, loading: true }));
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    this.authState.update((state) => ({ ...state, loading: false }));
-    return { error };
+      return { error: error ? this.normalizeAuthError(error, 'No se pudo iniciar sesion.') : null };
+    } catch (error) {
+      return {
+        error: {
+          message: getFriendlyNetworkErrorMessage(
+            error,
+            'No se pudo iniciar sesion.',
+            'No se pudo iniciar sesion porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+          ),
+        },
+      };
+    } finally {
+      this.authState.update((state) => ({ ...state, loading: false }));
+    }
   }
 
-  async signUp(email: string, password: string): Promise<{ error: AuthError | null }> {
+  async signUp(email: string, password: string): Promise<{ error: AuthServiceError | null }> {
     this.authState.update((state) => ({ ...state, loading: true }));
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
 
-    this.authState.update((state) => ({ ...state, loading: false }));
-    return { error };
+      return { error: error ? this.normalizeAuthError(error, 'No se pudo crear la cuenta.') : null };
+    } catch (error) {
+      return {
+        error: {
+          message: getFriendlyNetworkErrorMessage(
+            error,
+            'No se pudo crear la cuenta.',
+            'No se pudo crear la cuenta porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+          ),
+        },
+      };
+    } finally {
+      this.authState.update((state) => ({ ...state, loading: false }));
+    }
   }
 
-  async signOut(): Promise<{ error: AuthError | null }> {
+  async signOut(): Promise<{ error: AuthServiceError | null }> {
     this.authState.update((state) => ({ ...state, loading: true }));
 
-    const { error } = await supabase.auth.signOut();
-
-    this.authState.update((state) => ({ ...state, loading: false }));
-    return { error };
+    try {
+      const { error } = await supabase.auth.signOut();
+      return { error: error ? this.normalizeAuthError(error, 'No se pudo cerrar sesion.') : null };
+    } catch (error) {
+      return {
+        error: {
+          message: getFriendlyNetworkErrorMessage(
+            error,
+            'No se pudo cerrar sesion.',
+            'No se pudo cerrar sesion porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+          ),
+        },
+      };
+    } finally {
+      this.authState.update((state) => ({ ...state, loading: false }));
+    }
   }
 
-  async resetPassword(email: string): Promise<{ error: AuthError | null }> {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    return { error };
+  async resetPassword(email: string): Promise<{ error: AuthServiceError | null }> {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      return {
+        error: error
+          ? this.normalizeAuthError(error, 'No se pudo iniciar la recuperacion de clave.')
+          : null,
+      };
+    } catch (error) {
+      return {
+        error: {
+          message: getFriendlyNetworkErrorMessage(
+            error,
+            'No se pudo iniciar la recuperacion de clave.',
+            'No se pudo iniciar la recuperacion de clave porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+          ),
+        },
+      };
+    }
+  }
+
+  private normalizeAuthError(error: AuthError, fallbackMessage: string): AuthServiceError {
+    return {
+      message: getFriendlyNetworkErrorMessage(
+        error,
+        error.message || fallbackMessage,
+        'No se pudo completar la autenticacion porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+      ),
+    };
   }
 
   private async initializeAuth(): Promise<void> {

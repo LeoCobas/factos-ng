@@ -1,6 +1,7 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { supabase } from './supabase.service';
 import { Contribuyente, ContribuyenteInsert, ContribuyenteUpdate } from '../types/database.types';
+import { getFriendlyNetworkErrorMessage } from '../utils/network-error.util';
 
 export type CreateContribuyentePayload = Omit<ContribuyenteInsert, 'user_id'>;
 
@@ -78,7 +79,14 @@ export class ContribuyenteService {
       return { success: true };
 
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' };
+      return {
+        success: false,
+        error: getFriendlyNetworkErrorMessage(
+          error,
+          error instanceof Error ? error.message : 'Error desconocido',
+          'No se pudieron guardar los datos de facturacion porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+        ),
+      };
     }
   }
 
@@ -104,7 +112,14 @@ export class ContribuyenteService {
       return { success: true };
 
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' };
+      return {
+        success: false,
+        error: getFriendlyNetworkErrorMessage(
+          error,
+          error instanceof Error ? error.message : 'Error desconocido',
+          'No se pudieron actualizar los datos de facturacion porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+        ),
+      };
     }
   }
 }

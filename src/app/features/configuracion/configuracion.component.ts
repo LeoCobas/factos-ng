@@ -417,13 +417,27 @@ export class ConfiguracionComponent implements OnInit {
     try {
       const { error } = await supabase.auth.updateUser({ email: nuevoEmail });
       if (error) {
-        this.mostrarMensaje(error.message, 'error');
+        this.mostrarMensaje(
+          getFriendlyNetworkErrorMessage(
+            error,
+            error.message,
+            'No se pudo actualizar el email porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+          ),
+          'error',
+        );
       } else {
         this.mostrarMensaje('\u2714 Se envi\u00f3 un email de confirmaci\u00f3n a ambas direcciones.', 'success');
         this.accountForm.controls.nuevoEmail.reset('');
       }
-    } catch {
-      this.mostrarMensaje('Error al cambiar email.', 'error');
+    } catch (error) {
+      this.mostrarMensaje(
+        getFriendlyNetworkErrorMessage(
+          error,
+          'Error al cambiar email.',
+          'No se pudo actualizar el email porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+        ),
+        'error',
+      );
     } finally {
       this.guardando.set(false);
     }
@@ -445,7 +459,14 @@ export class ConfiguracionComponent implements OnInit {
     try {
       const { error } = await supabase.auth.updateUser({ password: nuevaPassword });
       if (error) {
-        this.mostrarMensaje(error.message, 'error');
+        this.mostrarMensaje(
+          getFriendlyNetworkErrorMessage(
+            error,
+            error.message,
+            'No se pudo cambiar la contrasena porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+          ),
+          'error',
+        );
       } else {
         this.mostrarMensaje('\u2714 Contrase\u00f1a cambiada correctamente.', 'success');
         this.accountForm.patchValue({
@@ -453,8 +474,15 @@ export class ConfiguracionComponent implements OnInit {
           confirmarPassword: '',
         });
       }
-    } catch {
-      this.mostrarMensaje('Error al cambiar contrase\u00f1a.', 'error');
+    } catch (error) {
+      this.mostrarMensaje(
+        getFriendlyNetworkErrorMessage(
+          error,
+          'Error al cambiar contrase\u00f1a.',
+          'No se pudo cambiar la contrasena porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+        ),
+        'error',
+      );
     } finally {
       this.guardando.set(false);
     }

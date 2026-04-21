@@ -1,4 +1,8 @@
-import { getFriendlyNetworkErrorMessage } from './network-error.util';
+import {
+  getFriendlyNetworkErrorMessage,
+  isLikelyNetworkError,
+  isLikelyNetworkErrorMessage,
+} from './network-error.util';
 
 describe('getFriendlyNetworkErrorMessage', () => {
   const fallbackMessage = 'No se pudo consultar el CUIT. Intenta nuevamente en unos minutos.';
@@ -32,5 +36,17 @@ describe('getFriendlyNetworkErrorMessage', () => {
     const message = getFriendlyNetworkErrorMessage(new Error('CUIT no encontrado'), fallbackMessage);
 
     expect(message).toBe(fallbackMessage);
+  });
+
+  it('detecta mensajes amigables de conexion para reutilizarlos en UI', () => {
+    expect(
+      isLikelyNetworkErrorMessage(
+        'No se pudo emitir la factura porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+      ),
+    ).toBe(true);
+  });
+
+  it('detecta directamente un error tecnico de fetch', () => {
+    expect(isLikelyNetworkError(new TypeError('Failed to fetch'))).toBe(true);
   });
 });
