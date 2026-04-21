@@ -3,12 +3,13 @@ import { TestBed } from '@angular/core/testing';
 
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import { ThemeService } from '../../core/services/theme.service';
+import type { Contribuyente } from '../../core/types/database.types';
 import { ConfiguracionComponent } from './configuracion.component';
 
 describe('ConfiguracionComponent', () => {
   const createContribuyenteServiceStub = () => ({
     inicializado: signal(true),
-    contribuyente: signal(null),
+    contribuyente: signal<Contribuyente | null>(null),
     cargarContribuyente: vi.fn().mockResolvedValue(undefined),
     actualizarContribuyente: vi.fn().mockResolvedValue({ success: true }),
     crearContribuyente: vi.fn().mockResolvedValue({ success: true }),
