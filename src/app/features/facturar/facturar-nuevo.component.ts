@@ -203,11 +203,12 @@ interface FacturaRecienteView {
 
       @if (mostrandoConfirmacionMonto()) {
         <div
-          class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          class="fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-4 pb-0 pt-4 sm:p-4"
+          [style.paddingBottom.px]="confirmacionMontoBottomOffset()"
           (click)="cancelarConfirmacionMonto()"
         >
           <div
-            class="w-full max-w-md rounded-2xl border border-amber-500/30 bg-card p-5 shadow-2xl"
+            class="w-full max-w-md rounded-t-2xl border border-amber-500/30 bg-card p-5 shadow-2xl sm:rounded-2xl"
             (click)="$event.stopPropagation()"
           >
             <div class="mb-4 inline-flex rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-300">
@@ -299,6 +300,7 @@ export class FacturarNuevoComponent implements OnDestroy {
   readonly confirmacionMontoCountdown = signal(0);
   readonly montoExcedidoPendiente = signal<number | null>(null);
   readonly montoExcedidoConfirmado = signal<number | null>(null);
+  readonly confirmacionMontoBottomOffset = signal(16);
 
   readonly clienteCuitValido = computed(
     () => sanitizeCuit(this.clienteCuitIngresado()).length === 11,
@@ -381,9 +383,13 @@ export class FacturarNuevoComponent implements OnDestroy {
   }
 
   private confirmacionMontoTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly visualViewport =
+    typeof window !== 'undefined' ? window.visualViewport : null;
+  private readonly onViewportChange = () => this.actualizarConfirmacionMontoBottomOffset();
 
   ngOnDestroy(): void {
     this.clearConfirmacionMontoTimer();
+    this.detachViewportListeners();
   }
 
   toggleCliente() {
@@ -506,9 +512,11 @@ export class FacturarNuevoComponent implements OnDestroy {
 
   cancelarConfirmacionMonto(): void {
     this.clearConfirmacionMontoTimer();
+    this.detachViewportListeners();
     this.mostrandoConfirmacionMonto.set(false);
     this.confirmacionMontoCountdown.set(0);
     this.montoExcedidoPendiente.set(null);
+    this.confirmacionMontoBottomOffset.set(16);
   }
 
   async confirmarEmisionMontoExcedido(): Promise<void> {
@@ -692,6 +700,8 @@ export class FacturarNuevoComponent implements OnDestroy {
     this.montoExcedidoPendiente.set(monto);
     this.mostrandoConfirmacionMonto.set(true);
     this.confirmacionMontoCountdown.set(5);
+    this.attachViewportListeners();
+    this.actualizarConfirmacionMontoBottomOffset();
 
     this.confirmacionMontoTimer = setInterval(() => {
       const nextValue = this.confirmacionMontoCountdown() - 1;
@@ -710,6 +720,47 @@ export class FacturarNuevoComponent implements OnDestroy {
       clearInterval(this.confirmacionMontoTimer);
       this.confirmacionMontoTimer = null;
     }
+  }
+
+  private attachViewportListeners(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.addEventListener('resize', this.onViewportChange);
+    window.addEventListener('orientationchange', this.onViewportChange);
+    this.visualViewport?.addEventListener('resize', this.onViewportChange);
+    this.visualViewport?.addEventListener('scroll', this.onViewportChange);
+  }
+
+  private detachViewportListeners(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.removeEventListener('resize', this.onViewportChange);
+    window.removeEventListener('orientationchange', this.onViewportChange);
+    this.visualViewport?.removeEventListener('resize', this.onViewportChange);
+    this.visualViewport?.removeEventListener('scroll', this.onViewportChange);
+  }
+
+  private actualizarConfirmacionMontoBottomOffset(): void {
+    if (typeof window === 'undefined') {
+      this.confirmacionMontoBottomOffset.set(16);
+      return;
+    }
+
+    const viewport = this.visualViewport;
+    if (!viewport) {
+      this.confirmacionMontoBottomOffset.set(16);
+      return;
+    }
+
+    const keyboardHeight = Math.max(
+      0,
+      Math.round(window.innerHeight - viewport.height - viewport.offsetTop),
+    );
+    this.confirmacionMontoBottomOffset.set(Math.max(16, keyboardHeight + 16));
   }
 
   private resetMontoExcedidoConfirmado(parsedValue: number | null): void {
