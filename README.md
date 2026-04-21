@@ -135,7 +135,19 @@ npm run build
 Tests:
 
 ```bash
-npx vitest run
+npm test
+```
+
+Modo watch para desarrollo:
+
+```bash
+npm run test:watch
+```
+
+Solo facturacion:
+
+```bash
+npm run test:facturar
 ```
 
 Lint:

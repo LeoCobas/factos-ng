@@ -11,7 +11,9 @@
     "prewatch": "node ./scripts/generate-runtime-config.mjs",
     "watch": "ng build --watch --configuration development",
     "pretest": "node ./scripts/generate-runtime-config.mjs",
-    "test": "ng test",
+    "test": "ng test --watch=false",
+    "test:watch": "ng test",
+    "test:facturar": "ng test --watch=false --include src/app/features/facturar/**/*.spec.ts",
     "prenetlify:build": "node ./scripts/generate-runtime-config.mjs",
     "netlify:build": "ng build --configuration production",
     "lint": "ng lint"
