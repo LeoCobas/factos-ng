@@ -1,13 +1,30 @@
 import { Injectable } from '@angular/core';
-import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
-import { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
+import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
 
 import { Contribuyente } from '../types/database.types';
 import { PdfComprobanteData } from '../types/pdf.types';
 import { getClienteDocData, normalizeCondicionIva } from '../utils/factura-cliente.util';
 
-(pdfMake as unknown as { vfs: unknown }).vfs = (pdfFonts as unknown as { vfs: unknown }).vfs;
+type PdfMakeModule = typeof import('pdfmake/build/pdfmake');
+
+interface PdfMakeInstance {
+  createPdf: (definition: TDocumentDefinitions) => {
+    getBlob: () => Promise<Blob>;
+  };
+  addFontContainer?: (container: PdfMakeFontContainer) => void;
+  addFonts?: (fonts: Record<string, unknown>) => void;
+  vfs?: unknown;
+}
+
+interface PdfMakeFontContainer {
+  fonts: Record<string, unknown>;
+  vfs?: Record<string, unknown>;
+}
+
+interface PdfMakeRuntime {
+  instance: PdfMakeInstance;
+  defaultFont: string;
+}
 
 @Injectable({
   providedIn: 'root',
@@ -15,19 +32,119 @@ import { getClienteDocData, normalizeCondicionIva } from '../utils/factura-clien
 export class FacturaPdfService {
   private readonly pageWidth = 226;
   private readonly pageMargins: [number, number, number, number] = [8, 10, 8, 10];
+  private pdfMakePromise: Promise<PdfMakeRuntime> | null = null;
 
   async generarFacturaPdf(
     contribuyente: Contribuyente,
     comprobante: PdfComprobanteData,
   ): Promise<Blob> {
-    const docDefinition = this.crearDefinicionDocumento(contribuyente, comprobante);
-    const pdfDocGenerator = pdfMake.createPdf(docDefinition);
+    const pdfMake = await this.loadPdfMake();
+    const docDefinition = this.crearDefinicionDocumento(
+      contribuyente,
+      comprobante,
+      pdfMake.defaultFont,
+    );
+    const pdfDocGenerator = pdfMake.instance.createPdf(docDefinition);
     return pdfDocGenerator.getBlob();
+  }
+
+  /**
+   * Carga pdfmake solo al generar un comprobante.
+   * Primero intenta Helvetica estandar para evitar embutir TTF en el chunk;
+   * si no esta disponible, vuelve al contenedor Roboto provisto por pdfmake.
+   */
+  private loadPdfMake(): Promise<PdfMakeRuntime> {
+    if (!this.pdfMakePromise) {
+      this.pdfMakePromise = this.initializePdfMake();
+    }
+
+    return this.pdfMakePromise;
+  }
+
+  private async initializePdfMake(): Promise<PdfMakeRuntime> {
+    const pdfMakeModule = await import('pdfmake/build/pdfmake');
+    const pdfMake = this.unwrapPdfMake(pdfMakeModule);
+
+    if (await this.tryConfigureStandardHelvetica(pdfMake)) {
+      return {
+        instance: pdfMake,
+        defaultFont: 'Helvetica',
+      };
+    }
+
+    const robotoModule = await import('pdfmake/build/vfs_fonts');
+    const robotoContainer = this.unwrapFontContainer(robotoModule, 'Roboto');
+
+    if (pdfMake.addFontContainer && robotoContainer) {
+      pdfMake.addFontContainer(robotoContainer);
+      return {
+        instance: pdfMake,
+        defaultFont: 'Roboto',
+      };
+    }
+
+    const robotoVfs = (robotoContainer ?? robotoModule) as { vfs?: unknown };
+    if (robotoVfs.vfs) {
+      pdfMake.vfs = robotoVfs.vfs;
+    }
+
+    return {
+      instance: pdfMake,
+      defaultFont: 'Roboto',
+    };
+  }
+
+  private async tryConfigureStandardHelvetica(pdfMake: PdfMakeInstance): Promise<boolean> {
+    try {
+      const helveticaModule = await import('pdfmake/build/standard-fonts/Helvetica');
+      const helveticaContainer = this.unwrapFontContainer(helveticaModule, 'Helvetica');
+
+      if (!helveticaContainer) {
+        return false;
+      }
+
+      if (pdfMake.addFontContainer) {
+        pdfMake.addFontContainer(helveticaContainer);
+        return true;
+      }
+
+      if (pdfMake.addFonts) {
+        pdfMake.addFonts(helveticaContainer.fonts);
+        return true;
+      }
+    } catch {
+      return false;
+    }
+
+    return false;
+  }
+
+  private unwrapPdfMake(module: PdfMakeModule): PdfMakeInstance {
+    const candidate = (module as { default?: unknown }).default ?? module;
+    return candidate as PdfMakeInstance;
+  }
+
+  private unwrapFontContainer(module: unknown, preferredFontName: string): PdfMakeFontContainer | null {
+    const candidates = [module, (module as { default?: unknown }).default];
+
+    for (const candidate of candidates) {
+      if (!candidate || typeof candidate !== 'object') {
+        continue;
+      }
+
+      const container = candidate as PdfMakeFontContainer;
+      if (container.fonts?.[preferredFontName]) {
+        return container;
+      }
+    }
+
+    return null;
   }
 
   private crearDefinicionDocumento(
     contribuyente: Contribuyente,
     comprobante: PdfComprobanteData,
+    defaultFont: string,
   ): TDocumentDefinitions {
     const tipo = comprobante.tipo_comprobante || 'FACTURA C';
     const codigoTipo = this.getCbteTipoEnum(tipo);
@@ -241,7 +358,7 @@ export class FacturaPdfService {
       pageMargins: this.pageMargins,
       defaultStyle: {
         fontSize: 7,
-        font: 'Roboto',
+        font: defaultFont,
       },
       content: [
         ...headerContent,
