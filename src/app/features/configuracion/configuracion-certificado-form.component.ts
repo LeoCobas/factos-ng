@@ -27,20 +27,10 @@ import type { CertFormModel } from './configuracion.types';
             </svg>
             <div>
               <h3 class="card-title">Certificados ARCA (AFIP)</h3>
-              <p class="form-section-description">
-                Necesarios para emitir comprobantes electr&oacute;nicos desde tu cuenta.
-              </p>
             </div>
           </div>
         </div>
         <div class="p-4 sm:p-6 space-y-5">
-          <div
-            class="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-sm text-amber-700 dark:text-amber-300"
-          >
-            <p class="font-medium mb-1">Archivos sensibles</p>
-            <p>Los certificados se almacenan de forma segura asociados a tu cuenta.</p>
-          </div>
-
           <div class="form-field">
             <div class="form-label-row">
               <label class="form-label">Certificado (.crt)</label>
@@ -77,7 +67,6 @@ import type { CertFormModel } from './configuracion.types';
                 </button>
               }
             </div>
-            <p class="form-help">Sub&iacute; el certificado p&uacute;blico emitido para tu CUIT.</p>
             @if (certFileName()) {
               <p class="form-help">{{ certFileName() }}</p>
             }
@@ -119,7 +108,6 @@ import type { CertFormModel } from './configuracion.types';
                 </button>
               }
             </div>
-            <p class="form-help">Sub&iacute; la clave privada asociada al certificado anterior.</p>
             @if (keyFileName()) {
               <p class="form-help">{{ keyFileName() }}</p>
             }
@@ -133,9 +121,6 @@ import type { CertFormModel } from './configuracion.types';
               <option [ngValue]="false">Testing / Homologaci&oacute;n</option>
               <option [ngValue]="true">Producci&oacute;n</option>
             </select>
-            <p class="form-help">
-              Us&aacute; Testing para validar la integraci&oacute;n antes de pasar a producci&oacute;n.
-            </p>
           </div>
 
           @if (tieneCert() && tieneKey()) {

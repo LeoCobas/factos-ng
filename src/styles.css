@@ -518,6 +518,33 @@ input[type="number"][formcontrolname="monto"] {
 /* Safari: también respeta -webkit-appearance: none; */
 
 /* Configuracion form refresh */
+.config-tabs-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.config-tabs-title {
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--muted-foreground));
+}
+
+.config-tabs-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem;
+  background: rgb(var(--card));
+  border: 1px solid rgb(var(--border));
+  border-radius: 0.9rem;
+  box-shadow: 0 6px 20px rgb(15 23 42 / 0.05);
+}
+
 .config-tabs {
   background: rgb(var(--card));
   border: 1px solid rgb(var(--border));
@@ -527,29 +554,28 @@ input[type="number"][formcontrolname="monto"] {
 
 .config-tab {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.15rem;
-  width: 100%;
-  min-height: 4.25rem;
-  padding: 0.95rem 1rem;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.9rem;
+  padding: 0.55rem;
   border-radius: 0.75rem;
   border: 1px solid transparent;
-  text-align: left;
+  text-align: center;
   transition: all 0.2s ease;
 }
 
-.config-tab-eyebrow {
-  font-size: 0.69rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.config-tab-icon {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
-.config-tab-label {
-  font-size: 0.98rem;
-  font-weight: 700;
-  line-height: 1.25rem;
+.config-tab-icon-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .config-tab-active {
@@ -557,10 +583,6 @@ input[type="number"][formcontrolname="monto"] {
   color: rgb(var(--foreground));
   border-color: rgb(var(--primary) / 0.35);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 6px 16px rgb(var(--primary) / 0.08);
-}
-
-.config-tab-active .config-tab-eyebrow {
-  color: rgb(var(--primary));
 }
 
 .config-tab-inactive {
@@ -571,6 +593,46 @@ input[type="number"][formcontrolname="monto"] {
   background-color: rgb(var(--muted) / 0.65);
   color: rgb(var(--foreground));
   border-color: rgb(var(--border));
+}
+
+.theme-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.45rem;
+  border-radius: 0.85rem;
+  background: rgb(var(--muted) / 0.5);
+}
+
+.theme-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  border-radius: 0.7rem;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.theme-mode-btn-active {
+  background: rgb(var(--background));
+  color: rgb(var(--foreground));
+  border-color: rgb(var(--border));
+  box-shadow: 0 6px 16px rgb(15 23 42 / 0.12);
+}
+
+.theme-mode-btn-inactive {
+  color: rgb(var(--muted-foreground));
+}
+
+.theme-mode-btn-inactive:hover {
+  color: rgb(var(--foreground));
+  background: rgb(var(--muted) / 0.75);
+}
+
+.theme-mode-icon {
+  width: 1.2rem;
+  height: 1.2rem;
 }
 
 .form-field {
@@ -722,7 +784,7 @@ input[type="date"].form-input:focus {
   color: rgb(var(--muted-foreground));
 }
 
-.dark-theme .config-tabs {
+.dark-theme .config-tabs-list {
   box-shadow: 0 10px 30px rgb(0 0 0 / 0.28);
 }
 
