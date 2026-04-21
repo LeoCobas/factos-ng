@@ -24,34 +24,53 @@ import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.u
   template: `
     <div class="space-y-5">
       <div class="config-tabs-wrapper">
-        <p class="config-tabs-title">Secciones</p>
-        <div class="config-tabs-scroll">
-          <div class="config-tabs-list">
+        <p class="config-tabs-title">Configuraci&oacute;n</p>
+        <div class="config-tabs-list">
           <button
             type="button"
             (click)="tabActiva.set('facturacion')"
             class="config-tab"
+            title="Facturaci&oacute;n"
+            aria-label="Facturaci&oacute;n"
             [class.config-tab-active]="tabActiva() === 'facturacion'"
             [class.config-tab-inactive]="tabActiva() !== 'facturacion'">
-            <span class="config-tab-label">Facturaci&oacute;n</span>
+            <svg class="config-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                d="M7 3h10a2 2 0 0 1 2 2v14l-2-1.5L15 19l-2-1.5L11 19l-2-1.5L7 19V5a2 2 0 0 1 2-2Z"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path d="M10 8h6M10 12h6" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
           </button>
           <button
             type="button"
             (click)="tabActiva.set('certificado')"
             class="config-tab"
+            title="Certificado ARCA"
+            aria-label="Certificado ARCA"
             [class.config-tab-active]="tabActiva() === 'certificado'"
             [class.config-tab-inactive]="tabActiva() !== 'certificado'">
-            <span class="config-tab-label">Certificado ARCA</span>
+            <div class="config-tab-icon config-tab-icon-letter">A</div>
           </button>
           <button
             type="button"
             (click)="tabActiva.set('cuenta')"
             class="config-tab"
+            title="Cuenta"
+            aria-label="Cuenta"
             [class.config-tab-active]="tabActiva() === 'cuenta'"
             [class.config-tab-inactive]="tabActiva() !== 'cuenta'">
-            <span class="config-tab-label">Cuenta</span>
+            <svg class="config-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                d="M20 21a8 8 0 1 0-16 0M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
           </button>
-          </div>
         </div>
       </div>
 
