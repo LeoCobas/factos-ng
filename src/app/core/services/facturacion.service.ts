@@ -195,7 +195,6 @@ export class FacturacionService {
       resolveTipoComprobanteDetallado(
         contribuyente.condicion_iva,
         cliente.cliente_condicion_iva,
-        contribuyente.tipo_comprobante_default || 'FACTURA C',
         facturaData.cliente_fiscal_profile,
       ).tipo;
 

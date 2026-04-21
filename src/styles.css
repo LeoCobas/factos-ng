@@ -734,3 +734,258 @@ input[type="date"].form-input:focus {
 .dark-theme .file-dropzone:hover {
   background: rgb(39 39 42 / 0.85);
 }
+
+/* Premium dark: header + facturar */
+.dark-theme {
+  --background: 6 8 12;
+  --card: 14 17 24;
+  --popover: 14 17 24;
+  --primary: 56 122 255;
+  --secondary: 18 23 33;
+  --muted: 19 24 34;
+  --muted-foreground: 171 181 199;
+  --accent: 19 24 34;
+  --border: 31 41 55;
+  --input: 13 17 24;
+  --ring: 56 122 255;
+}
+
+.card-surface {
+  background-color: rgb(var(--card));
+  color: rgb(var(--card-foreground));
+  border: 1px solid rgb(var(--border) / 0.9);
+  border-radius: 1.15rem;
+  box-shadow: 0 18px 38px rgb(2 8 23 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.03);
+}
+
+.card-surface--feature {
+  background:
+    radial-gradient(circle at top right, rgb(var(--primary) / 0.08), transparent 28%),
+    rgb(var(--card));
+}
+
+.nav-strip {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid rgb(var(--border) / 0.85);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgb(var(--muted) / 0.82), rgb(var(--muted) / 0.58));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03);
+}
+
+.nav-button-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+}
+
+@media (min-width: 640px) {
+  .nav-button-text {
+    font-size: 0.96rem !important;
+  }
+}
+
+.nav-button-mobile {
+  border-radius: 0.9rem;
+  border: 1px solid transparent;
+  padding: 0.75rem 0.55rem !important;
+  transition: all 0.2s ease;
+}
+
+@media (min-width: 640px) {
+  .nav-button-mobile {
+    padding: 0.8rem 0.8rem !important;
+  }
+}
+
+.nav-btn-active {
+  background: linear-gradient(180deg, rgb(var(--primary) / 0.22), rgb(var(--primary) / 0.11)) !important;
+  color: rgb(239 246 255) !important;
+  border: 1px solid rgb(var(--primary) / 0.35) !important;
+  border-radius: 0.9rem !important;
+  font-weight: 700 !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 10px 24px rgb(37 99 235 / 0.16) !important;
+  z-index: 1 !important;
+  transition: all 0.2s ease !important;
+}
+
+.nav-btn-idle {
+  color: rgb(var(--muted-foreground));
+}
+
+.nav-btn-idle:hover {
+  color: rgb(var(--foreground));
+  background: rgb(var(--muted) / 0.58);
+  border-color: rgb(var(--border));
+}
+
+.header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid rgb(var(--border) / 0.9);
+  border-radius: 999px;
+  background: rgb(var(--muted) / 0.42);
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  padding: 0.5rem 0.8rem !important;
+  letter-spacing: 0.01em !important;
+  line-height: 1.4 !important;
+  transition: all 0.2s ease;
+}
+
+.header-btn-idle {
+  color: rgb(var(--muted-foreground));
+}
+
+.header-btn-idle:hover {
+  color: rgb(var(--foreground));
+  border-color: rgb(var(--primary) / 0.2);
+  background: rgb(var(--muted) / 0.62);
+}
+
+.contribuyente-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid rgb(var(--border) / 0.88);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgb(var(--muted) / 0.55), rgb(var(--muted) / 0.28));
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.contribuyente-badge:hover {
+  border-color: rgb(var(--primary) / 0.24);
+  background: linear-gradient(180deg, rgb(var(--muted) / 0.68), rgb(var(--muted) / 0.38));
+}
+
+.contribuyente-badge__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: rgb(var(--primary) / 0.12);
+  border: 1px solid rgb(var(--primary) / 0.18);
+}
+
+.form-input,
+.form-select,
+input[type="date"].form-input {
+  min-height: 2.9rem;
+  padding: 0.72rem 0.92rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgb(var(--border) / 0.9);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+.form-input:hover,
+.form-select:hover,
+input[type="date"].form-input:hover {
+  border-color: rgb(var(--primary) / 0.24);
+}
+
+.premium-money-field {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 4.5rem;
+  padding: 0.2rem 1rem 0.2rem 1.1rem;
+  border-radius: 1.1rem;
+  border: 1px solid rgb(var(--border) / 0.9);
+  background: linear-gradient(180deg, rgb(var(--input)), rgb(12 16 24));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.premium-money-field:hover {
+  border-color: rgb(var(--primary) / 0.24);
+}
+
+.premium-money-field:focus-within {
+  border-color: rgb(var(--primary));
+  box-shadow: 0 0 0 4px rgb(var(--primary) / 0.12);
+}
+
+.premium-money-field--error {
+  border-color: rgb(var(--destructive));
+}
+
+.premium-money-field__prefix {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgb(var(--muted-foreground));
+}
+
+.premium-money-field__input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: rgb(var(--foreground));
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  text-align: center;
+  outline: none;
+  padding: 0.9rem 0.15rem;
+}
+
+.premium-money-field__input::placeholder {
+  color: rgb(var(--muted-foreground));
+  opacity: 0.5;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, rgb(var(--primary)), rgb(38 99 235));
+  color: rgb(var(--primary-foreground));
+  border: 1px solid rgb(var(--primary) / 0.48);
+  transition: all 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 30px rgb(37 99 235 / 0.24);
+}
+
+.btn-primary:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+  background: linear-gradient(180deg, rgb(27 33 45), rgb(22 27 38));
+  border-color: rgb(var(--border));
+  color: rgb(var(--muted-foreground));
+}
+
+.premium-submit-btn {
+  letter-spacing: 0.01em;
+}
+
+@media (min-width: 640px) {
+  .premium-money-field {
+    min-height: 4.9rem;
+  }
+
+  .premium-money-field__prefix {
+    font-size: 1.7rem;
+  }
+
+  .premium-money-field__input {
+    font-size: 2.35rem;
+  }
+}

@@ -1,4 +1,5 @@
 import {
+  getTipoComprobanteDefaultFromCondicionIva,
   normalizeCondicionIva,
   resolveTipoComprobanteDetallado,
 } from './factura-cliente.util';
@@ -24,7 +25,6 @@ describe('factura-cliente.util', () => {
         resolveTipoComprobanteDetallado(
           'IVA Responsable Inscripto',
           'IVA Responsable Inscripto',
-          'FACTURA B',
           'responsable-inscripto',
         ),
       ).toEqual({
@@ -40,7 +40,6 @@ describe('factura-cliente.util', () => {
         resolveTipoComprobanteDetallado(
           'IVA Responsable Inscripto',
           'Responsable Monotributo',
-          'FACTURA B',
           'monotributo',
         ),
       ).toEqual({
@@ -56,7 +55,6 @@ describe('factura-cliente.util', () => {
         resolveTipoComprobanteDetallado(
           'IVA Responsable Inscripto',
           'No categorizado',
-          'FACTURA B',
           'ambiguo',
         ),
       ).toEqual({
@@ -72,7 +70,6 @@ describe('factura-cliente.util', () => {
         resolveTipoComprobanteDetallado(
           'Responsable Monotributo',
           'IVA Responsable Inscripto',
-          'FACTURA B',
           'responsable-inscripto',
         ),
       ).toEqual({
@@ -81,6 +78,21 @@ describe('factura-cliente.util', () => {
         requiereRevision: false,
         motivo: 'El emisor no factura A/B segun su condicion frente al IVA.',
       });
+    });
+  });
+
+  describe('getTipoComprobanteDefaultFromCondicionIva', () => {
+    it('deriva factura B para responsables inscriptos', () => {
+      expect(getTipoComprobanteDefaultFromCondicionIva('IVA Responsable Inscripto')).toBe(
+        'FACTURA B',
+      );
+    });
+
+    it('deriva factura C para monotributo y casos no clasificados', () => {
+      expect(getTipoComprobanteDefaultFromCondicionIva('Responsable Monotributo')).toBe(
+        'FACTURA C',
+      );
+      expect(getTipoComprobanteDefaultFromCondicionIva(null)).toBe('FACTURA C');
     });
   });
 

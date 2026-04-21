@@ -84,18 +84,6 @@ export function normalizeCondicionIva(value: string | null | undefined): Cliente
   return 'No categorizado';
 }
 
-function sanitizeFacturaFallback(
-  fallback: string | null | undefined,
-): 'FACTURA A' | 'FACTURA B' | 'FACTURA C' | null {
-  const upperFallback = String(fallback || '').toUpperCase().trim();
-
-  if (upperFallback === 'FACTURA A' || upperFallback === 'FACTURA B' || upperFallback === 'FACTURA C') {
-    return upperFallback;
-  }
-
-  return null;
-}
-
 function normalizeClienteFiscalProfile(
   profile: ClienteFiscalProfile | null | undefined,
   clienteCondicionIva?: string | null,
@@ -122,14 +110,25 @@ function normalizeClienteFiscalProfile(
   }
 }
 
+export function getTipoComprobanteDefaultFromCondicionIva(
+  emisorCondicionIva: string | null | undefined,
+): 'FACTURA B' | 'FACTURA C' {
+  const emisor = normalizeCondicionIva(emisorCondicionIva);
+
+  if (emisor === 'IVA Responsable Inscripto') {
+    return 'FACTURA B';
+  }
+
+  return 'FACTURA C';
+}
+
 export function resolveTipoComprobanteDetallado(
   emisorCondicionIva: string | null | undefined,
   clienteCondicionIva?: string | null,
-  fallback: string = 'FACTURA C',
   clienteFiscalProfile?: ClienteFiscalProfile | null,
 ): TipoComprobanteResolution {
   const emisor = normalizeCondicionIva(emisorCondicionIva);
-  const fallbackSanitizado = sanitizeFacturaFallback(fallback);
+  const fallbackSanitizado = getTipoComprobanteDefaultFromCondicionIva(emisorCondicionIva);
   const profile = normalizeClienteFiscalProfile(clienteFiscalProfile, clienteCondicionIva);
 
   if (emisor === 'Responsable Monotributo' || emisor === 'Exento') {
@@ -179,7 +178,7 @@ export function resolveTipoComprobanteDetallado(
       tipo: fallbackSanitizado,
       modo: 'fallback',
       requiereRevision: true,
-      motivo: 'No se pudo clasificar la condicion fiscal del emisor; se usa el tipo configurado.',
+      motivo: 'No se pudo clasificar la condicion fiscal del emisor; se aplica el tipo esperado para su condicion frente al IVA.',
     };
   }
 
@@ -194,13 +193,11 @@ export function resolveTipoComprobanteDetallado(
 export function resolveTipoComprobante(
   emisorCondicionIva: string | null | undefined,
   clienteCondicionIva?: string | null,
-  fallback: string = 'FACTURA C',
   clienteFiscalProfile?: ClienteFiscalProfile | null,
 ): 'FACTURA A' | 'FACTURA B' | 'FACTURA C' {
   return resolveTipoComprobanteDetallado(
     emisorCondicionIva,
     clienteCondicionIva,
-    fallback,
     clienteFiscalProfile,
   ).tipo;
 }

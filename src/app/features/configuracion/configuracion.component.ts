@@ -18,6 +18,7 @@ import { ConfiguracionFacturacionFormComponent } from './configuracion-facturaci
 import { ConfiguracionCertificadoFormComponent } from './configuracion-certificado-form.component';
 import { ConfiguracionCuentaFormComponent } from './configuracion-cuenta-form.component';
 import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.util';
+import { getTipoComprobanteDefaultFromCondicionIva } from '../../core/utils/factura-cliente.util';
 
 @Component({
   selector: 'app-configuracion',
@@ -154,7 +155,6 @@ export class ConfiguracionComponent implements OnInit {
         Validators.min(1),
         Validators.max(9999),
       ]),
-      tipo_comprobante_default: this.fb.control('FACTURA C'),
       concepto: this.fb.control('', Validators.required),
       iva_porcentaje: this.fb.control('21.00'),
       actividad: this.fb.control<Actividad>('servicios'),
@@ -231,7 +231,6 @@ export class ConfiguracionComponent implements OnInit {
           ingresos_brutos: c.ingresos_brutos || '',
           inicio_actividades: c.inicio_actividades || '',
           punto_venta: c.punto_venta ?? 4,
-          tipo_comprobante_default: c.tipo_comprobante_default || 'FACTURA C',
           concepto: c.concepto || '',
           iva_porcentaje: Number(c.iva_porcentaje).toFixed(2),
           actividad: (c.actividad as Actividad) || 'servicios',
@@ -520,7 +519,7 @@ export class ConfiguracionComponent implements OnInit {
       ingresos_brutos: raw.ingresos_brutos || null,
       inicio_actividades: raw.inicio_actividades || null,
       punto_venta: raw.punto_venta ?? null,
-      tipo_comprobante_default: raw.tipo_comprobante_default,
+      tipo_comprobante_default: getTipoComprobanteDefaultFromCondicionIva(raw.condicion_iva),
       concepto: raw.concepto,
       iva_porcentaje: Number.parseFloat(raw.iva_porcentaje),
       actividad: raw.actividad,

@@ -145,36 +145,25 @@ import type { FacturacionFormModel } from './configuracion.types';
         <div class="card-header">
           <h3 class="card-title">Preferencias de Facturaci&oacute;n</h3>
           <p class="form-section-description">
-            Defin&iacute; c&oacute;mo se completa cada comprobante por defecto.
+            Defin&iacute; c&oacute;mo se completa cada comprobante por defecto. El tipo de factura se
+            resuelve autom&aacute;ticamente seg&uacute;n tu condici&oacute;n frente al IVA y la del cliente.
           </p>
         </div>
         <div class="p-4 sm:p-6 space-y-5">
-          <div class="grid gap-5 lg:grid-cols-2">
-            <div class="form-field">
-              <div class="form-label-row">
-                <label class="form-label">Punto de Venta</label>
-                <span class="form-required-badge">Obligatorio</span>
-              </div>
-              <input
-                type="number"
-                formControlName="punto_venta"
-                min="1"
-                max="9999"
-                placeholder="4"
-                class="form-input"
-              />
-              <p class="form-help">Se usa como valor inicial al emitir comprobantes.</p>
+          <div class="form-field">
+            <div class="form-label-row">
+              <label class="form-label">Punto de Venta</label>
+              <span class="form-required-badge">Obligatorio</span>
             </div>
-
-            <div class="form-field">
-              <div class="form-label-row">
-                <label class="form-label">Tipo de Comprobante</label>
-              </div>
-              <select formControlName="tipo_comprobante_default" class="form-select">
-                <option value="FACTURA B">Factura B / NC B (Responsable Inscripto)</option>
-                <option value="FACTURA C">Factura C / NC C (Monotributista)</option>
-              </select>
-            </div>
+            <input
+              type="number"
+              formControlName="punto_venta"
+              min="1"
+              max="9999"
+              placeholder="4"
+              class="form-input"
+            />
+            <p class="form-help">Se usa como valor inicial al emitir comprobantes.</p>
           </div>
 
           <div class="form-field">

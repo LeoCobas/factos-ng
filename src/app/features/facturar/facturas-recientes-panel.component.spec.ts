@@ -41,5 +41,7 @@ describe('FacturasRecientesPanelComponent', () => {
     const text = (fixture.nativeElement as HTMLElement).textContent || '';
     expect(text).toContain('FC C 12');
     expect(text).toContain('20/04/2026');
+    expect(text).toContain('$');
+    expect(text).toContain('1.500');
   });
 });

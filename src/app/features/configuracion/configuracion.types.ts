@@ -17,7 +17,6 @@ export interface FacturacionFormModel {
   ingresos_brutos: FormControl<string>;
   inicio_actividades: FormControl<string>;
   punto_venta: FormControl<number | null>;
-  tipo_comprobante_default: FormControl<string>;
   concepto: FormControl<string>;
   iva_porcentaje: FormControl<string>;
   actividad: FormControl<Actividad>;

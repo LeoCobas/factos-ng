@@ -81,7 +81,6 @@ describe('FacturarNuevoComponent', () => {
               id: 'cont-1',
               actividad: 'servicios',
               condicion_iva: 'Monotributo',
-              tipo_comprobante_default: 'FACTURA C',
             }),
           },
         },
@@ -101,6 +100,19 @@ describe('FacturarNuevoComponent', () => {
 
     expect(service.cargarFacturasRecientes).toHaveBeenCalledWith('cont-1');
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Últimas facturas');
+  });
+
+  it('muestra el prefijo monetario y deja deshabilitado el CTA con monto vacio', () => {
+    const fixture = TestBed.createComponent(FacturarNuevoComponent);
+
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    const moneyPrefix = host.querySelector('.premium-money-field__prefix');
+    const submitButton = host.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+
+    expect(moneyPrefix?.textContent).toContain('$');
+    expect(submitButton?.disabled).toBe(true);
   });
 
   it('envia el submit valido y resetea el formulario en exito', async () => {
@@ -164,7 +176,6 @@ describe('FacturarNuevoComponent', () => {
         id: 'cont-1',
         actividad: 'servicios',
         condicion_iva: 'Monotributo',
-        tipo_comprobante_default: 'FACTURA C',
         monto_maximo_factura: 10000,
       });
 

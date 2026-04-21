@@ -53,21 +53,21 @@ interface FacturaRecienteView {
     FacturasRecientesPanelComponent,
   ],
   template: `
-    <div class="max-w-5xl mx-auto">
+    <div>
       <div
-        class="grid gap-4 lg:grid-cols-[minmax(0,28rem)_minmax(20rem,24rem)] lg:items-start lg:justify-center"
+        class="grid gap-3 lg:grid-cols-[minmax(0,29rem)_minmax(18rem,22rem)] lg:items-start lg:justify-center"
       >
-        <section class="card-surface px-3 pb-4 pt-3 sm:p-6">
+        <section class="card-surface card-surface--feature px-3 pb-4 pt-3 sm:px-5 sm:pb-5 sm:pt-4">
           <form
             [formGroup]="formFactura"
             (ngSubmit)="emitirFactura()"
-            class="space-y-3 sm:space-y-4"
+            class="space-y-3.5 sm:space-y-4"
           >
             <div class="flex items-start justify-end">
               <button
                 type="button"
                 (click)="toggleCliente()"
-                class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted sm:px-3 sm:py-2 sm:text-sm"
+                class="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/35 px-2.5 py-1.5 text-[0.72rem] font-semibold tracking-[0.08em] text-muted-foreground transition-all hover:border-primary/30 hover:bg-muted/55 hover:text-foreground sm:px-3 sm:text-xs"
               >
                 <span>{{ clienteExpandido() ? '- CUIT' : '+ CUIT' }}</span>
               </button>
@@ -93,36 +93,46 @@ interface FacturaRecienteView {
             }
 
             <div>
-              <label class="block text-sm font-medium text-foreground mb-2 sm:mb-3">Monto total</label>
-              <input
-                #montoInput
-                id="monto"
-                type="text"
-                inputmode="decimal"
-                pattern="[0-9]+([.,][0-9]{0,2})?"
-                autocomplete="off"
-                placeholder="0"
-                [value]="displayMonto()"
-                (beforeinput)="onMontoBeforeInput($event)"
-                (input)="onMontoInput($event)"
-                class="form-input w-full text-2xl sm:text-3xl text-center py-2 sm:py-4 px-3"
-                [class.border-red-500]="
+              <label class="mb-2 block text-sm font-semibold tracking-[-0.01em] text-foreground">
+                Monto total
+              </label>
+              <div
+                class="premium-money-field"
+                [class.premium-money-field--error]="
                   formFactura.controls.monto.invalid && formFactura.controls.monto.touched
                 "
-              />
+              >
+                <span class="premium-money-field__prefix" aria-hidden="true">$</span>
+                <input
+                  #montoInput
+                  id="monto"
+                  type="text"
+                  inputmode="decimal"
+                  pattern="[0-9]+([.,][0-9]{0,2})?"
+                  autocomplete="off"
+                  placeholder="0"
+                  [value]="displayMonto()"
+                  (beforeinput)="onMontoBeforeInput($event)"
+                  (input)="onMontoInput($event)"
+                  class="premium-money-field__input"
+                  [class.border-red-500]="
+                    formFactura.controls.monto.invalid && formFactura.controls.monto.touched
+                  "
+                />
+              </div>
               @if (formFactura.controls.monto.invalid && formFactura.controls.monto.touched) {
                 <p class="text-red-500 text-sm mt-1">El monto es requerido y debe ser mayor a 0</p>
               }
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-foreground mb-2 sm:mb-3">
+              <label class="mb-2 block text-sm font-semibold tracking-[-0.01em] text-foreground">
                 Fecha de facturación
               </label>
               <input
                 type="date"
                 formControlName="fecha"
-                class="form-input w-full py-2 px-3"
+                class="form-input w-full py-2.5 px-3.5"
                 [min]="minFecha()"
                 [max]="maxFecha()"
                 [class.border-red-500]="
@@ -137,7 +147,7 @@ interface FacturaRecienteView {
             <button
               type="submit"
               [disabled]="isSubmitting() || formFactura.invalid"
-              class="btn-primary w-full py-3 px-4 rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="btn-primary premium-submit-btn w-full rounded-xl px-4 py-3.5 text-sm font-semibold tracking-[0.01em] shadow-[0_12px_28px_rgba(29,78,216,0.18)] disabled:shadow-none"
             >
               @if (isSubmitting()) {
                 <span>Procesando...</span>
@@ -298,7 +308,6 @@ export class FacturarNuevoComponent implements OnDestroy {
     return resolveTipoComprobanteDetallado(
       contribuyente?.condicion_iva,
       this.clienteSeleccionado()?.condicion_iva_normalizada,
-      contribuyente?.tipo_comprobante_default || 'FACTURA C',
       this.clienteSeleccionado()?.fiscal_profile,
     );
   });
@@ -826,6 +835,10 @@ export class FacturarNuevoComponent implements OnDestroy {
     const formattedIntegerPart = Number(integerPart || '0').toLocaleString('es-AR');
 
     if (!hasDecimalSeparator) {
+      return formattedIntegerPart;
+    }
+
+    if (!decimalPart || /^0*$/.test(decimalPart)) {
       return formattedIntegerPart;
     }
 
