@@ -13,7 +13,6 @@ interface PdfMakeInstance {
   };
   addFontContainer?: (container: PdfMakeFontContainer) => void;
   addFonts?: (fonts: Record<string, unknown>) => void;
-  vfs?: unknown;
 }
 
 interface PdfMakeFontContainer {
@@ -50,8 +49,8 @@ export class FacturaPdfService {
 
   /**
    * Carga pdfmake solo al generar un comprobante.
-   * Primero intenta Helvetica estandar para evitar embutir TTF en el chunk;
-   * si no esta disponible, vuelve al contenedor Roboto provisto por pdfmake.
+   * Usa solo Helvetica estandar para evitar embutir fuentes TTF en el chunk.
+   * Si la fuente no puede registrarse, el flujo falla de forma explicita.
    */
   private loadPdfMake(): Promise<PdfMakeRuntime> {
     if (!this.pdfMakePromise) {
@@ -65,32 +64,14 @@ export class FacturaPdfService {
     const pdfMakeModule = await import('pdfmake/build/pdfmake');
     const pdfMake = this.unwrapPdfMake(pdfMakeModule);
 
-    if (await this.tryConfigureStandardHelvetica(pdfMake)) {
-      return {
-        instance: pdfMake,
-        defaultFont: 'Helvetica',
-      };
-    }
-
-    const robotoModule = await import('pdfmake/build/vfs_fonts');
-    const robotoContainer = this.unwrapFontContainer(robotoModule, 'Roboto');
-
-    if (pdfMake.addFontContainer && robotoContainer) {
-      pdfMake.addFontContainer(robotoContainer);
-      return {
-        instance: pdfMake,
-        defaultFont: 'Roboto',
-      };
-    }
-
-    const robotoVfs = (robotoContainer ?? robotoModule) as { vfs?: unknown };
-    if (robotoVfs.vfs) {
-      pdfMake.vfs = robotoVfs.vfs;
+    const helveticaConfigured = await this.tryConfigureStandardHelvetica(pdfMake);
+    if (!helveticaConfigured) {
+      throw new Error('No se pudo registrar Helvetica estandar en pdfmake');
     }
 
     return {
       instance: pdfMake,
-      defaultFont: 'Roboto',
+      defaultFont: 'Helvetica',
     };
   }
 

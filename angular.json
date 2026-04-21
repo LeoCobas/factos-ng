@@ -28,7 +28,6 @@
             ],
             "allowedCommonJsDependencies": [
               "pdfmake/build/pdfmake",
-              "pdfmake/build/vfs_fonts",
               "pdfmake/build/standard-fonts/Helvetica"
             ],
             "styles": [
