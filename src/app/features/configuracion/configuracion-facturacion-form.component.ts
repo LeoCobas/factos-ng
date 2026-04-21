@@ -12,9 +12,6 @@ import type { FacturacionFormModel } from './configuracion.types';
       <div class="card-surface">
         <div class="card-header">
           <h3 class="card-title">Datos del Emisor</h3>
-          <p class="form-section-description">
-            Estos datos aparecen en tus comprobantes. Los campos con badge son obligatorios.
-          </p>
         </div>
         <div class="p-4 sm:p-6 space-y-5">
           <div class="form-field">
@@ -40,10 +37,6 @@ import type { FacturacionFormModel } from './configuracion.types';
                 {{ buscandoCuit() ? 'Buscando...' : 'Buscar CUIT' }}
               </button>
             </div>
-            <p class="form-help">
-              Us&aacute; la constancia de inscripci&oacute;n ARCA para autocompletar raz&oacute;n
-              social, domicilio fiscal y condici&oacute;n frente al IVA.
-            </p>
             @if (form().controls.cuit.invalid && form().controls.cuit.touched) {
               <p class="form-error">El CUIT debe tener 11 d&iacute;gitos.</p>
             }
@@ -85,9 +78,6 @@ import type { FacturacionFormModel } from './configuracion.types';
               placeholder="Mi Negocio"
               class="form-input"
             />
-            <p class="form-help">
-              Si se completa, aparece destacado en el ticket con mayor tama&ntilde;o visual.
-            </p>
           </div>
 
           <div class="form-field">
@@ -100,10 +90,6 @@ import type { FacturacionFormModel } from './configuracion.types';
               placeholder="Av. Siempre Viva 742, Springfield"
               class="form-input"
             />
-            <p class="form-help">
-              Obligatorio en el comprobante. Pod&eacute;s modificarlo si ten&eacute;s varios puntos
-              de venta.
-            </p>
           </div>
 
           <div class="grid gap-5 lg:grid-cols-2">
@@ -128,7 +114,6 @@ import type { FacturacionFormModel } from './configuracion.types';
                 placeholder="20332398181"
                 class="form-input"
               />
-              <p class="form-help">Generalmente coincide con el CUIT en Convenio Multilateral.</p>
             </div>
           </div>
 
@@ -144,10 +129,6 @@ import type { FacturacionFormModel } from './configuracion.types';
       <div class="card-surface">
         <div class="card-header">
           <h3 class="card-title">Preferencias de Facturaci&oacute;n</h3>
-          <p class="form-section-description">
-            Defin&iacute; c&oacute;mo se completa cada comprobante por defecto. El tipo de factura se
-            resuelve autom&aacute;ticamente seg&uacute;n tu condici&oacute;n frente al IVA y la del cliente.
-          </p>
         </div>
         <div class="p-4 sm:p-6 space-y-5">
           <div class="form-field">
@@ -163,7 +144,6 @@ import type { FacturacionFormModel } from './configuracion.types';
               placeholder="4"
               class="form-input"
             />
-            <p class="form-help">Se usa como valor inicial al emitir comprobantes.</p>
           </div>
 
           <div class="form-field">
@@ -177,7 +157,6 @@ import type { FacturacionFormModel } from './configuracion.types';
               placeholder="Honorarios Profesionales"
               class="form-input"
             />
-            <p class="form-help">Se propone autom&aacute;ticamente al iniciar una nueva factura.</p>
           </div>
 
           <div class="grid gap-5 lg:grid-cols-2">
@@ -199,9 +178,6 @@ import type { FacturacionFormModel } from './configuracion.types';
                 <option value="bienes">Bienes (-5 d&iacute;as)</option>
                 <option value="servicios">Servicios (-10 d&iacute;as)</option>
               </select>
-              <p class="form-help">
-                Define cu&aacute;ntos d&iacute;as hacia atr&aacute;s se pueden emitir facturas.
-              </p>
             </div>
           </div>
 
@@ -222,10 +198,6 @@ import type { FacturacionFormModel } from './configuracion.types';
                 form().controls.monto_maximo_factura.touched
               "
             />
-            <p class="form-help">
-              Si carg&aacute;s un monto mayor a 0, al intentar emitir una factura por encima de ese
-              valor se pedir&aacute; una confirmaci&oacute;n adicional antes de continuar.
-            </p>
             @if (
               form().controls.monto_maximo_factura.invalid &&
               form().controls.monto_maximo_factura.touched

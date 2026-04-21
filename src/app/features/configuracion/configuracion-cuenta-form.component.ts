@@ -13,9 +13,6 @@ import type { AccountFormModel } from './configuracion.types';
       <div class="card-surface">
         <div class="card-header">
           <h3 class="card-title">Apariencia</h3>
-          <p class="form-section-description">
-            Eleg&iacute; c&oacute;mo quer&eacute;s ver la aplicaci&oacute;n en este dispositivo.
-          </p>
         </div>
         <div class="p-4 sm:p-6">
           <div class="flex flex-col gap-2 rounded-xl bg-muted/60 p-2 sm:flex-row">
@@ -63,9 +60,6 @@ import type { AccountFormModel } from './configuracion.types';
         <div class="card-surface">
           <div class="card-header">
             <h3 class="card-title">Cambiar Email</h3>
-            <p class="form-section-description">
-              Actualiz&aacute; el correo principal asociado a tu cuenta.
-            </p>
           </div>
           <div class="p-4 sm:p-6 space-y-5">
             <div class="form-field">
@@ -78,7 +72,6 @@ import type { AccountFormModel } from './configuracion.types';
                 readonly
                 class="form-input bg-muted/50 cursor-not-allowed"
               />
-              <p class="form-help">Este valor es s&oacute;lo lectura hasta confirmar el cambio.</p>
             </div>
             <div class="form-field">
               <div class="form-label-row">
@@ -90,9 +83,6 @@ import type { AccountFormModel } from './configuracion.types';
                 placeholder="nuevo@email.com"
                 class="form-input"
               />
-              <p class="form-help">
-                Se enviar&aacute; un correo de confirmaci&oacute;n a ambas direcciones.
-              </p>
             </div>
             <button
               type="button"
@@ -108,9 +98,6 @@ import type { AccountFormModel } from './configuracion.types';
         <div class="card-surface">
           <div class="card-header">
             <h3 class="card-title">Cambiar Contrase&ntilde;a</h3>
-            <p class="form-section-description">
-              Eleg&iacute; una contrase&ntilde;a nueva para el acceso a tu cuenta.
-            </p>
           </div>
           <div class="p-4 sm:p-6 space-y-5">
             <div class="form-field">
@@ -123,7 +110,6 @@ import type { AccountFormModel } from './configuracion.types';
                 placeholder="M&iacute;nimo 6 caracteres"
                 class="form-input"
               />
-              <p class="form-help">Us&aacute; al menos 6 caracteres para continuar.</p>
             </div>
             <div class="form-field">
               <div class="form-label-row">

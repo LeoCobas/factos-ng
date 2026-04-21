@@ -518,6 +518,56 @@ input[type="number"][formcontrolname="monto"] {
 /* Safari: también respeta -webkit-appearance: none; */
 
 /* Configuracion form refresh */
+.config-tabs-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.config-tabs-title {
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--muted-foreground));
+}
+
+.config-tabs-scroll {
+  overflow-x: auto;
+  padding-bottom: 0.1rem;
+}
+
+.config-tabs-scroll::-webkit-scrollbar {
+  height: 0.45rem;
+}
+
+.config-tabs-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(var(--border));
+}
+
+.config-tabs-list {
+  display: flex;
+  gap: 0.45rem;
+  width: max-content;
+  min-width: 100%;
+  padding: 0.45rem;
+  background: rgb(var(--card));
+  border: 1px solid rgb(var(--border));
+  border-radius: 0.9rem;
+  box-shadow: 0 6px 20px rgb(15 23 42 / 0.05);
+}
+
+@media (min-width: 640px) {
+  .config-tabs-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.5rem;
+  }
+}
+
 .config-tabs {
   background: rgb(var(--card));
   border: 1px solid rgb(var(--border));
@@ -527,29 +577,23 @@ input[type="number"][formcontrolname="monto"] {
 
 .config-tab {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.15rem;
-  width: 100%;
-  min-height: 4.25rem;
-  padding: 0.95rem 1rem;
+  align-items: center;
+  justify-content: center;
+  flex: 1 0 auto;
+  min-width: 10rem;
+  min-height: 3.2rem;
+  padding: 0.8rem 1rem;
   border-radius: 0.75rem;
   border: 1px solid transparent;
-  text-align: left;
+  text-align: center;
   transition: all 0.2s ease;
 }
 
-.config-tab-eyebrow {
-  font-size: 0.69rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .config-tab-label {
-  font-size: 0.98rem;
+  font-size: 0.92rem;
   font-weight: 700;
-  line-height: 1.25rem;
+  line-height: 1.15rem;
+  white-space: nowrap;
 }
 
 .config-tab-active {
@@ -557,10 +601,6 @@ input[type="number"][formcontrolname="monto"] {
   color: rgb(var(--foreground));
   border-color: rgb(var(--primary) / 0.35);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 6px 16px rgb(var(--primary) / 0.08);
-}
-
-.config-tab-active .config-tab-eyebrow {
-  color: rgb(var(--primary));
 }
 
 .config-tab-inactive {
@@ -722,7 +762,7 @@ input[type="date"].form-input:focus {
   color: rgb(var(--muted-foreground));
 }
 
-.dark-theme .config-tabs {
+.dark-theme .config-tabs-list {
   box-shadow: 0 10px 30px rgb(0 0 0 / 0.28);
 }
 

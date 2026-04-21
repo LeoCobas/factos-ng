@@ -23,15 +23,16 @@ import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.u
   selector: 'app-configuracion',
   template: `
     <div class="space-y-5">
-      <div class="config-tabs">
-        <div class="grid grid-cols-1 gap-2 p-2 sm:grid-cols-3">
+      <div class="config-tabs-wrapper">
+        <p class="config-tabs-title">Secciones</p>
+        <div class="config-tabs-scroll">
+          <div class="config-tabs-list">
           <button
             type="button"
             (click)="tabActiva.set('facturacion')"
             class="config-tab"
             [class.config-tab-active]="tabActiva() === 'facturacion'"
             [class.config-tab-inactive]="tabActiva() !== 'facturacion'">
-            <span class="config-tab-eyebrow">Configuraci&oacute;n</span>
             <span class="config-tab-label">Facturaci&oacute;n</span>
           </button>
           <button
@@ -40,7 +41,6 @@ import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.u
             class="config-tab"
             [class.config-tab-active]="tabActiva() === 'certificado'"
             [class.config-tab-inactive]="tabActiva() !== 'certificado'">
-            <span class="config-tab-eyebrow">Seguridad</span>
             <span class="config-tab-label">Certificado ARCA</span>
           </button>
           <button
@@ -49,9 +49,9 @@ import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.u
             class="config-tab"
             [class.config-tab-active]="tabActiva() === 'cuenta'"
             [class.config-tab-inactive]="tabActiva() !== 'cuenta'">
-            <span class="config-tab-eyebrow">Perfil</span>
             <span class="config-tab-label">Cuenta</span>
           </button>
+          </div>
         </div>
       </div>
 
