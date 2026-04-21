@@ -17,6 +17,7 @@ import {
 import { ConfiguracionFacturacionFormComponent } from './configuracion-facturacion-form.component';
 import { ConfiguracionCertificadoFormComponent } from './configuracion-certificado-form.component';
 import { ConfiguracionCuentaFormComponent } from './configuracion-cuenta-form.component';
+import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.util';
 
 @Component({
   selector: 'app-configuracion',
@@ -309,7 +310,10 @@ export class ConfiguracionComponent implements OnInit {
       }
     } catch (error: any) {
       this.mensajePadron.set({
-        texto: error.message || 'Error al consultar la constancia de inscripci\u00f3n',
+        texto: getFriendlyNetworkErrorMessage(
+          error,
+          error?.message || 'Error al consultar la constancia de inscripci\u00f3n',
+        ),
         tipo: 'error',
       });
     } finally {

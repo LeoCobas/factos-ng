@@ -6,7 +6,7 @@ import { ThemeService } from '../core/services/theme.service';
 @Component({
   selector: 'app-main-layout',
   template: `
-    <div class="min-h-screen bg-background">
+    <div class="min-h-screen bg-background flex flex-col">
       <!-- Header with logo, contribuyente badge and config -->
       <div class="bg-card border-b border-border shadow-sm p-3 sm:p-4">
         <div class="flex items-center justify-between mb-3 sm:mb-4">
@@ -105,7 +105,7 @@ import { ThemeService } from '../core/services/theme.service';
       </div>
 
       <!-- Main Content -->
-      <main class="p-3 sm:p-4 bg-background min-h-screen">
+      <main class="flex-1 p-3 sm:p-4 bg-background">
         <router-outlet></router-outlet>
       </main>
     </div>

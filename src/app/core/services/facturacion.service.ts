@@ -13,6 +13,7 @@ import {
   resolveTipoComprobanteDetallado,
   sanitizeCuit,
 } from '../utils/factura-cliente.util';
+import { getFriendlyNetworkErrorMessage } from '../utils/network-error.util';
 
 export interface FacturaRequestData {
   monto: number;
@@ -474,38 +475,47 @@ export class FacturacionService {
       throw new Error('El CUIT debe tener 11 digitos.');
     }
 
-    const accessToken = await this.getFreshAccessToken();
+    try {
+      const accessToken = await this.getFreshAccessToken();
 
-    const response = await fetch(`${this.supabaseUrl}/functions/v1/padron-lookup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: getRuntimeConfig().supabase.anonKey,
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ cuit: cuitSanitizado }),
-    });
+      const response = await fetch(`${this.supabaseUrl}/functions/v1/padron-lookup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: getRuntimeConfig().supabase.anonKey,
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ cuit: cuitSanitizado }),
+      });
 
-    const result = await response.json();
+      const result = await response.json();
 
-    if (!response.ok || !result?.success) {
-      throw new Error(result?.error || 'No se pudo obtener datos del CUIT');
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'No se pudo obtener datos del CUIT');
+      }
+
+      return {
+        cuit: cuitSanitizado,
+        nombre: result.data?.razon_social || null,
+        domicilio: result.data?.domicilio || null,
+        condicion_iva: result.data?.condicion_iva || 'Consumidor Final',
+        doc_tipo: 80,
+        doc_nro: Number(cuitSanitizado),
+        condicion_iva_normalizada: normalizeCondicionIva(result.data?.condicion_iva),
+        fiscal_profile: result.data?.fiscal_profile || 'sin-datos',
+        fiscal_status_message:
+          result.data?.fiscal_status_message || 'No se pudo clasificar la constancia del cliente.',
+        fiscal_status_reliable: result.data?.fiscal_status_reliable === true,
+        fiscal_status_source: 'constancia_inscripcion',
+      };
+    } catch (error) {
+      throw new Error(
+        getFriendlyNetworkErrorMessage(
+          error,
+          error instanceof Error ? error.message : 'No se pudo obtener datos del CUIT',
+        ),
+      );
     }
-
-    return {
-      cuit: cuitSanitizado,
-      nombre: result.data?.razon_social || null,
-      domicilio: result.data?.domicilio || null,
-      condicion_iva: result.data?.condicion_iva || 'Consumidor Final',
-      doc_tipo: 80,
-      doc_nro: Number(cuitSanitizado),
-      condicion_iva_normalizada: normalizeCondicionIva(result.data?.condicion_iva),
-      fiscal_profile: result.data?.fiscal_profile || 'sin-datos',
-      fiscal_status_message:
-        result.data?.fiscal_status_message || 'No se pudo clasificar la constancia del cliente.',
-      fiscal_status_reliable: result.data?.fiscal_status_reliable === true,
-      fiscal_status_source: 'constancia_inscripcion',
-    };
   }
 
   async cargarFacturasRecientes(contribuyenteId: string, limit = 3): Promise<FacturaReciente[]> {
