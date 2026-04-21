@@ -15,6 +15,7 @@ export class ContribuyenteService {
   // Estado de carga
   readonly cargando = signal(false);
   readonly inicializado = signal(false);
+  readonly errorCarga = signal<string | null>(null);
 
   // Computed útiles
   readonly tieneContribuyente = computed(() => !!this.contribuyente());
@@ -23,6 +24,7 @@ export class ContribuyenteService {
 
   async cargarContribuyente(): Promise<void> {
     this.cargando.set(true);
+    this.errorCarga.set(null);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -39,6 +41,13 @@ export class ContribuyenteService {
 
       if (error) {
         console.error('Error cargando contribuyente:', error);
+        this.errorCarga.set(
+          getFriendlyNetworkErrorMessage(
+            error,
+            'No se pudieron cargar los datos del contribuyente.',
+            'No se pudieron cargar los datos del contribuyente porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+          ),
+        );
         return;
       }
 
@@ -46,6 +55,13 @@ export class ContribuyenteService {
 
     } catch (error) {
       console.error('Error inesperado cargando contribuyente:', error);
+      this.errorCarga.set(
+        getFriendlyNetworkErrorMessage(
+          error,
+          'No se pudieron cargar los datos del contribuyente.',
+          'No se pudieron cargar los datos del contribuyente porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+        ),
+      );
     } finally {
       this.cargando.set(false);
       this.inicializado.set(true);

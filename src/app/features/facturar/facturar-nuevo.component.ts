@@ -619,7 +619,10 @@ export class FacturarNuevoComponent implements OnDestroy {
     } catch (error) {
       console.error('Error al generar PDF para visualización:', error);
       this.cerrarVisorPdf();
-      alert('Hubo un error al generar el ticket.');
+      this.esExito.set(false);
+      this.mensaje.set(
+        error instanceof Error ? error.message : 'Hubo un error al generar el ticket.',
+      );
     }
   }
 

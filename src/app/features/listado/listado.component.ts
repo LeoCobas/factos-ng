@@ -17,7 +17,10 @@ import { FacturacionService } from '../../core/services/facturacion.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import { Comprobante } from '../../core/types/database.types';
 import { PdfComprobanteData } from '../../core/types/pdf.types';
-import { isLikelyNetworkErrorMessage } from '../../core/utils/network-error.util';
+import {
+  getFriendlyNetworkErrorMessage,
+  isLikelyNetworkErrorMessage,
+} from '../../core/utils/network-error.util';
 
 import { PdfViewerComponent, PdfViewerConfig } from '../../shared/components/ui/pdf-viewer.component';
 
@@ -98,6 +101,22 @@ interface PdfFacturaLike {
         <h3 class="form-label mb-4">
           {{ nombreFechaSeleccionada() }}
         </h3>
+
+        @if (mensajeCarga()) {
+          <div class="mb-4 rounded-lg border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {{ mensajeCarga() }}
+          </div>
+        }
+
+        @if (mensajeAccion()) {
+          <div
+            class="mb-4 rounded-lg px-4 py-3 text-sm"
+            [class]="mensajeAccionTipo() === 'success'
+              ? 'border border-emerald-500/25 bg-emerald-500/10 text-emerald-700'
+              : 'border border-destructive/25 bg-destructive/10 text-destructive'">
+            {{ mensajeAccion() }}
+          </div>
+        }
 
         @if (cargando()) {
           <div class="text-center py-8">
@@ -409,10 +428,14 @@ export class ListadoComponent {
   facturaExpandida = signal<string | null>(null); // ID de factura expandida
   notaCreditoEmitida = signal<NotaCreditoEmitida | null>(null); // Nota de crédito recién emitida
   ultimaFechaConFacturas = signal<string | null>(null);
+  mensajeCarga = signal<string | null>(null);
+  mensajeAccion = signal<string | null>(null);
+  mensajeAccionTipo = signal<'success' | 'error'>('success');
 
   // Cache de facturas por fecha para evitar consultas repetidas
   private cacheFacturasPorFecha = new Map<string, Factura[]>();
   private cacheUltimaFechaConFacturas = new Map<string, string | null>();
+  private mensajeAccionTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Signals para el visor PDF
   pdfViewing = signal<Factura | PdfFacturaLike | null>(null);
@@ -483,7 +506,14 @@ export class ListadoComponent {
     } catch (error) {
       console.error('❌ Error al cargar PDF en modal:', error);
       this.cerrarVisorPdf();
-      alert('Hubo un error al generar el ticket.');
+      this.setMensajeAccion(
+        getFriendlyNetworkErrorMessage(
+          error,
+          'Hubo un error al generar el ticket.',
+          'No se pudo generar el ticket porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+        ),
+        'error',
+      );
     }
   }
 
@@ -498,6 +528,14 @@ export class ListadoComponent {
       await this.pdfService.sharePdf(pdfInfo);
     } catch (error) {
       console.error('Error al compartir:', error);
+      this.setMensajeAccion(
+        getFriendlyNetworkErrorMessage(
+          error,
+          'No se pudo compartir el ticket.',
+          'No se pudo compartir el ticket porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+        ),
+        'error',
+      );
     }
   }
 
@@ -512,6 +550,14 @@ export class ListadoComponent {
       await this.pdfService.downloadPdf(pdfInfo);
     } catch (error) {
       console.error('Error al descargar:', error);
+      this.setMensajeAccion(
+        getFriendlyNetworkErrorMessage(
+          error,
+          'No se pudo descargar el ticket.',
+          'No se pudo descargar el ticket porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+        ),
+        'error',
+      );
     }
   }
 
@@ -525,7 +571,14 @@ export class ListadoComponent {
       await this.pdfService.printFactura(this.toPdfComprobanteData(factura));
     } catch (error) {
       console.error('Error al imprimir:', error);
-      alert('Hubo un error enviando a imprimir');
+      this.setMensajeAccion(
+        getFriendlyNetworkErrorMessage(
+          error,
+          'Hubo un error enviando a imprimir.',
+          'No se pudo enviar a imprimir porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+        ),
+        'error',
+      );
     }
   }
 
@@ -607,7 +660,14 @@ export class ListadoComponent {
       await this.pdfService.printFactura(this.buildNotaCreditoPdfPayload(notaCredito));
     } catch (error) {
       console.error('Error al imprimir nota de credito:', error);
-      alert('Hubo un error al intentar imprimir la nota de credito');
+      this.setMensajeAccion(
+        getFriendlyNetworkErrorMessage(
+          error,
+          'Hubo un error al intentar imprimir la nota de credito.',
+          'No se pudo imprimir la nota de credito porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+        ),
+        'error',
+      );
     }
   }
 
@@ -685,11 +745,13 @@ export class ListadoComponent {
     if (this.cacheFacturasPorFecha.has(cacheKey)) {
       const facturasCacheadas = this.cacheFacturasPorFecha.get(cacheKey)!;
       this.facturas.set(facturasCacheadas);
+      this.mensajeCarga.set(null);
       await this.actualizarUltimaFechaConFacturas(fecha, facturasCacheadas);
       return;
     }
 
     this.cargando.set(true);
+    this.mensajeCarga.set(null);
     
     try {
       // Query unificada a tabla comprobantes
@@ -704,6 +766,14 @@ export class ListadoComponent {
 
     } catch (error) {
       console.error('Error inesperado al cargar comprobantes:', error);
+      this.facturas.set([]);
+      this.mensajeCarga.set(
+        getFriendlyNetworkErrorMessage(
+          error,
+          'No se pudieron cargar los comprobantes para esa fecha.',
+          'No se pudieron cargar los comprobantes porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+        ),
+      );
     } finally {
       this.cargando.set(false);
     }
@@ -823,6 +893,19 @@ export class ListadoComponent {
       console.error('Error inesperado al buscar última fecha con facturas:', error);
       this.ultimaFechaConFacturas.set(null);
     }
+  }
+
+  private setMensajeAccion(message: string, tipo: 'success' | 'error'): void {
+    if (this.mensajeAccionTimer !== null) {
+      clearTimeout(this.mensajeAccionTimer);
+    }
+
+    this.mensajeAccion.set(message);
+    this.mensajeAccionTipo.set(tipo);
+    this.mensajeAccionTimer = setTimeout(() => {
+      this.mensajeAccion.set(null);
+      this.mensajeAccionTimer = null;
+    }, 5000);
   }
 
   obtenerMontoMostrar(factura: Factura): number {

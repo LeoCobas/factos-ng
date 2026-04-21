@@ -6,6 +6,7 @@ import { es } from 'date-fns/locale';
 import { ComprobantesService } from '../../core/services/comprobantes.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import { ComprobanteMetricRow } from '../../core/types/comprobantes.types';
+import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.util';
 
 interface PeriodoTotal {
   nombre: string;
@@ -25,6 +26,12 @@ interface PeriodoTotal {
           <p class="text-muted-foreground mt-4">Cargando datos...</p>
         </div>
       } @else {
+        @if (errorCarga()) {
+          <div class="rounded-lg border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {{ errorCarga() }}
+          </div>
+        }
+
         <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
           @for (periodo of periodos(); track periodo.nombre) {
             <div class="card-surface totales-period-card p-4" [class]="'border-l-4 border-l-' + periodo.color + '-500'">
@@ -220,6 +227,7 @@ interface PeriodoTotal {
 export class TotalesComponent {
   readonly facturas = signal<ComprobanteMetricRow[]>([]);
   readonly cargando = signal(false);
+  readonly errorCarga = signal<string | null>(null);
 
   private readonly comprobantesService = inject(ComprobantesService);
   private readonly contribuyenteService = inject(ContribuyenteService);
@@ -243,6 +251,7 @@ export class TotalesComponent {
     }
 
     this.cargando.set(true);
+    this.errorCarga.set(null);
 
     try {
       this.facturas.set(
@@ -251,6 +260,13 @@ export class TotalesComponent {
     } catch (error) {
       console.error('Error inesperado al cargar datos:', error);
       this.facturas.set([]);
+      this.errorCarga.set(
+        getFriendlyNetworkErrorMessage(
+          error,
+          'No se pudieron cargar los totales en este momento.',
+          'No se pudieron cargar los totales porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+        ),
+      );
     } finally {
       this.cargando.set(false);
     }
