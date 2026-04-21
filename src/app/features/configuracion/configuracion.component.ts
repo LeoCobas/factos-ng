@@ -339,7 +339,8 @@ export class ConfiguracionComponent implements OnInit {
         const result = await this.contribuyenteService.actualizarContribuyente(payload);
         this.mostrarMensaje(result.success ? '\u2714 Datos de facturaci\u00f3n guardados.' : (result.error || 'Error al guardar.'), result.success ? 'success' : 'error');
       } else {
-        const result = await this.contribuyenteService.crearContribuyente(payload);
+        const createPayload = this.buildCreateContribuyentePayload();
+        const result = await this.contribuyenteService.crearContribuyente(createPayload);
         this.mostrarMensaje(result.success ? '\u2714 Contribuyente creado correctamente.' : (result.error || 'Error al crear.'), result.success ? 'success' : 'error');
       }
     } catch {
@@ -528,8 +529,23 @@ export class ConfiguracionComponent implements OnInit {
   }
 
   private buildCreateContribuyentePayload(): CreateContribuyentePayload {
+    const raw = this.facturacionForm.getRawValue();
+
     return {
-      ...this.buildFacturacionPayload(),
+      cuit: raw.cuit,
+      razon_social: raw.razon_social,
+      nombre_fantasia: raw.nombre_fantasia || null,
+      domicilio: raw.domicilio || null,
+      condicion_iva: raw.condicion_iva || 'Responsable Monotributo',
+      ingresos_brutos: raw.ingresos_brutos || null,
+      inicio_actividades: raw.inicio_actividades || null,
+      punto_venta: raw.punto_venta ?? null,
+      concepto: raw.concepto,
+      iva_porcentaje: Number.parseFloat(raw.iva_porcentaje),
+      actividad: raw.actividad,
+      monto_maximo_factura: raw.monto_maximo_factura && raw.monto_maximo_factura > 0
+        ? raw.monto_maximo_factura
+        : 0,
       arca_cert: null,
       arca_key: null,
       arca_production: false,
