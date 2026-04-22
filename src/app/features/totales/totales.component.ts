@@ -9,8 +9,8 @@ import { ComprobanteMetricRow } from '../../core/types/comprobantes.types';
 import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.util';
 
 interface PeriodoTotal {
-  nombre: string;
-  fechaTexto: string;
+  titulo: string;
+  diaNumero?: string;
   total: number;
   cantidad: number;
   color: 'blue' | 'green' | 'purple' | 'orange';
@@ -32,13 +32,19 @@ interface PeriodoTotal {
           </div>
         }
 
-        <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-          @for (periodo of periodos(); track periodo.nombre) {
+        <div class="totales-period-grid">
+          @for (periodo of periodos(); track periodo.titulo + (periodo.diaNumero ?? '')) {
             <div class="card-surface totales-period-card p-4" [class]="'border-l-4 border-l-' + periodo.color + '-500'">
               <div class="totales-period-card__layout">
                 <div class="totales-period-card__copy">
-                  <p class="period-title">{{ periodo.nombre }}</p>
-                  <p class="period-sub">{{ periodo.fechaTexto }}</p>
+                  @if (periodo.diaNumero) {
+                    <p class="period-title period-title--inline">
+                      <span>{{ periodo.titulo }}</span>
+                      <span class="period-day">{{ periodo.diaNumero }}</span>
+                    </p>
+                  } @else {
+                    <p class="period-title">{{ periodo.titulo }}</p>
+                  }
                 </div>
                 <div class="totales-period-card__metric text-right">
                   <p class="period-amount">
@@ -56,7 +62,7 @@ interface PeriodoTotal {
         <div class="bg-muted rounded-lg border border-border p-4">
           <div class="text-center">
             <h3 class="period-title totales-section-title mb-2">Resumen del Año {{ getAnoActual() }}</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
               <div class="text-center">
                 <p class="period-amount totales-hero-amount">
                   {{ totalAnual() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
@@ -73,36 +79,12 @@ interface PeriodoTotal {
                 </p>
                 <p class="period-sub">Promedio mensual</p>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid gap-3 md:grid-cols-2">
-          <div class="card-surface totales-detail-card p-4">
-            <h3 class="period-title totales-section-title mb-4">Día Más Productivo</h3>
-            @if (mejorDia()) {
               <div class="text-center">
-                <p class="period-amount totales-detail-amount">
-                  {{ mejorDia()?.total | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
-                </p>
-                <p class="period-sub">{{ mejorDia()?.fecha }}</p>
-                <p class="period-sub text-info">{{ mejorDia()?.cantidad }} comprobante(s)</p>
-              </div>
-            } @else {
-              <p class="period-sub text-center">No hay datos suficientes</p>
-            }
-          </div>
-
-          <div class="card-surface totales-detail-card p-4">
-            <h3 class="period-title totales-section-title mb-4">Ticket Promedio</h3>
-            <div class="text-center">
-              <p class="period-amount totales-detail-amount">
+                <p class="period-amount totales-hero-amount">
                 {{ ticketPromedio() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
-              </p>
-              <p class="period-sub">Por comprobante</p>
-              <p class="period-sub text-info">
-                Basado en {{ comprobantesAnuales() }} comprobante(s)
-              </p>
+                </p>
+                <p class="period-sub">Ticket Promedio ({{ comprobantesAnuales() }} comprobantes)</p>
+              </div>
             </div>
           </div>
         </div>
@@ -111,6 +93,18 @@ interface PeriodoTotal {
   `,
   imports: [CurrencyPipe],
   styles: [`
+    .totales-period-grid {
+      display: grid;
+      gap: 0.75rem;
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    @media (min-width: 360px) {
+      .totales-period-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
     .totales-view .period-sub {
       line-height: 1.35;
     }
@@ -145,12 +139,25 @@ interface PeriodoTotal {
       letter-spacing: -0.015em;
     }
 
+    .totales-period-card .period-title--inline {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+    }
+
+    .totales-period-card .period-day {
+      color: inherit;
+      font-weight: 700;
+    }
+
     .totales-period-card .period-amount {
       font-size: clamp(1.55rem, 1.3rem + 1vw, 2.15rem);
       font-weight: 700;
       line-height: 0.96;
       letter-spacing: -0.03em;
-      white-space: nowrap;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
 
     .totales-period-card .period-sub {
@@ -160,6 +167,7 @@ interface PeriodoTotal {
     .totales-period-card__metric .period-sub {
       margin-top: 0.45rem;
       font-size: 0.9rem;
+      text-wrap: balance;
     }
 
     .totales-section-title {
@@ -175,16 +183,6 @@ interface PeriodoTotal {
       line-height: 1;
     }
 
-    .totales-detail-card {
-      min-height: 13.25rem;
-    }
-
-    .totales-detail-amount {
-      font-size: clamp(2rem, 1.75rem + 0.85vw, 2.55rem);
-      font-weight: 750;
-      line-height: 1;
-    }
-
     @media (min-width: 1024px) {
       .totales-period-card__layout {
         grid-template-columns: minmax(0, 1fr);
@@ -195,10 +193,6 @@ interface PeriodoTotal {
         margin-top: auto;
         padding-top: 0.35rem;
         text-align: left;
-      }
-
-      .totales-period-card .period-amount {
-        white-space: normal;
       }
     }
 
@@ -217,9 +211,8 @@ interface PeriodoTotal {
       }
 
       .totales-period-card .period-amount,
-      .totales-hero-amount,
-      .totales-detail-amount {
-        white-space: normal;
+      .totales-hero-amount {
+        overflow-wrap: anywhere;
       }
     }
   `],
@@ -277,6 +270,9 @@ export class TotalesComponent {
   calcularMontoReal = (comprobante: ComprobanteMetricRow) =>
     comprobante.esNotaCredito ? -comprobante.total : comprobante.total;
 
+  capitalizarPrimeraLetra = (texto: string) =>
+    texto ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto;
+
   periodos = computed((): PeriodoTotal[] => {
     const hoy = new Date();
     const ayer = subDays(hoy, 1);
@@ -303,22 +299,21 @@ export class TotalesComponent {
 
     return [
       {
-        nombre: 'Hoy',
-        fechaTexto: format(hoy, "d 'de' MMMM", { locale: es }),
+        titulo: 'Hoy',
+        diaNumero: format(hoy, 'd', { locale: es }),
         total: comprobantesHoy.reduce((sum, factura) => sum + this.calcularMontoReal(factura), 0),
         cantidad: comprobantesHoy.length,
         color: 'blue',
       },
       {
-        nombre: 'Ayer',
-        fechaTexto: format(ayer, "d 'de' MMMM", { locale: es }),
+        titulo: 'Ayer',
+        diaNumero: format(ayer, 'd', { locale: es }),
         total: comprobantesAyer.reduce((sum, factura) => sum + this.calcularMontoReal(factura), 0),
         cantidad: comprobantesAyer.length,
         color: 'green',
       },
       {
-        nombre: 'Mes Actual',
-        fechaTexto: format(hoy, 'MMMM yyyy', { locale: es }),
+        titulo: this.capitalizarPrimeraLetra(format(hoy, 'MMMM', { locale: es })),
         total: comprobantesMesActual.reduce(
           (sum, factura) => sum + this.calcularMontoReal(factura),
           0,
@@ -327,8 +322,7 @@ export class TotalesComponent {
         color: 'purple',
       },
       {
-        nombre: 'Mes Anterior',
-        fechaTexto: format(subMonths(hoy, 1), 'MMMM yyyy', { locale: es }),
+        titulo: this.capitalizarPrimeraLetra(format(subMonths(hoy, 1), 'MMMM', { locale: es })),
         total: comprobantesMesAnterior.reduce(
           (sum, factura) => sum + this.calcularMontoReal(factura),
           0,
@@ -363,38 +357,4 @@ export class TotalesComponent {
     return totalComprobantes > 0 ? this.totalAnual() / totalComprobantes : 0;
   });
 
-  mejorDia = computed(() => {
-    const comprobantesEmitidos = this.facturas().filter((factura) => factura.estado === 'emitida');
-    const totalesPorDia = new Map<string, { total: number; cantidad: number }>();
-
-    comprobantesEmitidos.forEach((factura) => {
-      const existing = totalesPorDia.get(factura.fecha) || { total: 0, cantidad: 0 };
-      totalesPorDia.set(factura.fecha, {
-        total: existing.total + this.calcularMontoReal(factura),
-        cantidad: existing.cantidad + 1,
-      });
-    });
-
-    let mejorFecha = '';
-    let mejorTotal = 0;
-    let mejorCantidad = 0;
-
-    totalesPorDia.forEach((data, fecha) => {
-      if (data.total > mejorTotal) {
-        mejorTotal = data.total;
-        mejorFecha = fecha;
-        mejorCantidad = data.cantidad;
-      }
-    });
-
-    if (!mejorFecha) {
-      return null;
-    }
-
-    return {
-      fecha: format(new Date(`${mejorFecha}T00:00:00`), "EEEE d 'de' MMMM", { locale: es }),
-      total: mejorTotal,
-      cantidad: mejorCantidad,
-    };
-  });
 }
