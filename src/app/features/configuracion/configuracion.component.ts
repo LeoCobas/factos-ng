@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormGroup, ReactiveFormsModule, Validators, NonNullableFormBuilder } from '@angular/forms';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import type { CreateContribuyentePayload } from '../../core/services/contribuyente.service';
@@ -84,7 +84,7 @@ import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.u
           <app-configuracion-facturacion-form
             [form]="facturacionForm"
             [buscandoCuit]="buscandoCuit()"
-            [guardando]="guardando()"
+            [guardando]="guardandoFacturacion()"
             [mensajePadron]="mensajePadron()"
             [mensaje]="mensaje()"
             (buscarCuit)="buscarCuit()"
@@ -99,7 +99,7 @@ import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.u
             [tieneKey]="tieneKey()"
             [certFileName]="certFileName()"
             [keyFileName]="keyFileName()"
-            [guardando]="guardando()"
+            [guardando]="guardandoCertificado()"
             [mensaje]="mensaje()"
             (guardar)="guardarCertificado()"
             (certSelected)="onCertFileSelected($event)"
@@ -114,7 +114,8 @@ import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.u
             [form]="accountForm"
             [emailActual]="emailActual()"
             [theme]="themeService.theme()"
-            [guardando]="guardando()"
+            [guardandoEmail]="guardandoEmail()"
+            [guardandoPassword]="guardandoPassword()"
             [mensaje]="mensaje()"
             (themeChange)="setTheme($event)"
             (changeEmail)="cambiarEmail()"
@@ -141,6 +142,14 @@ export class ConfiguracionComponent implements OnInit {
   readonly cargando = signal(false);
   readonly guardando = signal(false);
   readonly buscandoCuit = signal(false);
+  readonly guardandoFacturacion = computed(
+    () => this.guardando() && this.tabActiva() === 'facturacion',
+  );
+  readonly guardandoCertificado = computed(
+    () => this.guardando() && this.tabActiva() === 'certificado',
+  );
+  readonly guardandoEmail = signal(false);
+  readonly guardandoPassword = signal(false);
   readonly mensaje = signal<MensajeEstado | null>(null);
   readonly mensajePadron = signal<MensajeEstado | null>(null);
   readonly emailActual = signal('');
@@ -431,7 +440,7 @@ export class ConfiguracionComponent implements OnInit {
   async cambiarEmail() {
     const nuevoEmail = this.accountForm.controls.nuevoEmail.value.trim();
     if (!nuevoEmail || this.accountForm.controls.nuevoEmail.invalid) return;
-    this.guardando.set(true);
+    this.guardandoEmail.set(true);
 
     try {
       const { error } = await supabase.auth.updateUser({ email: nuevoEmail });
@@ -458,7 +467,7 @@ export class ConfiguracionComponent implements OnInit {
         'error',
       );
     } finally {
-      this.guardando.set(false);
+      this.guardandoEmail.set(false);
     }
   }
 
@@ -474,7 +483,7 @@ export class ConfiguracionComponent implements OnInit {
       return;
     }
 
-    this.guardando.set(true);
+    this.guardandoPassword.set(true);
     try {
       const { error } = await supabase.auth.updateUser({ password: nuevaPassword });
       if (error) {
@@ -503,7 +512,7 @@ export class ConfiguracionComponent implements OnInit {
         'error',
       );
     } finally {
-      this.guardando.set(false);
+      this.guardandoPassword.set(false);
     }
   }
 

@@ -112,14 +112,23 @@ import type { AccountFormModel } from './configuracion.types';
                 class="form-input"
               />
             </div>
-            <button
-              type="button"
-              (click)="changeEmail.emit()"
-              [disabled]="!form().controls.nuevoEmail.value || guardando()"
-              class="btn-primary w-full rounded-lg px-4 py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {{ guardando() ? 'Enviando...' : 'Cambiar Email' }}
-            </button>
+              <button
+                type="button"
+                (click)="changeEmail.emit()"
+                [disabled]="!form().controls.nuevoEmail.value || guardandoEmail() || guardandoPassword()"
+                [class.btn-loading--active]="guardandoEmail()"
+                [attr.aria-busy]="guardandoEmail()"
+                class="btn-primary btn-loading w-full rounded-lg px-4 py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span class="btn-loading__content">
+                  @if (guardandoEmail()) {
+                    <span class="btn-loading__spinner" aria-hidden="true"></span>
+                    <span>Enviando confirmaci&oacute;n...</span>
+                  } @else {
+                    <span>Cambiar Email</span>
+                  }
+                </span>
+              </button>
           </div>
         </div>
 
@@ -150,18 +159,28 @@ import type { AccountFormModel } from './configuracion.types';
                 class="form-input"
               />
             </div>
-            <button
-              type="button"
-              (click)="changePassword.emit()"
-              [disabled]="
-                !form().controls.nuevaPassword.value ||
-                !form().controls.confirmarPassword.value ||
-                guardando()
-              "
-              class="btn-primary w-full rounded-lg px-4 py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {{ guardando() ? 'Cambiando...' : 'Cambiar Contrase&ntilde;a' }}
-            </button>
+              <button
+                type="button"
+                (click)="changePassword.emit()"
+                [disabled]="
+                  !form().controls.nuevaPassword.value ||
+                  !form().controls.confirmarPassword.value ||
+                  guardandoPassword() ||
+                  guardandoEmail()
+                "
+                [class.btn-loading--active]="guardandoPassword()"
+                [attr.aria-busy]="guardandoPassword()"
+                class="btn-primary btn-loading w-full rounded-lg px-4 py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span class="btn-loading__content">
+                  @if (guardandoPassword()) {
+                    <span class="btn-loading__spinner" aria-hidden="true"></span>
+                    <span>Actualizando contrase&ntilde;a...</span>
+                  } @else {
+                    <span>Cambiar Contrase&ntilde;a</span>
+                  }
+                </span>
+              </button>
           </div>
         </div>
 
@@ -185,7 +204,8 @@ export class ConfiguracionCuentaFormComponent {
   readonly form = input.required<FormGroup<AccountFormModel>>();
   readonly emailActual = input.required<string>();
   readonly theme = input.required<ThemeMode>();
-  readonly guardando = input.required<boolean>();
+  readonly guardandoEmail = input.required<boolean>();
+  readonly guardandoPassword = input.required<boolean>();
   readonly mensaje = input<{ texto: string; tipo: 'success' | 'error' } | null>(null);
 
   readonly themeChange = output<ThemeMode>();

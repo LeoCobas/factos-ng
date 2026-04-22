@@ -159,9 +159,18 @@ import type { CertFormModel } from './configuracion.types';
       <button
         type="submit"
         [disabled]="guardando()"
-        class="btn-primary w-full rounded-lg px-4 py-3 font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        [class.btn-loading--active]="guardando()"
+        [attr.aria-busy]="guardando()"
+        class="btn-primary btn-loading w-full rounded-lg px-4 py-3 font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {{ guardando() ? 'Guardando...' : 'Guardar Certificado' }}
+        <span class="btn-loading__content">
+          @if (guardando()) {
+            <span class="btn-loading__spinner" aria-hidden="true"></span>
+            <span>Guardando certificado...</span>
+          } @else {
+            <span>Guardar Certificado</span>
+          }
+        </span>
       </button>
     </form>
   `,

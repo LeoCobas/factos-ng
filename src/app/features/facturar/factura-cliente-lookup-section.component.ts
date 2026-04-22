@@ -27,50 +27,33 @@ import { ClienteLookupResult } from '../../core/services/facturacion.service';
           type="button"
           (click)="buscarCliente.emit()"
           [disabled]="buscandoCliente || !clienteCuitValido"
-          class="btn-primary inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+          [class.btn-loading--active]="buscandoCliente"
+          [attr.aria-busy]="buscandoCliente"
+          class="btn-primary btn-loading btn-loading--compact inline-flex h-12 min-w-12 flex-shrink-0 items-center justify-center rounded-xl px-3 disabled:opacity-50 disabled:cursor-not-allowed"
           [attr.aria-label]="buscandoCliente ? 'Buscando cliente' : 'Buscar cliente'"
           [attr.title]="buscandoCliente ? 'Buscando cliente' : 'Buscar cliente'"
         >
-          @if (buscandoCliente) {
-            <svg
-              class="h-4 w-4 animate-spin"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <circle
-                cx="12"
-                cy="12"
-                r="9"
-                stroke="currentColor"
-                stroke-width="2"
-                class="opacity-30"
-              />
-              <path
-                d="M21 12a9 9 0 0 0-9-9"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-            </svg>
-          } @else {
-            <svg
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="2" />
-              <path
-                d="m20 20-4.35-4.35"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-            </svg>
-          }
+          <span class="btn-loading__content">
+            @if (buscandoCliente) {
+              <span class="btn-loading__spinner" aria-hidden="true"></span>
+            } @else {
+              <svg
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="2" />
+                <path
+                  d="m20 20-4.35-4.35"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+            }
+          </span>
         </button>
       </div>
 

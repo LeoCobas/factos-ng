@@ -32,9 +32,18 @@ import type { FacturacionFormModel } from './configuracion.types';
                 type="button"
                 (click)="buscarCuit.emit()"
                 [disabled]="buscandoCuit() || form().controls.cuit.invalid"
-                class="btn-primary min-w-[8.5rem] rounded-lg px-4 py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                [class.btn-loading--active]="buscandoCuit()"
+                [attr.aria-busy]="buscandoCuit()"
+                class="btn-primary btn-loading min-w-[8.5rem] rounded-lg px-4 py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
               >
-                {{ buscandoCuit() ? 'Buscando...' : 'Buscar CUIT' }}
+                <span class="btn-loading__content">
+                  @if (buscandoCuit()) {
+                    <span class="btn-loading__spinner" aria-hidden="true"></span>
+                    <span>Buscando CUIT...</span>
+                  } @else {
+                    <span>Buscar CUIT</span>
+                  }
+                </span>
               </button>
             </div>
             @if (form().controls.cuit.invalid && form().controls.cuit.touched) {
@@ -224,9 +233,18 @@ import type { FacturacionFormModel } from './configuracion.types';
       <button
         type="submit"
         [disabled]="form().invalid || guardando()"
-        class="btn-primary w-full rounded-lg px-4 py-3 font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        [class.btn-loading--active]="guardando()"
+        [attr.aria-busy]="guardando()"
+        class="btn-primary btn-loading w-full rounded-lg px-4 py-3 font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {{ guardando() ? 'Guardando...' : 'Guardar Datos de Facturaci&oacute;n' }}
+        <span class="btn-loading__content">
+          @if (guardando()) {
+            <span class="btn-loading__spinner" aria-hidden="true"></span>
+            <span>Guardando datos...</span>
+          } @else {
+            <span>Guardar Datos de Facturaci&oacute;n</span>
+          }
+        </span>
       </button>
     </form>
   `,
