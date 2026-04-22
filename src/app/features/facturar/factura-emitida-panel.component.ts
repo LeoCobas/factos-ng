@@ -1,60 +1,30 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 
 import { Comprobante } from '../../core/types/database.types';
+import {
+  ComprobanteResultadoAction,
+  ComprobanteResultadoActionId,
+  ComprobanteResultadoPanelComponent,
+} from '../../shared/components/ui/comprobante-resultado-panel.component';
 
 @Component({
   selector: 'app-factura-emitida-panel',
   standalone: true,
+  imports: [ComprobanteResultadoPanelComponent],
   template: `
     @if (factura) {
-      <div class="mt-4 p-4 card-factura-emitida">
-        <div class="text-center mb-4">
-          <h3 class="text-lg font-semibold mb-2">Factura emitida:</h3>
-          <div class="text-xl font-bold text-primary">
-            {{ tipoComprobante }}
-            {{ numeroComprobante }}
-            {{ monto }}
-          </div>
-          @if (factura && factura.cliente_nombre) {
-            <div class="mt-2 text-sm text-muted-foreground">
-              {{ factura.cliente_nombre }} -
-              {{ factura.cliente_condicion_iva }}
-            </div>
-          }
-        </div>
-        <div class="grid grid-cols-2 gap-2 mb-3">
-          <button
-            (click)="ver.emit()"
-            class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-          >
-            Ver
-          </button>
-          <button
-            (click)="compartir.emit()"
-            class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-          >
-            Compartir
-          </button>
-          <button
-            (click)="descargar.emit()"
-            class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-          >
-            Descargar
-          </button>
-          <button
-            (click)="imprimir.emit()"
-            class="btn-primary font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-          >
-            Imprimir
-          </button>
-        </div>
-        <button
-          (click)="volver.emit()"
-          class="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 font-medium py-2 px-3 rounded-lg transition-colors text-sm"
-        >
-          Volver
-        </button>
-      </div>
+      <app-comprobante-resultado-panel
+        class="mt-4 block"
+        eyebrow="Factura emitida"
+        [title]="tipoComprobante + ' ' + numeroComprobante + ' ' + monto"
+        [subtitle]="clienteDescripcion()"
+        [actions]="acciones"
+        [actionsOpen]="accionesAbiertas()"
+        closeLabel="Volver"
+        (toggleActions)="toggleAcciones()"
+        (actionSelected)="onAction($event)"
+        (closeRequested)="volver.emit()"
+      />
     }
   `,
 })
@@ -69,4 +39,33 @@ export class FacturaEmitidaPanelComponent {
   @Output() readonly descargar = new EventEmitter<void>();
   @Output() readonly imprimir = new EventEmitter<void>();
   @Output() readonly volver = new EventEmitter<void>();
+
+  readonly accionesAbiertas = signal(false);
+  readonly acciones: ComprobanteResultadoAction[] = [
+    { id: 'ver', label: 'Ver', title: 'Ver comprobante' },
+    { id: 'compartir', label: 'Compartir', title: 'Compartir comprobante' },
+    { id: 'descargar', label: 'Descargar', title: 'Descargar comprobante' },
+    { id: 'imprimir', label: 'Imprimir', title: 'Imprimir comprobante' },
+  ];
+
+  clienteDescripcion(): string {
+    if (!this.factura?.cliente_nombre) {
+      return '';
+    }
+
+    return [this.factura.cliente_nombre, this.factura.cliente_condicion_iva]
+      .filter(Boolean)
+      .join(' - ');
+  }
+
+  toggleAcciones(): void {
+    this.accionesAbiertas.update((value) => !value);
+  }
+
+  onAction(action: ComprobanteResultadoActionId): void {
+    if (action === 'ver') this.ver.emit();
+    if (action === 'compartir') this.compartir.emit();
+    if (action === 'descargar') this.descargar.emit();
+    if (action === 'imprimir') this.imprimir.emit();
+  }
 }

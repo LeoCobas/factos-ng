@@ -24,7 +24,9 @@ describe('ListadoComponent', () => {
         },
         {
           provide: FacturacionService,
-          useValue: {},
+          useValue: {
+            crearNotaCredito: vi.fn(),
+          },
         },
         {
           provide: ComprobantesService,
@@ -64,5 +66,50 @@ describe('ListadoComponent', () => {
 
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.textContent).toContain('Condici\u00f3n IVA: Consumidor Final');
+  });
+
+  it('renderiza la nota de credito emitida como panel inline dentro del listado', () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance as ListadoComponent & {
+      notaCreditoEmitida: ReturnType<typeof signal>;
+    };
+
+    component.notaCreditoEmitida.set({
+      numero: '0001-00000021',
+      monto: 15000,
+      facturaOriginal: '0001-00000018',
+      cae: '12345678901234',
+      tipo_comprobante: 'NOTA DE CREDITO C',
+    });
+
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('Nota de crédito emitida');
+    expect(compiled.textContent).toContain('Anula factura 0001-00000018');
+    expect(compiled.textContent).not.toContain('fixed inset-0');
+  });
+
+  it('muestra el estado Anulando solo en la fila activa', () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+
+    component.facturas.set([
+      {
+        id: 'factura-1',
+        numero_factura: '0001-00000014',
+        fecha: '2026-04-16',
+        monto: 28000,
+        estado: 'emitida',
+        tipo_comprobante: 'FACTURA C',
+      },
+    ]);
+    component.facturaExpandida.set('factura-1');
+    component.anulandoFacturaId.set('factura-1');
+
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('Anulando...');
   });
 });
