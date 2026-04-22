@@ -197,8 +197,17 @@ export class AuthService {
   private async handleNavigationEvent(event: AuthChangeEvent): Promise<void> {
     if (event === 'SIGNED_IN') {
       const targetUrl = this.redirectUrl();
-      this.redirectUrl.set(null);
-      await this.router.navigateByUrl(targetUrl || '/');
+      const currentUrl = this.router.url;
+
+      if (targetUrl) {
+        this.redirectUrl.set(null);
+        await this.router.navigateByUrl(targetUrl);
+        return;
+      }
+
+      if (currentUrl.startsWith('/login')) {
+        await this.router.navigateByUrl('/');
+      }
       return;
     }
 

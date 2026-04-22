@@ -50,7 +50,7 @@ interface PeriodoTotal {
                   <p class="period-amount">
                     {{ periodo.total | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
                   </p>
-                  <p class="period-sub text-info">
+                  <p class="period-sub">
                     {{ periodo.cantidad }} comprobante{{ periodo.cantidad !== 1 ? 's' : '' }}
                   </p>
                 </div>
@@ -59,27 +59,27 @@ interface PeriodoTotal {
           }
         </div>
 
-        <div class="bg-muted rounded-lg border border-border p-4">
+        <div class="totales-annual-summary rounded-lg border border-border p-4 md:p-5">
           <div class="text-center">
             <h3 class="period-title totales-section-title mb-2">Resumen del Año {{ getAnoActual() }}</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-              <div class="text-center">
+            <div class="totales-annual-grid mt-5">
+              <div class="text-center totales-annual-stat">
                 <p class="period-amount totales-hero-amount">
                   {{ totalAnual() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
                 </p>
                 <p class="period-sub">Total facturado</p>
               </div>
-              <div class="text-center">
+              <div class="text-center totales-annual-stat">
                 <p class="period-amount totales-hero-amount">{{ comprobantesAnuales() }}</p>
                 <p class="period-sub">Comprobantes emitidos</p>
               </div>
-              <div class="text-center">
+              <div class="text-center totales-annual-stat">
                 <p class="period-amount totales-hero-amount">
                   {{ promedioMensual() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
                 </p>
                 <p class="period-sub">Promedio mensual</p>
               </div>
-              <div class="text-center">
+              <div class="text-center totales-annual-stat">
                 <p class="period-amount totales-hero-amount">
                 {{ ticketPromedio() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
                 </p>
@@ -107,6 +107,10 @@ interface PeriodoTotal {
 
     .totales-view .period-sub {
       line-height: 1.35;
+    }
+
+    .totales-view .period-title {
+      color: #d7cfbf;
     }
 
     .totales-period-card {
@@ -152,7 +156,7 @@ interface PeriodoTotal {
     }
 
     .totales-period-card .period-amount {
-      font-size: clamp(1.55rem, 1.3rem + 1vw, 2.15rem);
+      font-size: clamp(1.42rem, 1.2rem + 0.88vw, 1.95rem);
       font-weight: 700;
       line-height: 0.96;
       letter-spacing: -0.03em;
@@ -168,6 +172,7 @@ interface PeriodoTotal {
       margin-top: 0.45rem;
       font-size: 0.9rem;
       text-wrap: balance;
+      color: rgba(228, 223, 213, 0.8);
     }
 
     .totales-section-title {
@@ -175,12 +180,60 @@ interface PeriodoTotal {
       font-weight: 700;
       line-height: 1.15;
       letter-spacing: -0.02em;
+      color: #e8dfcf;
     }
 
     .totales-hero-amount {
-      font-size: clamp(2.15rem, 1.8rem + 1vw, 2.85rem);
-      font-weight: 750;
-      line-height: 1;
+      font-size: clamp(1.42rem, 1.2rem + 0.88vw, 1.95rem);
+      font-weight: 730;
+      line-height: 0.96;
+      letter-spacing: -0.03em;
+    }
+
+    .totales-annual-summary {
+      background:
+        linear-gradient(145deg, rgba(40, 36, 33, 0.98) 0%, rgba(28, 26, 24, 0.96) 100%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+      border-color: rgba(198, 181, 154, 0.12);
+    }
+
+    .totales-annual-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.1rem 1.6rem;
+    }
+
+    .totales-annual-stat {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.28rem;
+      padding: 0.15rem 0;
+    }
+
+    .totales-annual-summary .period-sub {
+      font-size: 0.84rem;
+      line-height: 1.3;
+      color: rgba(231, 225, 213, 0.84);
+      text-wrap: balance;
+    }
+
+    .totales-annual-summary .period-amount {
+      color: #8fbe8c;
+    }
+
+    @media (min-width: 768px) {
+      .totales-annual-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.45rem 2.4rem;
+      }
+
+      .totales-annual-stat {
+        gap: 0.35rem;
+        padding: 0.25rem 0;
+      }
     }
 
     @media (min-width: 1024px) {
@@ -213,6 +266,10 @@ interface PeriodoTotal {
       .totales-period-card .period-amount,
       .totales-hero-amount {
         overflow-wrap: anywhere;
+      }
+
+      .totales-annual-grid {
+        gap: 1.15rem;
       }
     }
   `],
