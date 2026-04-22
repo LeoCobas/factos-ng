@@ -24,18 +24,45 @@ import { ThemeService } from '../core/services/theme.service';
 
             <div class="ml-auto flex items-center gap-2">
               @if (contribuyenteService.inicializado() && contribuyenteService.contribuyente()) {
-                <button
-                  type="button"
-                  (click)="toggleContribuyentePreview()"
-                  class="header-icon-btn"
-                  [attr.aria-expanded]="mostrarContribuyentePreview()"
-                  aria-label="Ver datos del contribuyente"
-                  title="Ver datos del contribuyente"
-                >
-                  <svg class="h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4"></path>
-                  </svg>
-                </button>
+                <div class="relative flex items-center">
+                  <button
+                    type="button"
+                    (click)="toggleContribuyentePreview()"
+                    class="header-icon-btn"
+                    [attr.aria-expanded]="mostrarContribuyentePreview()"
+                    aria-label="Ver datos del contribuyente"
+                    title="Ver datos del contribuyente"
+                  >
+                    <svg class="h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4"></path>
+                    </svg>
+                  </button>
+
+                  <div
+                    class="contribuyente-preview"
+                    [class.contribuyente-preview--visible]="mostrarContribuyentePreview()"
+                  >
+                    <button
+                      type="button"
+                      (click)="irAConfiguracionContribuyente()"
+                      class="contribuyente-badge"
+                    >
+                      <span class="contribuyente-badge__icon">
+                        <svg class="h-4 w-4 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4"></path>
+                        </svg>
+                      </span>
+                      <span class="min-w-0">
+                        <span class="block truncate text-sm font-semibold text-foreground">
+                          {{ contribuyenteService.contribuyente()!.razon_social }}
+                        </span>
+                        <span class="block truncate text-[0.72rem] uppercase tracking-[0.18em] text-muted-foreground/90">
+                          CUIT {{ formatCuit(contribuyenteService.contribuyente()!.cuit) }}
+                        </span>
+                      </span>
+                    </button>
+                  </div>
+                </div>
               }
 
               <button
@@ -52,32 +79,6 @@ import { ThemeService } from '../core/services/theme.service';
               </button>
             </div>
 
-            @if (contribuyenteService.inicializado() && contribuyenteService.contribuyente()) {
-              <div
-                class="contribuyente-preview"
-                [class.contribuyente-preview--visible]="mostrarContribuyentePreview()"
-              >
-                <button
-                  type="button"
-                  (click)="irAConfiguracionContribuyente()"
-                  class="contribuyente-badge"
-                >
-                  <span class="contribuyente-badge__icon">
-                    <svg class="h-4 w-4 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4"></path>
-                    </svg>
-                  </span>
-                  <span class="min-w-0">
-                    <span class="block truncate text-sm font-semibold text-foreground">
-                      {{ contribuyenteService.contribuyente()!.razon_social }}
-                    </span>
-                    <span class="block truncate text-[0.72rem] uppercase tracking-[0.18em] text-muted-foreground/90">
-                      CUIT {{ formatCuit(contribuyenteService.contribuyente()!.cuit) }}
-                    </span>
-                  </span>
-                </button>
-              </div>
-            }
           </div>
 
           @if (contribuyenteService.inicializado()) {
