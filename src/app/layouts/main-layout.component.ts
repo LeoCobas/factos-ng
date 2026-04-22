@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, ElementRef, HostListener, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
 import { ContribuyenteService } from '../core/services/contribuyente.service';
@@ -25,7 +25,7 @@ import { ThemeService } from '../core/services/theme.service';
 
             <div class="ml-auto flex items-center gap-2">
               @if (contribuyenteService.inicializado() && contribuyenteService.contribuyente()) {
-                <div class="relative flex items-center">
+                <div #contribuyentePreviewTrigger class="relative flex items-center">
                   <button
                     type="button"
                     (click)="toggleContribuyentePreview()"
@@ -180,6 +180,7 @@ import { ThemeService } from '../core/services/theme.service';
 export class MainLayoutComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
+  private readonly contribuyentePreviewTrigger = viewChild<ElementRef<HTMLElement>>('contribuyentePreviewTrigger');
   readonly contribuyenteService = inject(ContribuyenteService);
   readonly themeService = inject(ThemeService);
 
@@ -191,6 +192,21 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   async ngOnInit() {
     await this.contribuyenteService.cargarContribuyente();
     this.mostrarPreviewContribuyente();
+  }
+
+  @HostListener('document:pointerdown', ['$event'])
+  onDocumentPointerDown(event: PointerEvent): void {
+    if (!this.mostrarContribuyentePreview()) {
+      return;
+    }
+
+    const triggerElement = this.contribuyentePreviewTrigger()?.nativeElement;
+    const target = event.target as Node | null;
+    if (!triggerElement || !target || triggerElement.contains(target)) {
+      return;
+    }
+
+    this.ocultarPreviewContribuyente();
   }
 
   ngOnDestroy(): void {
