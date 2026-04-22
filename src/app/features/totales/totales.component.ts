@@ -108,7 +108,7 @@ interface PeriodoTotal {
       grid-template-columns: minmax(0, 1fr);
     }
 
-    @media (min-width: 430px) {
+    @media (min-width: 360px) {
       .totales-period-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -165,7 +165,8 @@ interface PeriodoTotal {
       font-weight: 700;
       line-height: 0.96;
       letter-spacing: -0.03em;
-      white-space: nowrap;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
 
     .totales-period-card .period-sub {
@@ -231,7 +232,6 @@ interface PeriodoTotal {
       .totales-period-card .period-amount,
       .totales-hero-amount,
       .totales-detail-amount {
-        white-space: normal;
         overflow-wrap: anywhere;
       }
     }
