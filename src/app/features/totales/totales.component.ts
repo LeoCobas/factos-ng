@@ -62,7 +62,7 @@ interface PeriodoTotal {
         <div class="bg-muted rounded-lg border border-border p-4">
           <div class="text-center">
             <h3 class="period-title totales-section-title mb-2">Resumen del Año {{ getAnoActual() }}</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
               <div class="text-center">
                 <p class="period-amount totales-hero-amount">
                   {{ totalAnual() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
@@ -79,21 +79,12 @@ interface PeriodoTotal {
                 </p>
                 <p class="period-sub">Promedio mensual</p>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid gap-3">
-          <div class="card-surface totales-detail-card p-4">
-            <h3 class="period-title totales-section-title mb-4">Ticket Promedio</h3>
-            <div class="text-center">
-              <p class="period-amount totales-detail-amount">
+              <div class="text-center">
+                <p class="period-amount totales-hero-amount">
                 {{ ticketPromedio() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
-              </p>
-              <p class="period-sub">Por comprobante</p>
-              <p class="period-sub text-info">
-                Basado en {{ comprobantesAnuales() }} comprobante(s)
-              </p>
+                </p>
+                <p class="period-sub">Ticket Promedio ({{ comprobantesAnuales() }})</p>
+              </div>
             </div>
           </div>
         </div>
@@ -192,16 +183,6 @@ interface PeriodoTotal {
       line-height: 1;
     }
 
-    .totales-detail-card {
-      min-height: 13.25rem;
-    }
-
-    .totales-detail-amount {
-      font-size: clamp(2rem, 1.75rem + 0.85vw, 2.55rem);
-      font-weight: 750;
-      line-height: 1;
-    }
-
     @media (min-width: 1024px) {
       .totales-period-card__layout {
         grid-template-columns: minmax(0, 1fr);
@@ -230,8 +211,7 @@ interface PeriodoTotal {
       }
 
       .totales-period-card .period-amount,
-      .totales-hero-amount,
-      .totales-detail-amount {
+      .totales-hero-amount {
         overflow-wrap: anywhere;
       }
     }
