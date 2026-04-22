@@ -83,7 +83,7 @@ interface PeriodoTotal {
                 <p class="period-amount totales-hero-amount">
                 {{ ticketPromedio() | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
                 </p>
-                <p class="period-sub">Ticket Promedio ({{ comprobantesAnuales() }})</p>
+                <p class="period-sub">Ticket Promedio ({{ comprobantesAnuales() }} comprobantes)</p>
               </div>
             </div>
           </div>
