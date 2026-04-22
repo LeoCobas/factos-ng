@@ -9,8 +9,8 @@ import { ComprobanteMetricRow } from '../../core/types/comprobantes.types';
 import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.util';
 
 interface PeriodoTotal {
-  nombre: string;
-  etiquetaPeriodo: string;
+  titulo: string;
+  diaNumero?: string;
   total: number;
   cantidad: number;
   color: 'blue' | 'green' | 'purple' | 'orange';
@@ -33,18 +33,17 @@ interface PeriodoTotal {
         }
 
         <div class="totales-period-grid">
-          @for (periodo of periodos(); track periodo.nombre) {
+          @for (periodo of periodos(); track periodo.titulo + (periodo.diaNumero ?? '')) {
             <div class="card-surface totales-period-card p-4" [class]="'border-l-4 border-l-' + periodo.color + '-500'">
               <div class="totales-period-card__layout">
                 <div class="totales-period-card__copy">
-                  @if (periodo.nombre === 'Hoy' || periodo.nombre === 'Ayer') {
+                  @if (periodo.diaNumero) {
                     <p class="period-title period-title--inline">
-                      <span>{{ periodo.nombre }}</span>
-                      <span class="period-day">{{ periodo.etiquetaPeriodo }}</span>
+                      <span>{{ periodo.titulo }}</span>
+                      <span class="period-day">{{ periodo.diaNumero }}</span>
                     </p>
                   } @else {
-                    <p class="period-title">{{ periodo.nombre }}</p>
-                    <p class="period-sub">{{ periodo.etiquetaPeriodo }}</p>
+                    <p class="period-title">{{ periodo.titulo }}</p>
                   }
                 </div>
                 <div class="totales-period-card__metric text-right">
@@ -106,7 +105,13 @@ interface PeriodoTotal {
     .totales-period-grid {
       display: grid;
       gap: 0.75rem;
-      grid-template-columns: repeat(auto-fit, minmax(11.25rem, 1fr));
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    @media (min-width: 430px) {
+      .totales-period-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
 
     .totales-view .period-sub {
@@ -285,6 +290,9 @@ export class TotalesComponent {
   calcularMontoReal = (comprobante: ComprobanteMetricRow) =>
     comprobante.esNotaCredito ? -comprobante.total : comprobante.total;
 
+  capitalizarPrimeraLetra = (texto: string) =>
+    texto ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto;
+
   periodos = computed((): PeriodoTotal[] => {
     const hoy = new Date();
     const ayer = subDays(hoy, 1);
@@ -311,22 +319,21 @@ export class TotalesComponent {
 
     return [
       {
-        nombre: 'Hoy',
-        etiquetaPeriodo: format(hoy, 'd', { locale: es }),
+        titulo: 'Hoy',
+        diaNumero: format(hoy, 'd', { locale: es }),
         total: comprobantesHoy.reduce((sum, factura) => sum + this.calcularMontoReal(factura), 0),
         cantidad: comprobantesHoy.length,
         color: 'blue',
       },
       {
-        nombre: 'Ayer',
-        etiquetaPeriodo: format(ayer, 'd', { locale: es }),
+        titulo: 'Ayer',
+        diaNumero: format(ayer, 'd', { locale: es }),
         total: comprobantesAyer.reduce((sum, factura) => sum + this.calcularMontoReal(factura), 0),
         cantidad: comprobantesAyer.length,
         color: 'green',
       },
       {
-        nombre: 'Mes Actual',
-        etiquetaPeriodo: format(hoy, 'MMMM', { locale: es }),
+        titulo: this.capitalizarPrimeraLetra(format(hoy, 'MMMM', { locale: es })),
         total: comprobantesMesActual.reduce(
           (sum, factura) => sum + this.calcularMontoReal(factura),
           0,
@@ -335,8 +342,7 @@ export class TotalesComponent {
         color: 'purple',
       },
       {
-        nombre: 'Mes Anterior',
-        etiquetaPeriodo: format(subMonths(hoy, 1), 'MMMM', { locale: es }),
+        titulo: this.capitalizarPrimeraLetra(format(subMonths(hoy, 1), 'MMMM', { locale: es })),
         total: comprobantesMesAnterior.reduce(
           (sum, factura) => sum + this.calcularMontoReal(factura),
           0,
