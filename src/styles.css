@@ -1268,13 +1268,13 @@ input[type="date"].form-input:focus {
   height: 2rem;
   flex: 0 0 auto;
   border-radius: 999px;
-  color: rgb(var(--muted-foreground));
+  color: rgb(239 68 68);
   transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .contribuyente-badge__logout:hover {
-  color: rgb(var(--foreground));
-  background: rgb(var(--muted) / 0.72);
+  color: rgb(248 113 113);
+  background: rgb(239 68 68 / 0.12);
 }
 
 .contribuyente-badge__icon {
