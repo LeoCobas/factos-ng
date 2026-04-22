@@ -10,7 +10,7 @@ import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.u
 
 interface PeriodoTotal {
   nombre: string;
-  fechaTexto: string;
+  etiquetaPeriodo: string;
   total: number;
   cantidad: number;
   color: 'blue' | 'green' | 'purple' | 'orange';
@@ -32,13 +32,20 @@ interface PeriodoTotal {
           </div>
         }
 
-        <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <div class="totales-period-grid">
           @for (periodo of periodos(); track periodo.nombre) {
             <div class="card-surface totales-period-card p-4" [class]="'border-l-4 border-l-' + periodo.color + '-500'">
               <div class="totales-period-card__layout">
                 <div class="totales-period-card__copy">
-                  <p class="period-title">{{ periodo.nombre }}</p>
-                  <p class="period-sub">{{ periodo.fechaTexto }}</p>
+                  @if (periodo.nombre === 'Hoy' || periodo.nombre === 'Ayer') {
+                    <p class="period-title period-title--inline">
+                      <span>{{ periodo.nombre }}</span>
+                      <span class="period-day">{{ periodo.etiquetaPeriodo }}</span>
+                    </p>
+                  } @else {
+                    <p class="period-title">{{ periodo.nombre }}</p>
+                    <p class="period-sub">{{ periodo.etiquetaPeriodo }}</p>
+                  }
                 </div>
                 <div class="totales-period-card__metric text-right">
                   <p class="period-amount">
@@ -77,22 +84,7 @@ interface PeriodoTotal {
           </div>
         </div>
 
-        <div class="grid gap-3 md:grid-cols-2">
-          <div class="card-surface totales-detail-card p-4">
-            <h3 class="period-title totales-section-title mb-4">Día Más Productivo</h3>
-            @if (mejorDia()) {
-              <div class="text-center">
-                <p class="period-amount totales-detail-amount">
-                  {{ mejorDia()?.total | currency:'ARS':'symbol':'1.0-0':'es-AR' }}
-                </p>
-                <p class="period-sub">{{ mejorDia()?.fecha }}</p>
-                <p class="period-sub text-info">{{ mejorDia()?.cantidad }} comprobante(s)</p>
-              </div>
-            } @else {
-              <p class="period-sub text-center">No hay datos suficientes</p>
-            }
-          </div>
-
+        <div class="grid gap-3">
           <div class="card-surface totales-detail-card p-4">
             <h3 class="period-title totales-section-title mb-4">Ticket Promedio</h3>
             <div class="text-center">
@@ -111,6 +103,12 @@ interface PeriodoTotal {
   `,
   imports: [CurrencyPipe],
   styles: [`
+    .totales-period-grid {
+      display: grid;
+      gap: 0.75rem;
+      grid-template-columns: repeat(auto-fit, minmax(11.25rem, 1fr));
+    }
+
     .totales-view .period-sub {
       line-height: 1.35;
     }
@@ -145,6 +143,18 @@ interface PeriodoTotal {
       letter-spacing: -0.015em;
     }
 
+    .totales-period-card .period-title--inline {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+    }
+
+    .totales-period-card .period-day {
+      color: inherit;
+      font-weight: 700;
+    }
+
     .totales-period-card .period-amount {
       font-size: clamp(1.55rem, 1.3rem + 1vw, 2.15rem);
       font-weight: 700;
@@ -160,6 +170,7 @@ interface PeriodoTotal {
     .totales-period-card__metric .period-sub {
       margin-top: 0.45rem;
       font-size: 0.9rem;
+      text-wrap: balance;
     }
 
     .totales-section-title {
@@ -196,10 +207,6 @@ interface PeriodoTotal {
         padding-top: 0.35rem;
         text-align: left;
       }
-
-      .totales-period-card .period-amount {
-        white-space: normal;
-      }
     }
 
     @media (max-width: 767px) {
@@ -220,6 +227,7 @@ interface PeriodoTotal {
       .totales-hero-amount,
       .totales-detail-amount {
         white-space: normal;
+        overflow-wrap: anywhere;
       }
     }
   `],
@@ -304,21 +312,21 @@ export class TotalesComponent {
     return [
       {
         nombre: 'Hoy',
-        fechaTexto: format(hoy, "d 'de' MMMM", { locale: es }),
+        etiquetaPeriodo: format(hoy, 'd', { locale: es }),
         total: comprobantesHoy.reduce((sum, factura) => sum + this.calcularMontoReal(factura), 0),
         cantidad: comprobantesHoy.length,
         color: 'blue',
       },
       {
         nombre: 'Ayer',
-        fechaTexto: format(ayer, "d 'de' MMMM", { locale: es }),
+        etiquetaPeriodo: format(ayer, 'd', { locale: es }),
         total: comprobantesAyer.reduce((sum, factura) => sum + this.calcularMontoReal(factura), 0),
         cantidad: comprobantesAyer.length,
         color: 'green',
       },
       {
         nombre: 'Mes Actual',
-        fechaTexto: format(hoy, 'MMMM yyyy', { locale: es }),
+        etiquetaPeriodo: format(hoy, 'MMMM', { locale: es }),
         total: comprobantesMesActual.reduce(
           (sum, factura) => sum + this.calcularMontoReal(factura),
           0,
@@ -328,7 +336,7 @@ export class TotalesComponent {
       },
       {
         nombre: 'Mes Anterior',
-        fechaTexto: format(subMonths(hoy, 1), 'MMMM yyyy', { locale: es }),
+        etiquetaPeriodo: format(subMonths(hoy, 1), 'MMMM', { locale: es }),
         total: comprobantesMesAnterior.reduce(
           (sum, factura) => sum + this.calcularMontoReal(factura),
           0,
@@ -363,38 +371,4 @@ export class TotalesComponent {
     return totalComprobantes > 0 ? this.totalAnual() / totalComprobantes : 0;
   });
 
-  mejorDia = computed(() => {
-    const comprobantesEmitidos = this.facturas().filter((factura) => factura.estado === 'emitida');
-    const totalesPorDia = new Map<string, { total: number; cantidad: number }>();
-
-    comprobantesEmitidos.forEach((factura) => {
-      const existing = totalesPorDia.get(factura.fecha) || { total: 0, cantidad: 0 };
-      totalesPorDia.set(factura.fecha, {
-        total: existing.total + this.calcularMontoReal(factura),
-        cantidad: existing.cantidad + 1,
-      });
-    });
-
-    let mejorFecha = '';
-    let mejorTotal = 0;
-    let mejorCantidad = 0;
-
-    totalesPorDia.forEach((data, fecha) => {
-      if (data.total > mejorTotal) {
-        mejorTotal = data.total;
-        mejorFecha = fecha;
-        mejorCantidad = data.cantidad;
-      }
-    });
-
-    if (!mejorFecha) {
-      return null;
-    }
-
-    return {
-      fecha: format(new Date(`${mejorFecha}T00:00:00`), "EEEE d 'de' MMMM", { locale: es }),
-      total: mejorTotal,
-      cantidad: mejorCantidad,
-    };
-  });
 }
