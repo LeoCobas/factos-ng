@@ -1196,7 +1196,8 @@ input[type="date"].form-input:focus {
 .contribuyente-badge {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  justify-content: space-between;
+  gap: 0.75rem;
   width: 100%;
   min-width: 0;
   padding: 0.8rem 0.95rem;
@@ -1210,10 +1211,11 @@ input[type="date"].form-input:focus {
 .contribuyente-preview {
   position: absolute;
   top: calc(100% + 0.6rem);
-  right: 0;
+  left: 50%;
+  right: auto;
   width: min(22rem, calc(100vw - 2rem));
   opacity: 0;
-  transform: translateY(-0.5rem) scale(0.97);
+  transform: translateX(-50%) translateY(-0.5rem) scale(0.97);
   pointer-events: none;
   transition: opacity 0.24s ease, transform 0.24s ease;
   z-index: 10;
@@ -1227,13 +1229,14 @@ input[type="date"].form-input:focus {
 
 .contribuyente-preview--visible {
   opacity: 1;
-  transform: translateY(0) scale(1);
+  transform: translateX(-50%) translateY(0) scale(1);
   pointer-events: auto;
 }
 
 @media (min-width: 1024px) {
   .contribuyente-preview {
     top: 50%;
+    left: auto;
     right: calc(100% + 0.75rem);
     transform: translateY(-50%) translateX(0.5rem) scale(0.97);
   }
@@ -1246,6 +1249,32 @@ input[type="date"].form-input:focus {
 .contribuyente-badge:hover {
   border-color: rgb(var(--primary) / 0.24);
   background: linear-gradient(180deg, rgb(var(--muted) / 0.68), rgb(var(--muted) / 0.38));
+}
+
+.contribuyente-badge__main {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+  flex: 1 1 auto;
+  text-align: left;
+}
+
+.contribuyente-badge__logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  color: rgb(var(--muted-foreground));
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.contribuyente-badge__logout:hover {
+  color: rgb(var(--foreground));
+  background: rgb(var(--muted) / 0.72);
 }
 
 .contribuyente-badge__icon {

@@ -1,5 +1,6 @@
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
+import { AuthService } from '../core/services/auth.service';
 import { ContribuyenteService } from '../core/services/contribuyente.service';
 import { ThemeService } from '../core/services/theme.service';
 
@@ -42,25 +43,41 @@ import { ThemeService } from '../core/services/theme.service';
                     class="contribuyente-preview"
                     [class.contribuyente-preview--visible]="mostrarContribuyentePreview()"
                   >
-                    <button
-                      type="button"
-                      (click)="irAConfiguracionContribuyente()"
-                      class="contribuyente-badge"
-                    >
-                      <span class="contribuyente-badge__icon">
-                        <svg class="h-4 w-4 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4"></path>
+                    <div class="contribuyente-badge">
+                      <button
+                        type="button"
+                        (click)="irAConfiguracionContribuyente()"
+                        class="contribuyente-badge__main"
+                      >
+                        <span class="contribuyente-badge__icon">
+                          <svg class="h-4 w-4 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4"></path>
+                          </svg>
+                        </span>
+                        <span class="min-w-0">
+                          <span class="block truncate text-sm font-semibold text-foreground">
+                            {{ contribuyenteService.contribuyente()!.razon_social }}
+                          </span>
+                          <span class="block truncate text-[0.72rem] uppercase tracking-[0.18em] text-muted-foreground/90">
+                            CUIT {{ formatCuit(contribuyenteService.contribuyente()!.cuit) }}
+                          </span>
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        (click)="signOut()"
+                        class="contribuyente-badge__logout"
+                        aria-label="Cerrar sesion"
+                        title="Cerrar sesion"
+                      >
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                          <path d="M16 17l5-5-5-5"></path>
+                          <path d="M21 12H9"></path>
                         </svg>
-                      </span>
-                      <span class="min-w-0">
-                        <span class="block truncate text-sm font-semibold text-foreground">
-                          {{ contribuyenteService.contribuyente()!.razon_social }}
-                        </span>
-                        <span class="block truncate text-[0.72rem] uppercase tracking-[0.18em] text-muted-foreground/90">
-                          CUIT {{ formatCuit(contribuyenteService.contribuyente()!.cuit) }}
-                        </span>
-                      </span>
-                    </button>
+                      </button>
+                    </div>
                   </div>
                 </div>
               }
@@ -162,6 +179,7 @@ import { ThemeService } from '../core/services/theme.service';
 })
 export class MainLayoutComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
   readonly contribuyenteService = inject(ContribuyenteService);
   readonly themeService = inject(ThemeService);
 
@@ -232,6 +250,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   }
 
   async signOut() {
-    this.router.navigate(['/login']);
+    this.ocultarPreviewContribuyente();
+    await this.authService.signOut();
   }
 }
