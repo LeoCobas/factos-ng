@@ -391,15 +391,28 @@ export class FacturarNuevoComponent implements OnDestroy {
     effect(() => {
       const contribuyente = this.contribuyenteService.contribuyente();
       if (contribuyente) {
-        this.actualizarLimitesFecha(contribuyente.actividad === 'bienes' ? 'bienes' : 'servicios');
         void this.cargarFacturasRecientes();
       } else {
         this.facturasRecientes.set([]);
       }
     });
+
+    effect(() => {
+      const contribuyente = this.contribuyenteService.contribuyente();
+      const tipoComprobante = this.tipoComprobanteResolution().tipo;
+      if (!contribuyente) {
+        return;
+      }
+
+      void this.actualizarLimitesFecha(
+        contribuyente.actividad === 'bienes' ? 'bienes' : 'servicios',
+        tipoComprobante,
+      );
+    });
   }
 
   private confirmacionMontoTimer: ReturnType<typeof setInterval> | null = null;
+  private limitesFechaRequestId = 0;
   private readonly visualViewport =
     typeof window !== 'undefined' ? window.visualViewport : null;
   private readonly onViewportChange = () => this.actualizarPosicionConfirmacionMonto();
@@ -809,14 +822,45 @@ export class FacturarNuevoComponent implements OnDestroy {
     }
   }
 
-  private actualizarLimitesFecha(actividad: 'bienes' | 'servicios') {
+  private async actualizarLimitesFecha(
+    actividad: 'bienes' | 'servicios',
+    tipoComprobante: 'FACTURA A' | 'FACTURA B' | 'FACTURA C',
+  ): Promise<void> {
+    const requestId = ++this.limitesFechaRequestId;
     this.actividad.set(actividad);
 
     const hoy = new Date();
     const max = this.formatDateInput(hoy);
     const minDate = new Date(hoy);
     minDate.setDate(hoy.getDate() - (actividad === 'bienes' ? 5 : 10));
-    const min = this.formatDateInput(minDate);
+    let min = this.formatDateInput(minDate);
+
+    const contribuyente = this.contribuyenteService.contribuyente();
+    if (contribuyente) {
+      try {
+        const ultimaFechaTipo =
+          await this.facturacionService.cargarUltimaFechaComprobantePorTipo(
+            contribuyente.id,
+            tipoComprobante,
+            contribuyente.punto_venta,
+          );
+
+        if (requestId !== this.limitesFechaRequestId) {
+          return;
+        }
+
+        if (ultimaFechaTipo && ultimaFechaTipo > min) {
+          min = ultimaFechaTipo;
+        }
+      } catch (error) {
+        console.error('Error al consultar ultima fecha por tipo:', error);
+      }
+    }
+
+    if (requestId !== this.limitesFechaRequestId) {
+      return;
+    }
+
     this.maxFecha.set(max);
     this.minFecha.set(min);
 

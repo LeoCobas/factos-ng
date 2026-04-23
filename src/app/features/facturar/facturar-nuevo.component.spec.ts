@@ -41,6 +41,7 @@ describe('FacturarNuevoComponent', () => {
       },
     }),
     buscarClientePorCuit: vi.fn(),
+    cargarUltimaFechaComprobantePorTipo: vi.fn().mockResolvedValue(null),
     cargarFacturasRecientes: vi.fn().mockResolvedValue([
       {
         id: 'fac-1',
@@ -113,6 +114,84 @@ describe('FacturarNuevoComponent', () => {
 
     expect(moneyPrefix?.textContent).toContain('$');
     expect(submitButton?.disabled).toBe(true);
+  });
+
+  it('usa la ultima fecha del tipo resuelto como minimo si es posterior a la ventana fiscal', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-22T12:00:00-03:00'));
+
+    try {
+      const fixture = TestBed.createComponent(FacturarNuevoComponent);
+      const component = fixture.componentInstance;
+      const service = TestBed.inject(FacturacionService) as unknown as ReturnType<
+        typeof createFacturacionServiceStub
+      >;
+
+      service.cargarUltimaFechaComprobantePorTipo.mockResolvedValue('2026-04-21');
+      component.formFactura.controls.fecha.setValue('2026-04-15');
+
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(service.cargarUltimaFechaComprobantePorTipo).toHaveBeenCalledWith(
+        'cont-1',
+        'FACTURA C',
+        undefined,
+      );
+      expect(component.minFecha()).toBe('2026-04-21');
+      expect(component.formFactura.controls.fecha.value).toBe('2026-04-21');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('recalcula el minimo cuando cambia el cliente y se resuelve otro tipo de factura', async () => {
+    const fixture = TestBed.createComponent(FacturarNuevoComponent);
+    const component = fixture.componentInstance;
+    const service = TestBed.inject(FacturacionService) as unknown as ReturnType<
+      typeof createFacturacionServiceStub
+    >;
+    const contribuyenteService = TestBed.inject(
+      ContribuyenteService,
+    ) as unknown as { contribuyente: ReturnType<typeof signal> };
+
+    contribuyenteService.contribuyente.set({
+      id: 'cont-1',
+      actividad: 'servicios',
+      condicion_iva: 'IVA Responsable Inscripto',
+      punto_venta: 1,
+    });
+    service.cargarUltimaFechaComprobantePorTipo.mockImplementation(
+      async (_contribuyenteId, tipoComprobante) =>
+        tipoComprobante === 'FACTURA A' ? '2026-04-20' : '2026-04-18',
+    );
+
+    fixture.detectChanges();
+    await Promise.resolve();
+    expect(component.minFecha()).toBe('2026-04-18');
+
+    component.clienteSeleccionado.set({
+      cuit: '20111111112',
+      nombre: 'Cliente RI',
+      domicilio: null,
+      condicion_iva: 'IVA Responsable Inscripto',
+      doc_tipo: 80,
+      doc_nro: 20111111112,
+      condicion_iva_normalizada: 'IVA Responsable Inscripto',
+      fiscal_profile: 'responsable-inscripto',
+      fiscal_status_message: 'ok',
+      fiscal_status_reliable: true,
+      fiscal_status_source: 'constancia_inscripcion',
+    });
+    fixture.detectChanges();
+    await Promise.resolve();
+
+    expect(service.cargarUltimaFechaComprobantePorTipo).toHaveBeenCalledWith(
+      'cont-1',
+      'FACTURA A',
+      1,
+    );
+    expect(component.minFecha()).toBe('2026-04-20');
   });
 
   it('envia el submit valido y resetea el formulario en exito', async () => {

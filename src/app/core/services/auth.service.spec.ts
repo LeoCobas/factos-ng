@@ -2,25 +2,18 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
 import { AuthService } from './auth.service';
+import { supabase } from './supabase.service';
 
 type AuthChangeCallback = (event: string, session: { user?: { id: string } } | null) => void;
 
-const { mockSupabaseAuth } = vi.hoisted(() => ({
-  mockSupabaseAuth: {
-    signInWithPassword: vi.fn(),
-    signUp: vi.fn(),
-    signOut: vi.fn(),
-    resetPasswordForEmail: vi.fn(),
-    getSession: vi.fn(),
-    onAuthStateChange: vi.fn(),
-  },
-}));
-
-vi.mock('./supabase.service', () => ({
-  supabase: {
-    auth: mockSupabaseAuth,
-  },
-}));
+const mockSupabaseAuth = {
+  signInWithPassword: vi.fn(),
+  signUp: vi.fn(),
+  signOut: vi.fn(),
+  resetPasswordForEmail: vi.fn(),
+  getSession: vi.fn(),
+  onAuthStateChange: vi.fn(),
+};
 
 describe('AuthService', () => {
   const createRouterStub = (url = '/') => ({
@@ -33,6 +26,7 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     authChangeCallback = undefined;
+    vi.spyOn(supabase, 'auth', 'get').mockReturnValue(mockSupabaseAuth as never);
     mockSupabaseAuth.signInWithPassword.mockReset();
     mockSupabaseAuth.signUp.mockReset();
     mockSupabaseAuth.signOut.mockReset();
@@ -54,6 +48,10 @@ describe('AuthService', () => {
         },
       };
     });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('redirige al returnUrl cuando ocurre un login interactivo', async () => {

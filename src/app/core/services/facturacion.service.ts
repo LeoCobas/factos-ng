@@ -75,6 +75,14 @@ export interface ClienteLookupResult extends ClienteFacturaData {
   fiscal_status_source: 'constancia_inscripcion';
 }
 
+type TipoComprobanteFiscal =
+  | 'FACTURA A'
+  | 'FACTURA B'
+  | 'FACTURA C'
+  | 'NOTA DE CREDITO A'
+  | 'NOTA DE CREDITO B'
+  | 'NOTA DE CREDITO C';
+
 @Injectable({
   providedIn: 'root',
 })
@@ -143,6 +151,15 @@ export class FacturacionService {
     return `${anio}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
   }
 
+  private formatFechaArgentina(fechaISO: string): string {
+    const [anio, mes, dia] = fechaISO.split('-');
+    if (!anio || !mes || !dia) {
+      return fechaISO;
+    }
+
+    return `${dia}/${mes}/${anio}`;
+  }
+
   private formatNumeroComprobante(ptoVta: number, cbteNro: number): string {
     return `${String(ptoVta).padStart(4, '0')}-${String(cbteNro).padStart(8, '0')}`;
   }
@@ -206,6 +223,13 @@ export class FacturacionService {
     if (!fechaValidation.isValid) {
       throw new Error(fechaValidation.error);
     }
+
+    await this.validarFechaNoAnteriorAUltimoTipo({
+      contribuyenteId: contribuyente.id,
+      tipoComprobante,
+      fechaISO: this.fechaDDMMYYYYtoISO(facturaData.fecha),
+      puntoVenta: contribuyente.punto_venta,
+    });
 
     const resultado = await this.llamarArca(contribuyente, facturaData, cliente, tipoComprobante);
 
@@ -359,6 +383,16 @@ export class FacturacionService {
       const cbteNroStr = numeroComprobanteOriginal.split('-').pop() || '1';
       const cbteNro = parseInt(cbteNroStr, 10);
       const fechaOriginal = comprobanteOriginal.fecha.replace(/-/g, '');
+      const tipoNC = getNotaCreditoTipo(comprobanteOriginal.tipo_comprobante);
+      const fechaNotaCredito = this.getFechaLocalISO();
+
+      await this.validarFechaNoAnteriorAUltimoTipo({
+        contribuyenteId: contribuyente.id,
+        tipoComprobante: tipoNC,
+        fechaISO: fechaNotaCredito,
+        puntoVenta: contribuyente.punto_venta,
+      });
+
       const accessToken = await this.getFreshAccessToken();
       const clienteDocData = getClienteDocData({
         cuit: comprobanteOriginal.cliente_cuit,
@@ -384,7 +418,7 @@ export class FacturacionService {
             iva_porcentaje: contribuyente.iva_porcentaje,
             cbte_asociado_nro: cbteNro,
             cbte_asociado_fecha: fechaOriginal,
-            fecha: this.getFechaLocalISO(),
+            fecha: fechaNotaCredito,
             doc_tipo: clienteDocData.docTipo,
             doc_nro: clienteDocData.docNro,
             condicion_iva_receptor_id: getCondicionIvaReceptorId(
@@ -400,7 +434,6 @@ export class FacturacionService {
         throw new Error(responseData.error || 'Error al crear nota de credito');
       }
 
-      const tipoNC = getNotaCreditoTipo(comprobanteOriginal.tipo_comprobante);
       const ncNumero = this.formatNumeroComprobante(
         responseData.data.PtoVta,
         responseData.data.CbteDesde
@@ -413,7 +446,7 @@ export class FacturacionService {
           tipo_comprobante: tipoNC,
           numero_comprobante: ncNumero,
           punto_venta: contribuyente.punto_venta,
-          fecha: this.getFechaLocalISO(),
+          fecha: fechaNotaCredito,
           total: monto,
           cae: responseData.data.CAE,
           vencimiento_cae: responseData.data.CAEFchVto,
@@ -521,6 +554,54 @@ export class FacturacionService {
           error,
           error instanceof Error ? error.message : 'No se pudo obtener datos del CUIT',
         ),
+      );
+    }
+  }
+
+  async cargarUltimaFechaComprobantePorTipo(
+    contribuyenteId: string,
+    tipoComprobante: TipoComprobanteFiscal | string,
+    puntoVenta?: number | null,
+  ): Promise<string | null> {
+    let query = supabase
+      .from('comprobantes')
+      .select('fecha')
+      .eq('contribuyente_id', contribuyenteId)
+      .eq('tipo_comprobante', tipoComprobante)
+      .eq('estado', 'emitida');
+
+    if (Number.isInteger(puntoVenta) && Number(puntoVenta) > 0) {
+      query = query.eq('punto_venta', Number(puntoVenta));
+    }
+
+    const { data, error } = await query
+      .order('fecha', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error('No se pudo consultar la ultima fecha emitida para el tipo de comprobante');
+    }
+
+    return data?.fecha ?? null;
+  }
+
+  async validarFechaNoAnteriorAUltimoTipo(params: {
+    contribuyenteId: string;
+    tipoComprobante: TipoComprobanteFiscal | string;
+    fechaISO: string;
+    puntoVenta?: number | null;
+  }): Promise<void> {
+    const ultimaFecha = await this.cargarUltimaFechaComprobantePorTipo(
+      params.contribuyenteId,
+      params.tipoComprobante,
+      params.puntoVenta,
+    );
+
+    if (ultimaFecha && params.fechaISO < ultimaFecha) {
+      throw new Error(
+        `No se puede emitir una ${params.tipoComprobante} con fecha anterior a la ultima autorizada para ese tipo: ${this.formatFechaArgentina(ultimaFecha)}`,
       );
     }
   }
