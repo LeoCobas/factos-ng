@@ -110,6 +110,10 @@ interface PeriodoTotal {
     }
 
     .totales-view .period-title {
+      color: rgb(var(--foreground));
+    }
+
+    :host-context(.dark-theme) .totales-view .period-title {
       color: #d7cfbf;
     }
 
@@ -162,6 +166,11 @@ interface PeriodoTotal {
       letter-spacing: -0.03em;
       white-space: normal;
       overflow-wrap: anywhere;
+      color: rgb(22 163 74);
+    }
+
+    :host-context(.dark-theme) .totales-period-card .period-amount {
+      color: #578d66;
     }
 
     .totales-period-card .period-sub {
@@ -172,6 +181,10 @@ interface PeriodoTotal {
       margin-top: 0.45rem;
       font-size: 0.9rem;
       text-wrap: balance;
+      color: rgb(var(--muted-foreground));
+    }
+
+    :host-context(.dark-theme) .totales-period-card__metric .period-sub {
       color: rgba(228, 223, 213, 0.8);
     }
 
@@ -180,6 +193,10 @@ interface PeriodoTotal {
       font-weight: 700;
       line-height: 1.15;
       letter-spacing: -0.02em;
+      color: rgb(var(--foreground));
+    }
+
+    :host-context(.dark-theme) .totales-section-title {
       color: #e8dfcf;
     }
 
@@ -191,6 +208,16 @@ interface PeriodoTotal {
     }
 
     .totales-annual-summary {
+      background:
+        radial-gradient(circle at top right, rgb(29 78 216 / 0.06), transparent 36%),
+        linear-gradient(145deg, rgb(255 255 255) 0%, rgb(250 248 244) 100%);
+      box-shadow:
+        0 16px 34px rgb(15 23 42 / 0.07),
+        inset 0 1px 0 rgb(255 255 255 / 0.9);
+      border-color: rgb(var(--border) / 0.95);
+    }
+
+    :host-context(.dark-theme) .totales-annual-summary {
       background:
         linear-gradient(145deg, rgba(40, 36, 33, 0.98) 0%, rgba(28, 26, 24, 0.96) 100%);
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
@@ -216,11 +243,19 @@ interface PeriodoTotal {
     .totales-annual-summary .period-sub {
       font-size: 0.84rem;
       line-height: 1.3;
-      color: rgba(231, 225, 213, 0.84);
+      color: rgb(var(--muted-foreground));
       text-wrap: balance;
     }
 
     .totales-annual-summary .period-amount {
+      color: rgb(22 163 74);
+    }
+
+    :host-context(.dark-theme) .totales-annual-summary .period-sub {
+      color: rgba(231, 225, 213, 0.84);
+    }
+
+    :host-context(.dark-theme) .totales-annual-summary .period-amount {
       color: #8fbe8c;
     }
 

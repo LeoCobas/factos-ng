@@ -10,7 +10,7 @@ import { ThemeService } from '../core/services/theme.service';
     <div class="min-h-screen bg-background flex flex-col">
       <div
         data-app-header
-        class="border-b border-border/80 bg-card/96 px-3 py-3 shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur sm:px-4 sm:py-4"
+        class="bg-card/96 px-3 py-3 backdrop-blur sm:px-4 sm:py-4"
       >
         <div class="mx-auto flex max-w-5xl flex-col gap-3">
           <div class="relative flex items-center justify-between gap-3">
