@@ -4,6 +4,7 @@ import { Comprobante } from '../../core/types/database.types';
 import {
   ComprobanteResultadoAction,
   ComprobanteResultadoActionId,
+  ComprobanteResultadoMessageType,
   ComprobanteResultadoPanelComponent,
 } from '../../shared/components/ui/comprobante-resultado-panel.component';
 
@@ -20,6 +21,9 @@ import {
         [subtitle]="clienteDescripcion()"
         [actions]="acciones"
         [actionsOpen]="accionesAbiertas()"
+        [actionInProgress]="accionEnCurso"
+        [message]="mensajeAccion"
+        [messageType]="mensajeAccionTipo"
         closeLabel="Volver"
         (toggleActions)="toggleAcciones()"
         (actionSelected)="onAction($event)"
@@ -33,6 +37,9 @@ export class FacturaEmitidaPanelComponent {
   @Input({ required: true }) tipoComprobante!: string;
   @Input({ required: true }) numeroComprobante!: string;
   @Input({ required: true }) monto!: string;
+  @Input() accionEnCurso: ComprobanteResultadoActionId | null = null;
+  @Input() mensajeAccion: string | null = null;
+  @Input() mensajeAccionTipo: ComprobanteResultadoMessageType = 'success';
 
   @Output() readonly ver = new EventEmitter<void>();
   @Output() readonly compartir = new EventEmitter<void>();

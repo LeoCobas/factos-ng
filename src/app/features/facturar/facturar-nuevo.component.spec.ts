@@ -11,6 +11,17 @@ import {
 import { PdfService } from '../../core/services/pdf.service';
 import { FacturarNuevoComponent } from './facturar-nuevo.component';
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+}
+
 describe('FacturarNuevoComponent', () => {
   const createFacturacionServiceStub = () => ({
     emitirFactura: vi.fn().mockResolvedValue({
@@ -236,6 +247,137 @@ describe('FacturarNuevoComponent', () => {
 
     expect(component.mensaje()).toContain('no hay conexion a internet');
     expect(component.esExito()).toBe(false);
+  });
+
+  it('bloquea doble click mientras una accion del comprobante sigue en curso', async () => {
+    const fixture = TestBed.createComponent(FacturarNuevoComponent);
+    const component = fixture.componentInstance;
+    const pdfService = TestBed.inject(PdfService) as unknown as {
+      createPdfInfo: ReturnType<typeof vi.fn>;
+      sharePdf: ReturnType<typeof vi.fn>;
+    };
+    const deferred = createDeferred<boolean>();
+
+    component.facturaEmitida.set({
+      id: 'comp-1',
+      contribuyente_id: 'cont-1',
+      tipo_comprobante: 'FACTURA C',
+      numero_comprobante: '0001-00000015',
+      punto_venta: 1,
+      fecha: '2026-04-20',
+      total: 12000,
+      cae: '123',
+      vencimiento_cae: '20260430',
+      estado: 'emitida',
+      concepto: 'Servicios',
+      pdf_url: null,
+      afip_id: null,
+      cliente_cuit: null,
+      cliente_doc_tipo: null,
+      cliente_doc_nro: null,
+      cliente_nombre: null,
+      cliente_domicilio: null,
+      cliente_condicion_iva: null,
+      comprobante_asociado_id: null,
+      created_at: null,
+      updated_at: null,
+    });
+    pdfService.createPdfInfo.mockReturnValue({ filename: 'a.pdf', title: 'A', text: 'x' });
+    pdfService.sharePdf.mockReturnValue(deferred.promise);
+
+    const firstCall = component.compartir();
+    const secondCall = component.compartir();
+
+    expect(component.accionComprobanteEnCurso()).toBe('compartir');
+    expect(pdfService.sharePdf).toHaveBeenCalledTimes(1);
+
+    deferred.resolve(true);
+    await firstCall;
+    await secondCall;
+
+    expect(component.accionComprobanteEnCurso()).toBeNull();
+  });
+
+  it('muestra feedback de exito al completar una accion del comprobante', async () => {
+    const fixture = TestBed.createComponent(FacturarNuevoComponent);
+    const component = fixture.componentInstance;
+    const pdfService = TestBed.inject(PdfService) as unknown as {
+      createPdfInfo: ReturnType<typeof vi.fn>;
+      downloadPdf: ReturnType<typeof vi.fn>;
+    };
+
+    component.facturaEmitida.set({
+      id: 'comp-1',
+      contribuyente_id: 'cont-1',
+      tipo_comprobante: 'FACTURA C',
+      numero_comprobante: '0001-00000015',
+      punto_venta: 1,
+      fecha: '2026-04-20',
+      total: 12000,
+      cae: '123',
+      vencimiento_cae: '20260430',
+      estado: 'emitida',
+      concepto: 'Servicios',
+      pdf_url: null,
+      afip_id: null,
+      cliente_cuit: null,
+      cliente_doc_tipo: null,
+      cliente_doc_nro: null,
+      cliente_nombre: null,
+      cliente_domicilio: null,
+      cliente_condicion_iva: null,
+      comprobante_asociado_id: null,
+      created_at: null,
+      updated_at: null,
+    });
+    pdfService.createPdfInfo.mockReturnValue({ filename: 'a.pdf', title: 'A', text: 'x' });
+    pdfService.downloadPdf.mockResolvedValue(true);
+
+    await component.descargar();
+
+    expect(component.mensajeAccionComprobante()).toBe('Descarga iniciada.');
+    expect(component.mensajeAccionComprobanteTipo()).toBe('success');
+  });
+
+  it('muestra feedback de error si falla una accion del comprobante', async () => {
+    const fixture = TestBed.createComponent(FacturarNuevoComponent);
+    const component = fixture.componentInstance;
+    const pdfService = TestBed.inject(PdfService) as unknown as {
+      createPdfInfo: ReturnType<typeof vi.fn>;
+      sharePdf: ReturnType<typeof vi.fn>;
+    };
+
+    component.facturaEmitida.set({
+      id: 'comp-1',
+      contribuyente_id: 'cont-1',
+      tipo_comprobante: 'FACTURA C',
+      numero_comprobante: '0001-00000015',
+      punto_venta: 1,
+      fecha: '2026-04-20',
+      total: 12000,
+      cae: '123',
+      vencimiento_cae: '20260430',
+      estado: 'emitida',
+      concepto: 'Servicios',
+      pdf_url: null,
+      afip_id: null,
+      cliente_cuit: null,
+      cliente_doc_tipo: null,
+      cliente_doc_nro: null,
+      cliente_nombre: null,
+      cliente_domicilio: null,
+      cliente_condicion_iva: null,
+      comprobante_asociado_id: null,
+      created_at: null,
+      updated_at: null,
+    });
+    pdfService.createPdfInfo.mockReturnValue({ filename: 'a.pdf', title: 'A', text: 'x' });
+    pdfService.sharePdf.mockRejectedValue(new Error('fallo'));
+
+    await component.compartir();
+
+    expect(component.mensajeAccionComprobante()).toBe('No se pudo compartir el ticket.');
+    expect(component.mensajeAccionComprobanteTipo()).toBe('error');
   });
 
   it('pide confirmacion con temporizador si el monto supera el limite configurado', async () => {

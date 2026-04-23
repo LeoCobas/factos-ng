@@ -29,6 +29,7 @@ import { PdfService } from '../../core/services/pdf.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import { Comprobante } from '../../core/types/database.types';
 import { PdfComprobanteData } from '../../core/types/pdf.types';
+import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.util';
 import {
   resolveTipoComprobanteDetallado,
   sanitizeCuit,
@@ -176,6 +177,9 @@ interface FacturaRecienteView {
             [tipoComprobante]="facturaEmitida() ? obtenerTipoComprobante(facturaEmitida()!) : ''"
             [numeroComprobante]="facturaEmitida() ? obtenerNumeroSinCeros(facturaEmitida()!.numero_comprobante) : ''"
             [monto]="facturaEmitida() ? montoFacturaEmitida() : ''"
+            [accionEnCurso]="accionComprobanteEnCurso()"
+            [mensajeAccion]="mensajeAccionComprobante()"
+            [mensajeAccionTipo]="mensajeAccionComprobanteTipo()"
             (ver)="verPDF()"
             (compartir)="compartir()"
             (descargar)="descargar()"
@@ -298,6 +302,11 @@ export class FacturarNuevoComponent implements OnDestroy {
   readonly pdfViewing = signal<Comprobante | null>(null);
   readonly pdfViewingConfig = signal<PdfViewerConfig | null>(null);
   readonly pdfViewingBlobUrl = signal<string | null>(null);
+  readonly accionComprobanteEnCurso = signal<
+    'ver' | 'compartir' | 'descargar' | 'imprimir' | null
+  >(null);
+  readonly mensajeAccionComprobante = signal<string | null>(null);
+  readonly mensajeAccionComprobanteTipo = signal<'success' | 'warning' | 'error'>('success');
 
   readonly actividad = signal<'bienes' | 'servicios' | null>(null);
   readonly clienteExpandido = signal(false);
@@ -412,6 +421,7 @@ export class FacturarNuevoComponent implements OnDestroy {
   }
 
   private confirmacionMontoTimer: ReturnType<typeof setInterval> | null = null;
+  private mensajeAccionComprobanteTimer: ReturnType<typeof setTimeout> | null = null;
   private limitesFechaRequestId = 0;
   private readonly visualViewport =
     typeof window !== 'undefined' ? window.visualViewport : null;
@@ -420,6 +430,8 @@ export class FacturarNuevoComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.clearConfirmacionMontoTimer();
     this.detachViewportListeners();
+    this.clearMensajeAccionComprobante();
+    this.pdfService.revokeBlobUrl(this.pdfViewingBlobUrl());
   }
 
   toggleCliente() {
@@ -516,6 +528,7 @@ export class FacturarNuevoComponent implements OnDestroy {
         `Factura emitida exitosamente. Número: ${resultado.comprobante.numero_comprobante}`,
       );
       this.facturaEmitida.set(resultado.comprobante);
+      this.clearMensajeAccionComprobante();
       void this.cargarFacturasRecientes();
       this.formFactura.reset({
         monto: '',
@@ -622,45 +635,77 @@ export class FacturarNuevoComponent implements OnDestroy {
   async verPDF(): Promise<void> {
     const factura = this.facturaEmitida();
     if (!factura) return;
+    const comprobante = factura;
 
-    try {
-      const pdfData = this.mapComprobanteToPdfData(factura);
-      const asset = await this.pdfService.createPdfAsset(pdfData);
-      this.pdfService.revokeBlobUrl(this.pdfViewingBlobUrl());
-      this.pdfViewing.set(factura);
-      this.pdfViewingBlobUrl.set(asset.blobUrl);
-      this.pdfViewingConfig.set({
-        url: asset.blobUrl,
-        filename: asset.info.filename,
-        title: `Factura ${this.obtenerTipoComprobante(factura)} N ${this.obtenerNumeroSinCeros(factura.numero_comprobante)}`,
-      });
-    } catch (error) {
-      console.error('Error al generar PDF para visualización:', error);
-      this.cerrarVisorPdf();
-      this.esExito.set(false);
-      this.mensaje.set(
-        error instanceof Error ? error.message : 'Hubo un error al generar el ticket.',
-      );
-    }
+    await this.ejecutarAccionComprobante(
+      'ver',
+      async () => {
+        const pdfData = this.mapComprobanteToPdfData(comprobante);
+        const asset = await this.pdfService.createPdfAsset(pdfData);
+        this.pdfService.revokeBlobUrl(this.pdfViewingBlobUrl());
+        this.pdfViewing.set(comprobante);
+        this.pdfViewingBlobUrl.set(asset.blobUrl);
+        this.pdfViewingConfig.set({
+          url: asset.blobUrl,
+          filename: asset.info.filename,
+          title: `Factura ${this.obtenerTipoComprobante(comprobante)} N ${this.obtenerNumeroSinCeros(comprobante.numero_comprobante)}`,
+        });
+      },
+      'Vista previa lista.',
+      'Hubo un error al generar el ticket.',
+    );
   }
 
   async compartir(): Promise<void> {
     const factura = this.facturaEmitida();
     if (!factura) return;
-    await this.pdfService.sharePdf(this.pdfService.createPdfInfo(this.mapComprobanteToPdfData(factura)));
+    const comprobante = factura;
+
+    await this.ejecutarAccionComprobante(
+      'compartir',
+      async () => {
+        const shared = await this.pdfService.sharePdf(
+          this.pdfService.createPdfInfo(this.mapComprobanteToPdfData(comprobante)),
+        );
+
+        if (!shared) {
+          throw new Error('No se pudo compartir el ticket.');
+        }
+      },
+      'Comprobante listo para compartir.',
+      'No se pudo compartir el ticket.',
+    );
   }
 
   async imprimir(): Promise<void> {
     const factura = this.facturaEmitida();
     if (!factura) return;
-    await this.pdfService.printFactura(this.mapComprobanteToPdfData(factura));
+    const comprobante = factura;
+    await this.ejecutarAccionComprobante(
+      'imprimir',
+      () => this.pdfService.printFactura(this.mapComprobanteToPdfData(comprobante)),
+      'Comprobante enviado a impresión.',
+      'Hubo un error enviando a imprimir.',
+    );
   }
 
   async descargar(): Promise<void> {
     const factura = this.facturaEmitida();
     if (!factura) return;
-    await this.pdfService.downloadPdf(
-      this.pdfService.createPdfInfo(this.mapComprobanteToPdfData(factura)),
+    const comprobante = factura;
+    await this.ejecutarAccionComprobante(
+      'descargar',
+      async () => {
+        const downloaded = await this.pdfService.downloadPdf(
+          this.pdfService.createPdfInfo(this.mapComprobanteToPdfData(comprobante)),
+        );
+
+        if (!downloaded) {
+          throw new Error('No se pudo descargar el ticket.');
+        }
+      },
+      'Descarga iniciada.',
+      'No se pudo descargar el ticket.',
     );
   }
 
@@ -675,6 +720,8 @@ export class FacturarNuevoComponent implements OnDestroy {
     this.facturaEmitida.set(null);
     this.mensaje.set(null);
     this.esExito.set(false);
+    this.clearMensajeAccionComprobante();
+    this.accionComprobanteEnCurso.set(null);
 
     setTimeout(() => this.montoInputRef()?.focus(), 100);
   }
@@ -717,6 +764,82 @@ export class FacturarNuevoComponent implements OnDestroy {
   private setMensajeCliente(message: string | null, tipo: 'success' | 'warning' | 'error') {
     this.mensajeCliente.set(message);
     this.mensajeClienteTipo.set(tipo);
+  }
+
+  private clearMensajeAccionComprobante(): void {
+    if (this.mensajeAccionComprobanteTimer !== null) {
+      clearTimeout(this.mensajeAccionComprobanteTimer);
+      this.mensajeAccionComprobanteTimer = null;
+    }
+
+    this.mensajeAccionComprobante.set(null);
+  }
+
+  private setMensajeAccionComprobante(
+    message: string,
+    tipo: 'success' | 'warning' | 'error',
+  ): void {
+    this.clearMensajeAccionComprobante();
+    this.mensajeAccionComprobante.set(message);
+    this.mensajeAccionComprobanteTipo.set(tipo);
+    this.mensajeAccionComprobanteTimer = setTimeout(() => {
+      this.mensajeAccionComprobante.set(null);
+      this.mensajeAccionComprobanteTimer = null;
+    }, 5000);
+  }
+
+  private async ejecutarAccionComprobante(
+    action: 'ver' | 'compartir' | 'descargar' | 'imprimir',
+    handler: () => Promise<void>,
+    successMessage: string,
+    fallbackErrorMessage: string,
+  ): Promise<void> {
+    if (this.accionComprobanteEnCurso()) {
+      return;
+    }
+
+    this.accionComprobanteEnCurso.set(action);
+    this.clearMensajeAccionComprobante();
+
+    try {
+      await handler();
+      this.setMensajeAccionComprobante(successMessage, 'success');
+    } catch (error) {
+      console.error(`Error al ejecutar accion ${action}:`, error);
+
+      if (action === 'ver') {
+        this.cerrarVisorPdf();
+      }
+
+      this.setMensajeAccionComprobante(
+        getFriendlyNetworkErrorMessage(
+          error,
+          fallbackErrorMessage,
+          this.getOfflineActionMessage(action),
+        ),
+        'error',
+      );
+    } finally {
+      this.accionComprobanteEnCurso.set(null);
+    }
+  }
+
+  private getOfflineActionMessage(
+    action: 'ver' | 'compartir' | 'descargar' | 'imprimir',
+  ): string {
+    if (action === 'ver') {
+      return 'No se pudo generar el ticket porque no hay conexion a internet. Verifica la red e intenta nuevamente.';
+    }
+
+    if (action === 'compartir') {
+      return 'No se pudo compartir el ticket porque no hay conexion a internet. Verifica la red e intenta nuevamente.';
+    }
+
+    if (action === 'descargar') {
+      return 'No se pudo descargar el ticket porque no hay conexion a internet. Verifica la red e intenta nuevamente.';
+    }
+
+    return 'No se pudo enviar a imprimir porque no hay conexion a internet. Verifica la red e intenta nuevamente.';
   }
 
   private requiereConfirmacionMontoExtra(monto: number): boolean {
@@ -994,3 +1117,4 @@ export class FacturarNuevoComponent implements OnDestroy {
     };
   }
 }
+
