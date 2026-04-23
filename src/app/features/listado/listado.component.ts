@@ -179,7 +179,7 @@ interface PdfFacturaLike {
                   tabindex="0"
                 >
                   <div
-                    class="grid grid-cols-[3rem_2.25rem_minmax(0,1fr)_6.4rem_1rem] items-center gap-x-1.5 sm:grid-cols-[3.2rem_2.6rem_minmax(0,1fr)_7.2rem_1rem] sm:gap-x-3"
+                    class="grid grid-cols-[3rem_3rem_minmax(0,1fr)_6.4rem_1rem] items-center gap-x-1.5 sm:grid-cols-[3.2rem_3.4rem_minmax(0,1fr)_7.2rem_1rem] sm:gap-x-3"
                   >
                     <div
                       class="text-[0.95rem] sm:text-sm font-medium text-foreground min-w-0 justify-self-start text-left"
@@ -187,7 +187,7 @@ interface PdfFacturaLike {
                       {{ obtenerTipoComprobanteVista(factura) }}
                     </div>
                     <div
-                      class="pl-1 text-[0.95rem] sm:text-sm font-medium min-w-0 justify-self-start text-left text-foreground sm:pl-1.5"
+                      class="pl-1 text-[0.95rem] sm:text-sm font-medium min-w-0 justify-self-end text-right text-foreground sm:pl-1.5"
                     >
                       {{ obtenerNumeroSinCeros(factura.numero_factura) }}
                     </div>

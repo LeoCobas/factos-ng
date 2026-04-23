@@ -166,7 +166,7 @@ describe('ListadoComponent', () => {
 
     const compiled = fixture.nativeElement as HTMLElement;
     const rowGrid = compiled.querySelector(
-      '.grid.grid-cols-\\[auto_auto_minmax\\(0\\2c 1fr\\)_auto_auto\\]',
+      '.grid.grid-cols-\\[3rem_3rem_minmax\\(0\\2c 1fr\\)_6\\.4rem_1rem\\]',
     ) as HTMLElement | null;
     const amountCell = compiled.querySelector('.justify-self-end.text-right') as HTMLElement | null;
 
