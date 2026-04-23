@@ -105,11 +105,92 @@ describe('ListadoComponent', () => {
       },
     ]);
     component.facturaExpandida.set('factura-1');
+    component.accionesSecundariasFacturaId.set('factura-1');
     component.anulandoFacturaId.set('factura-1');
 
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.textContent).toContain('Anulando...');
+  });
+
+  it('muestra la fila principal compacta al expandir una factura', () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+
+    component.facturas.set([
+      {
+        id: 'factura-1',
+        numero_factura: '0001-00000014',
+        fecha: '2026-04-16',
+        monto: 28000,
+        estado: 'emitida',
+        tipo_comprobante: 'FACTURA C',
+      },
+    ]);
+    component.facturaExpandida.set('factura-1');
+
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('[aria-label="M\u00e1s opciones"]')).not.toBeNull();
+    expect(compiled.textContent).toContain('Compartir');
+    expect(compiled.textContent).toContain('Imprimir');
+  });
+
+  it('oculta Anular Descargar y Ver hasta abrir mas opciones', () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+
+    component.facturas.set([
+      {
+        id: 'factura-1',
+        numero_factura: '0001-00000014',
+        fecha: '2026-04-16',
+        monto: 28000,
+        estado: 'emitida',
+        tipo_comprobante: 'FACTURA C',
+      },
+    ]);
+    component.facturaExpandida.set('factura-1');
+
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).not.toContain('Anular');
+    expect(compiled.textContent).not.toContain('Descargar');
+    expect(compiled.textContent).not.toContain('Ver');
+
+    component.accionesSecundariasFacturaId.set('factura-1');
+    fixture.detectChanges();
+
+    expect(compiled.textContent).toContain('Anular');
+    expect(compiled.textContent).toContain('Descargar');
+    expect(compiled.textContent).toContain('Ver');
+  });
+
+  it('no muestra Anular para facturas anuladas aunque esten abiertas las opciones secundarias', () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+
+    component.facturas.set([
+      {
+        id: 'factura-1',
+        numero_factura: '0001-00000014',
+        fecha: '2026-04-16',
+        monto: 28000,
+        estado: 'anulada',
+        tipo_comprobante: 'FACTURA C',
+      },
+    ]);
+    component.facturaExpandida.set('factura-1');
+    component.accionesSecundariasFacturaId.set('factura-1');
+
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).not.toContain('Anular');
+    expect(compiled.textContent).toContain('Descargar');
+    expect(compiled.textContent).toContain('Ver');
   });
 });

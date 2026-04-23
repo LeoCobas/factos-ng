@@ -220,37 +220,15 @@ interface PdfFacturaLike {
 
                 @if (facturaExpandida() === factura.id) {
                   <div class="border-t border-border bg-muted p-4 animate-fadeIn">
-                    <div
-                      class="receipt-card-actions mb-3"
-                      [class.receipt-card-actions--with-danger]="puedeAnularFactura(factura)"
-                    >
-                      @if (puedeAnularFactura(factura)) {
+                    <div class="receipt-card-actions mb-3">
+                      <div class="receipt-card-actions-primary">
                         <button
                           type="button"
-                          (click)="anularFactura(factura, $event)"
-                          [disabled]="esAnulandoFactura(factura.id)"
-                          [class.btn-loading--active]="esAnulandoFactura(factura.id)"
-                          [attr.aria-busy]="esAnulandoFactura(factura.id)"
-                          class="receipt-danger-btn btn-loading"
-                        >
-                          <span class="btn-loading__content">
-                            @if (esAnulandoFactura(factura.id)) {
-                              <span class="btn-loading__spinner" aria-hidden="true"></span>
-                              <span>Anulando...</span>
-                            } @else {
-                              <span>Anular</span>
-                            }
-                          </span>
-                        </button>
-                      }
-
-                      <div class="receipt-card-actions__utility">
-                        <button
-                          type="button"
-                          class="receipt-action-btn"
-                          title="Ver comprobante"
-                          aria-label="Ver comprobante"
-                          (click)="verPDF(factura, $event)"
+                          class="receipt-action-btn receipt-action-btn--more"
+                          title="Más opciones"
+                          aria-label="Más opciones"
+                          [attr.aria-expanded]="accionesSecundariasFacturaId() === factura.id"
+                          (click)="toggleAccionesSecundarias(factura.id, $event)"
                         >
                           <span class="receipt-action-btn__icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -258,17 +236,11 @@ interface PdfFacturaLike {
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                                 stroke-width="2"
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                              ></path>
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                d="M5 12h.01M12 12h.01M19 12h.01"
                               ></path>
                             </svg>
                           </span>
-                          <span class="receipt-action-btn__label">Ver</span>
+                          <span class="receipt-action-btn__label">Más</span>
                         </button>
 
                         <button
@@ -294,26 +266,6 @@ interface PdfFacturaLike {
                         <button
                           type="button"
                           class="receipt-action-btn"
-                          title="Descargar comprobante"
-                          aria-label="Descargar comprobante"
-                          (click)="descargar(factura, $event)"
-                        >
-                          <span class="receipt-action-btn__icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M12 3v12m0 0 4-4m-4 4-4-4m-3 8h14"
-                              ></path>
-                            </svg>
-                          </span>
-                          <span class="receipt-action-btn__label">Descargar</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          class="receipt-action-btn"
                           title="Imprimir comprobante"
                           aria-label="Imprimir comprobante"
                           (click)="imprimir(factura, $event)"
@@ -331,6 +283,86 @@ interface PdfFacturaLike {
                           <span class="receipt-action-btn__label">Imprimir</span>
                         </button>
                       </div>
+
+                      @if (accionesSecundariasFacturaId() === factura.id) {
+                        <div class="receipt-card-actions-secondary">
+                          @if (puedeAnularFactura(factura)) {
+                            <button
+                              type="button"
+                              (click)="anularFactura(factura, $event)"
+                              [disabled]="esAnulandoFactura(factura.id)"
+                              [class.btn-loading--active]="esAnulandoFactura(factura.id)"
+                              [attr.aria-busy]="esAnulandoFactura(factura.id)"
+                              class="receipt-danger-btn btn-loading"
+                            >
+                              <span class="btn-loading__content">
+                                @if (esAnulandoFactura(factura.id)) {
+                                  <span class="btn-loading__spinner" aria-hidden="true"></span>
+                                  <span>Anulando...</span>
+                                } @else {
+                                  <span class="receipt-danger-btn__icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                      <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-8 0h10"
+                                      ></path>
+                                    </svg>
+                                  </span>
+                                  <span>Anular</span>
+                                }
+                              </span>
+                            </button>
+                          }
+
+                          <button
+                            type="button"
+                            class="receipt-action-btn"
+                            title="Descargar comprobante"
+                            aria-label="Descargar comprobante"
+                            (click)="descargar(factura, $event)"
+                          >
+                            <span class="receipt-action-btn__icon" aria-hidden="true">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M12 3v12m0 0 4-4m-4 4-4-4m-3 8h14"
+                                ></path>
+                              </svg>
+                            </span>
+                            <span class="receipt-action-btn__label">Descargar</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            class="receipt-action-btn"
+                            title="Ver comprobante"
+                            aria-label="Ver comprobante"
+                            (click)="verPDF(factura, $event)"
+                          >
+                            <span class="receipt-action-btn__icon" aria-hidden="true">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                ></path>
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                ></path>
+                              </svg>
+                            </span>
+                            <span class="receipt-action-btn__label">Ver</span>
+                          </button>
+                        </div>
+                      }
                     </div>
 
                     <div class="text-xs text-muted-foreground space-y-1">
@@ -454,6 +486,7 @@ export class ListadoComponent {
   facturas = signal<Factura[]>([]);
   cargando = signal(false);
   facturaExpandida = signal<string | null>(null);
+  accionesSecundariasFacturaId = signal<string | null>(null);
   anulandoFacturaId = signal<string | null>(null);
   notaCreditoEmitida = signal<NotaCreditoEmitida | null>(null);
   notaCreditoAccionesAbiertas = signal(false);
@@ -563,6 +596,18 @@ export class ListadoComponent {
     }
 
     this.facturaExpandida.set(this.facturaExpandida() === facturaId ? null : facturaId);
+    this.accionesSecundariasFacturaId.set(null);
+  }
+
+  toggleAccionesSecundarias(facturaId: string, event?: Event): void {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    this.accionesSecundariasFacturaId.update((actual) =>
+      actual === facturaId ? null : facturaId,
+    );
   }
 
   puedeAnularFactura(factura: Factura): boolean {
@@ -964,7 +1009,7 @@ export class ListadoComponent {
 
   obtenerClaseContenedorFactura(factura: Factura): string {
     const expandedClass =
-      this.facturaExpandida() === factura.id ? 'shadow-md border-primary' : 'shadow-sm';
+      this.facturaExpandida() === factura.id ? 'shadow-md receipt-expanded-frame' : 'shadow-sm';
     return this.esNotaCredito(factura)
       ? `${expandedClass} card-nota-credito-frame`
       : expandedClass;
@@ -1044,6 +1089,7 @@ export class ListadoComponent {
         this.limpiarCacheFecha(this.fechaSeleccionada());
         await this.cargarFacturasPorFecha(this.fechaSeleccionada(), { silent: true, force: true });
         this.facturaExpandida.set(null);
+        this.accionesSecundariasFacturaId.set(null);
         return;
       }
 

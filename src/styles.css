@@ -253,6 +253,24 @@ body {
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
 }
 
+.receipt-expanded-frame {
+  border-color: rgb(148 163 184 / 0.42);
+  box-shadow:
+    0 10px 24px rgb(2 8 23 / 0.14),
+    inset 0 1px 0 rgb(255 255 255 / 0.035);
+}
+
+.light-theme .receipt-expanded-frame {
+  border-color: rgb(203 213 225 / 0.95);
+  box-shadow:
+    0 10px 24px rgb(15 23 42 / 0.08),
+    inset 0 1px 0 rgb(255 255 255 / 0.9);
+}
+
+.receipt-expanded-frame.card-nota-credito-frame {
+  border-color: rgb(var(--destructive));
+}
+
 /* Card de factura emitida con fondo azul elegante */
 .card-factura-emitida {
   /* Tema claro: fondo azul suave y elegante */
@@ -509,18 +527,51 @@ body {
 
 .receipt-card-actions {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.55rem;
 }
 
-.receipt-card-actions--with-danger {
-  grid-template-columns: minmax(0, 8.8rem) minmax(0, 1fr);
-  align-items: stretch;
-}
-
-.receipt-card-actions__utility {
+.receipt-card-actions-primary,
+.receipt-card-actions-secondary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.65rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.receipt-card-actions-secondary {
+  animation: receiptSecondaryActionsIn 0.18s ease-out;
+}
+
+.receipt-card-actions .receipt-action-btn,
+.receipt-card-actions .receipt-danger-btn {
+  min-height: 3.15rem;
+  border-radius: 0.85rem;
+  padding: 0.55rem 0.5rem;
+  box-shadow: none;
+}
+
+.receipt-card-actions .receipt-action-btn {
+  flex-direction: row;
+  gap: 0.45rem;
+}
+
+.receipt-card-actions .receipt-action-btn:hover {
+  box-shadow: 0 8px 18px rgb(15 23 42 / 0.08);
+}
+
+.receipt-card-actions .receipt-action-btn__icon {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.receipt-card-actions .receipt-action-btn__label {
+  font-size: 0.76rem;
+  line-height: 1.05;
+}
+
+.receipt-action-btn--more[aria-expanded='true'] {
+  border-color: rgb(var(--primary) / 0.38);
+  background: rgb(var(--primary) / 0.12);
+  color: rgb(var(--foreground));
 }
 
 .receipt-danger-btn {
@@ -541,9 +592,28 @@ body {
   transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
+.receipt-danger-btn__icon {
+  display: inline-flex;
+  width: 1.05rem;
+  height: 1.05rem;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: rgb(255 255 255);
+}
+
+.receipt-danger-btn__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
 .receipt-danger-btn:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 16px 26px rgb(220 38 38 / 0.22);
+}
+
+.receipt-card-actions .receipt-danger-btn:hover:not(:disabled) {
+  box-shadow: 0 8px 18px rgb(220 38 38 / 0.16);
 }
 
 .receipt-danger-btn:disabled {
@@ -566,6 +636,18 @@ body {
     0 16px 28px rgb(220 38 38 / 0.25);
 }
 
+@keyframes receiptSecondaryActionsIn {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes slideUp {
   from {
     opacity: 0;
@@ -583,13 +665,8 @@ body {
 }
 
 @media (max-width: 640px) {
-  .receipt-action-grid,
-  .receipt-card-actions__utility {
+  .receipt-action-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .receipt-card-actions--with-danger {
-    grid-template-columns: 1fr;
   }
 }
 
