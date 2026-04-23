@@ -138,6 +138,44 @@ describe('ListadoComponent', () => {
     expect(compiled.textContent).toContain('Imprimir');
   });
 
+  it('quita los ceros a la izquierda del numero visible de factura', () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+
+    expect(component.obtenerNumeroSinCeros('0001-00000014')).toBe('14');
+    expect(component.obtenerNumeroSinCeros('00000014')).toBe('14');
+    expect(component.obtenerNumeroSinCeros('0001-00000000')).toBe('0');
+  });
+
+  it('renderiza el numero de factura sin punto de venta ni ceros a la izquierda', () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+
+    component.facturas.set([
+      {
+        id: 'factura-1',
+        numero_factura: '0001-00000014',
+        fecha: '2026-04-16',
+        monto: 28000,
+        estado: 'emitida',
+        tipo_comprobante: 'FACTURA C',
+      },
+    ]);
+
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const rowGrid = compiled.querySelector(
+      '.grid.grid-cols-\\[auto_auto_minmax\\(0\\2c 1fr\\)_auto_auto\\]',
+    ) as HTMLElement | null;
+    const amountCell = compiled.querySelector('.justify-self-end.text-right') as HTMLElement | null;
+
+    expect(rowGrid).not.toBeNull();
+    expect(amountCell).not.toBeNull();
+    expect(compiled.textContent).toContain('14');
+    expect(compiled.textContent).not.toContain('00000014');
+  });
+
   it('ignora toggles duplicados rapidos al desplegar una factura', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-23T12:00:00-03:00'));

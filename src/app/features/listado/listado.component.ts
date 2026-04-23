@@ -80,7 +80,7 @@ interface PdfFacturaLike {
   imports: [CurrencyPipe, PdfViewerComponent, ComprobanteResultadoPanelComponent],
   template: `
     <div class="space-y-4 sm:space-y-6">
-      <div class="card-surface p-4">
+      <div class="card-surface px-2.5 py-3 sm:p-4">
         <label class="form-label mb-4">Seleccionar fecha</label>
 
         <div class="relative">
@@ -93,7 +93,7 @@ interface PdfFacturaLike {
         </div>
       </div>
 
-      <div class="card-surface p-4">
+      <div class="card-surface px-2.5 py-3 sm:p-4">
         <h3 class="form-label mb-4">{{ nombreFechaSeleccionada() }}</h3>
 
         @if (mensajeCarga()) {
@@ -173,33 +173,39 @@ interface PdfFacturaLike {
                 [class]="obtenerClaseContenedorFactura(factura)"
               >
                 <div
-                  [class]="obtenerClaseFilaFactura(factura) + ' p-3 cursor-pointer hover:bg-muted'"
+                  [class]="obtenerClaseFilaFactura(factura) + ' px-2 py-2.5 sm:p-3 cursor-pointer hover:bg-muted'"
                   (click)="toggleExpansion(factura.id, $event)"
                   role="button"
                   tabindex="0"
                 >
-                  <div class="flex items-center justify-between gap-3">
-                    <div class="text-xs font-medium text-foreground min-w-0 flex-shrink-0 text-left">
+                  <div
+                    class="grid grid-cols-[3rem_2.25rem_minmax(0,1fr)_6.4rem_1rem] items-center gap-x-1.5 sm:grid-cols-[3.2rem_2.6rem_minmax(0,1fr)_7.2rem_1rem] sm:gap-x-3"
+                  >
+                    <div
+                      class="text-[0.95rem] sm:text-sm font-medium text-foreground min-w-0 justify-self-start text-left"
+                    >
                       {{ obtenerTipoComprobanteVista(factura) }}
                     </div>
-                    <div class="font-mono text-sm min-w-0 flex-shrink-0 text-right text-foreground">
+                    <div
+                      class="pl-1 text-[0.95rem] sm:text-sm font-medium min-w-0 justify-self-start text-left text-foreground sm:pl-1.5"
+                    >
                       {{ obtenerNumeroSinCeros(factura.numero_factura) }}
                     </div>
-                    <div class="min-w-0 flex-shrink-0 text-center">
+                    <div class="min-w-0 w-full justify-self-stretch text-center">
                       <span
-                        class="px-2 py-1 rounded text-xs font-medium"
+                        class="px-1.5 py-1 rounded text-[0.78rem] sm:text-xs font-medium"
                         [class]="obtenerClaseEstado(factura.estado)"
                       >
                         {{ obtenerTextoEstado(factura.estado) }}
                       </span>
                     </div>
                     <div
-                      class="text-right font-semibold text-sm min-w-0"
-                      [class]="obtenerClaseMonto(factura).replace('col-span-3', '')"
+                      class="text-right font-semibold text-[0.95rem] sm:text-sm min-w-0 justify-self-end"
+                      [class]="obtenerClaseMonto(factura)"
                     >
                       {{ obtenerMontoMostrar(factura) | currency:'ARS':'symbol':'1.2-2':'es-AR' }}
                     </div>
-                    <div class="ml-2 text-muted-foreground">
+                    <div class="ml-1 sm:ml-2 justify-self-end text-muted-foreground">
                       <svg
                         class="w-4 h-4 transition-transform duration-200"
                         [class]="facturaExpandida() === factura.id ? 'rotate-180' : ''"
@@ -1013,7 +1019,7 @@ export class ListadoComponent {
 
   obtenerNumeroSinCeros(numero: string): string {
     if (numero.includes('-')) {
-      return numero.split('-')[1];
+      return numero.split('-').pop()?.replace(/^0+/, '') || '0';
     }
 
     return numero.replace(/^0+/, '') || '0';
@@ -1036,7 +1042,7 @@ export class ListadoComponent {
   }
 
   obtenerClaseMonto(factura: Factura): string {
-    const baseClass = 'col-span-3 text-right font-semibold text-sm';
+    const baseClass = 'text-right';
     return this.esNotaCredito(factura) ? `${baseClass} monto-negativo` : `${baseClass} text-foreground`;
   }
 
