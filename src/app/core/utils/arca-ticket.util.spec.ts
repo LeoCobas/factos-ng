@@ -15,4 +15,13 @@ describe('arca-ticket.util', () => {
     expect(readArcaTicketBucket(legacy, 'wsfe')).toEqual(legacy);
     expect(readArcaTicketBucket(legacy, 'padron')).toBeNull();
   });
+
+  it('no pierde el ticket legacy de wsfe al escribir el bucket de padron', () => {
+    const legacy = { token: 'legacy-ticket' };
+
+    const migrated = writeArcaTicketBucket(legacy, 'padron', { token: 'padron-ticket' });
+
+    expect(readArcaTicketBucket(migrated, 'wsfe')).toEqual(legacy);
+    expect(readArcaTicketBucket(migrated, 'padron')).toEqual({ token: 'padron-ticket' });
+  });
 });

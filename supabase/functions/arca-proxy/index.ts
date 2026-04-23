@@ -171,6 +171,18 @@ function summarizeUnknownResult(raw: any): string {
   }
 }
 
+function mapArcaServerErrorMessage(message: string): string {
+  if (!message) {
+    return 'Error desconocido en ARCA.';
+  }
+
+  if (message.includes('ns1:coe.alreadyAuthenticated')) {
+    return 'ARCA ya tiene un TA valido para WSFE en este CUIT. Suele pasar cuando existe un ticket activo en homologacion y se intento autenticar de nuevo. Espera unos minutos y reintenta.';
+  }
+
+  return message;
+}
+
 async function getUserArcaInstance(req: Request) {
   const { supabase: supabaseUser, user } = await getAuthenticatedUser(req);
 
@@ -340,7 +352,8 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err: any) {
-    return buildErrorResponse(`Error del servidor: ${err.message}`, { debug: { detalle: err.message } }, 500);
+    const detail = mapArcaServerErrorMessage(String(err?.message || ''));
+    return buildErrorResponse(`Error del servidor: ${detail}`, { debug: { detalle: err.message } }, 500);
   }
 }
 
@@ -512,7 +525,8 @@ async function handleCrearNotaCredito(req: Request, body: any): Promise<Response
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err: any) {
-    return buildErrorResponse(`Error del servidor: ${err.message}`, { debug: { detalle: err.message } }, 500);
+    const detail = mapArcaServerErrorMessage(String(err?.message || ''));
+    return buildErrorResponse(`Error del servidor: ${detail}`, { debug: { detalle: err.message } }, 500);
   }
 }
 

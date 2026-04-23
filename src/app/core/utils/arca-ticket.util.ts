@@ -33,8 +33,11 @@ export function writeArcaTicketBucket(
   nextTicket: JsonLike | undefined,
 ): JsonLike {
   const record = asRecord(storedTicket);
-  const existingBuckets =
-    record['__factos_ticket_store__'] === true ? asRecord(record['buckets']) : {};
+  const existingBuckets = record['__factos_ticket_store__'] === true
+    ? asRecord(record['buckets'])
+    : Object.keys(record).length > 0
+      ? { wsfe: storedTicket as JsonLike }
+      : {};
 
   const buckets: Record<string, JsonLike> = { ...existingBuckets };
 
