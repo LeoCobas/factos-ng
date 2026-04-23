@@ -40,7 +40,7 @@ import type { CertFormModel } from './configuracion.types';
                 class="file-dropzone flex-1"
                 [class]="
                   tieneCert()
-                    ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                    ? 'file-dropzone--loaded'
                     : 'border-border text-muted-foreground hover:text-foreground'
                 "
               >
@@ -81,7 +81,7 @@ import type { CertFormModel } from './configuracion.types';
                 class="file-dropzone flex-1"
                 [class]="
                   tieneKey()
-                    ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                    ? 'file-dropzone--loaded'
                     : 'border-border text-muted-foreground hover:text-foreground'
                 "
               >
@@ -125,17 +125,17 @@ import type { CertFormModel } from './configuracion.types';
 
           @if (tieneCert() && tieneKey()) {
             <div
-              class="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700"
+              class="config-status config-status--success flex items-center gap-2 p-3 rounded-lg border"
             >
-              <span class="text-sm font-medium text-green-700 dark:text-green-300">
+              <span class="text-sm font-medium">
                 Certificados configurados. Ya pod&eacute;s facturar.
               </span>
             </div>
           } @else {
             <div
-              class="flex items-center gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700"
+              class="config-status config-status--warning flex items-center gap-2 p-3 rounded-lg border"
             >
-              <span class="text-sm text-yellow-700 dark:text-yellow-300">
+              <span class="text-sm font-medium">
                 Sub&iacute; ambos archivos para poder facturar.
               </span>
             </div>
@@ -145,12 +145,9 @@ import type { CertFormModel } from './configuracion.types';
 
       @if (mensaje()) {
         <div
-          class="p-3 rounded-lg border text-sm"
-          [class]="
-            mensaje()?.tipo === 'success'
-              ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700'
-              : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-700'
-          "
+          class="config-status p-3 rounded-lg border text-sm"
+          [class.config-status--success]="mensaje()?.tipo === 'success'"
+          [class.config-status--error]="mensaje()?.tipo !== 'success'"
         >
           {{ mensaje()?.texto }}
         </div>

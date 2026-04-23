@@ -270,8 +270,8 @@ export class ConfiguracionComponent implements OnInit {
 
         this.tieneCert.set(!!c.arca_cert);
         this.tieneKey.set(!!c.arca_key);
-        if (c.arca_cert) this.certFileName.set('(certificado guardado)');
-        if (c.arca_key) this.keyFileName.set('(clave guardada)');
+        this.certFileName.set(null);
+        this.keyFileName.set(null);
       }
     } catch {
       this.mostrarMensaje('Error al cargar la configuraci\u00f3n.', 'error');

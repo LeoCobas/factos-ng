@@ -51,12 +51,9 @@ import type { FacturacionFormModel } from './configuracion.types';
             }
             @if (mensajePadron()) {
               <p
-                class="form-help"
-                [class]="
-                  mensajePadron()!.tipo === 'success'
-                    ? 'text-green-600 dark:text-green-400'
-                    : 'text-amber-600 dark:text-amber-400'
-                "
+                class="form-help config-inline-message"
+                [class.config-inline-message--success]="mensajePadron()!.tipo === 'success'"
+                [class.config-inline-message--warning]="mensajePadron()!.tipo !== 'success'"
               >
                 {{ mensajePadron()!.texto }}
               </p>
@@ -219,12 +216,9 @@ import type { FacturacionFormModel } from './configuracion.types';
 
       @if (mensaje()) {
         <div
-          class="p-3 rounded-lg border text-sm"
-          [class]="
-            mensaje()?.tipo === 'success'
-              ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700'
-              : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-700'
-          "
+          class="config-status p-3 rounded-lg border text-sm"
+          [class.config-status--success]="mensaje()?.tipo === 'success'"
+          [class.config-status--error]="mensaje()?.tipo !== 'success'"
         >
           {{ mensaje()?.texto }}
         </div>
