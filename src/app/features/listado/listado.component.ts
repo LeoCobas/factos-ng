@@ -498,6 +498,8 @@ export class ListadoComponent {
   private cacheFacturasPorFecha = new Map<string, Factura[]>();
   private cacheUltimaFechaConFacturas = new Map<string, string | null>();
   private mensajeAccionTimer: ReturnType<typeof setTimeout> | null = null;
+  private ultimoToggleExpansion: { facturaId: string; timestamp: number } | null = null;
+  private ultimoToggleAccionesSecundarias: { facturaId: string; timestamp: number } | null = null;
 
   pdfViewing = signal<Factura | PdfFacturaLike | null>(null);
   pdfViewingInfo = signal<{ title: string; url: string; filename: string } | null>(null);
@@ -595,6 +597,15 @@ export class ListadoComponent {
       event.stopPropagation();
     }
 
+    const ahora = Date.now();
+    if (
+      this.ultimoToggleExpansion?.facturaId === facturaId &&
+      ahora - this.ultimoToggleExpansion.timestamp < 300
+    ) {
+      return;
+    }
+
+    this.ultimoToggleExpansion = { facturaId, timestamp: ahora };
     this.facturaExpandida.set(this.facturaExpandida() === facturaId ? null : facturaId);
     this.accionesSecundariasFacturaId.set(null);
   }
@@ -605,6 +616,15 @@ export class ListadoComponent {
       event.stopPropagation();
     }
 
+    const ahora = Date.now();
+    if (
+      this.ultimoToggleAccionesSecundarias?.facturaId === facturaId &&
+      ahora - this.ultimoToggleAccionesSecundarias.timestamp < 300
+    ) {
+      return;
+    }
+
+    this.ultimoToggleAccionesSecundarias = { facturaId, timestamp: ahora };
     this.accionesSecundariasFacturaId.update((actual) =>
       actual === facturaId ? null : facturaId,
     );

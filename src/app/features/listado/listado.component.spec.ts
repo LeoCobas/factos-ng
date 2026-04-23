@@ -138,6 +138,29 @@ describe('ListadoComponent', () => {
     expect(compiled.textContent).toContain('Imprimir');
   });
 
+  it('ignora toggles duplicados rapidos al desplegar una factura', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-23T12:00:00-03:00'));
+
+    try {
+      const fixture = TestBed.createComponent(ListadoComponent);
+      const component = fixture.componentInstance;
+
+      component.toggleExpansion('factura-1');
+      vi.advanceTimersByTime(100);
+      component.toggleExpansion('factura-1');
+
+      expect(component.facturaExpandida()).toBe('factura-1');
+
+      vi.advanceTimersByTime(300);
+      component.toggleExpansion('factura-1');
+
+      expect(component.facturaExpandida()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('oculta Anular Descargar y Ver hasta abrir mas opciones', () => {
     const fixture = TestBed.createComponent(ListadoComponent);
     const component = fixture.componentInstance;
@@ -167,6 +190,29 @@ describe('ListadoComponent', () => {
     expect(compiled.textContent).toContain('Anular');
     expect(compiled.textContent).toContain('Descargar');
     expect(compiled.textContent).toContain('Ver');
+  });
+
+  it('ignora toggles duplicados rapidos del boton Mas', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-23T12:00:00-03:00'));
+
+    try {
+      const fixture = TestBed.createComponent(ListadoComponent);
+      const component = fixture.componentInstance;
+
+      component.toggleAccionesSecundarias('factura-1');
+      vi.advanceTimersByTime(100);
+      component.toggleAccionesSecundarias('factura-1');
+
+      expect(component.accionesSecundariasFacturaId()).toBe('factura-1');
+
+      vi.advanceTimersByTime(300);
+      component.toggleAccionesSecundarias('factura-1');
+
+      expect(component.accionesSecundariasFacturaId()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('no muestra Anular para facturas anuladas aunque esten abiertas las opciones secundarias', () => {
