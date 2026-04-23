@@ -7,7 +7,7 @@ No es un proyecto open source listo para reutilizar, exponer publicamente ni des
 ## Estado actual
 
 - Uso previsto: operacion personal o controlada.
-- Estado funcional: autenticacion, configuracion del contribuyente, gestion de certificados ARCA, emision de facturas A/B/C, anulacion con nota de credito, consulta de constancia de inscripcion y generacion local de PDF.
+- Estado funcional: autenticacion, configuracion del contribuyente, gestion de certificados ARCA, emision de facturas A/B/C, anulacion con nota de credito, consulta de constancia de inscripcion, generacion local de PDF e instalacion PWA.
 - Estado tecnico: base alineada con Angular 21, guards sin navegacion imperativa, formularios reactivos tipados en flujos principales, responsabilidades mejor separadas entre componentes y servicios.
 - Estado documental: este README y `docs/` reflejan el codigo vigente en `src/` y `supabase/`.
 
@@ -21,7 +21,8 @@ No es un proyecto open source listo para reutilizar, exponer publicamente ni des
 - `@arcasdk/core@0.3.6` en las Edge Functions
 - Tailwind CSS 4
 - `pdfmake` para generar tickets PDF localmente
-- PDF.js cargado desde CDN para visualizacion e impresion
+- PDF.js empaquetado localmente con worker servido desde `/assets/pdfjs`
+- PWA con manifest, service worker Angular, iconos Factos y cache headers especificos para iconos instalables
 - ESLint 9 + `angular-eslint`
 - Vitest para componentes, servicios y reglas de negocio
 
@@ -31,6 +32,7 @@ No es un proyecto open source listo para reutilizar, exponer publicamente ni des
 src/
   app/
     core/
+      config/
       guards/
       services/
       types/
@@ -51,21 +53,25 @@ supabase/
   schema.sql
 docs/
   arquitectura.md
+  backend-operational-contracts.md
   flujos-clave.md
+  runtime-config.md
   sectores-a-documentar.md
 ```
 
 ## Modulos principales
 
 - `auth`: login por email/password con Supabase Auth.
-- `configuracion`: alta o edicion del contribuyente, carga de certificados ARCA, consulta de constancia de inscripcion por CUIT, cambio de email/password y tema.
-- `facturar`: emision de comprobantes con lookup opcional de CUIT cliente, resolucion automatica de `FACTURA A`, `B` o `C`, panel de resultado emitido y bloque de facturas recientes.
+- `configuracion`: alta o edicion del contribuyente, monto maximo por factura, carga de certificados ARCA, consulta de constancia de inscripcion por CUIT, cambio de email/password y tema.
+- `facturar`: emision de comprobantes con lookup opcional de CUIT cliente, resolucion automatica de `FACTURA A`, `B` o `C`, confirmacion si se supera el monto maximo, panel de resultado emitido y bloque de facturas recientes.
 - `listado`: consulta comprobantes por fecha, visualizacion, descarga, compartido, impresion y anulacion con nota de credito.
 - `totales`: resumen de importes y cantidades por periodo.
 - `core/services/auth.service.ts`: fuente unica de verdad del estado de sesion e inicializacion de auth.
 - `core/services/facturacion.service.ts`: operaciones activas de negocio, como emitir factura, crear nota de credito, lookup de cliente y cargar facturas recientes.
 - `core/services/comprobantes.service.ts`: consultas de lectura para listados y metricas.
 - `core/services/pdf.service.ts` y `core/services/factura-pdf.service.ts`: contrato tipado comun para generar, descargar, compartir e imprimir comprobantes.
+- `core/services/pdfjs-loader.service.ts`: carga PDF.js desde dependencia local y fija el worker local comun para visor e impresion.
+- `core/services/theme.service.ts`: persiste `light`, `dark` o `auto`, aplica clases globales y actualiza `meta[name="theme-color"]`.
 
 ## Refactors aplicados en esta etapa
 
@@ -84,9 +90,16 @@ docs/
   - extraccion de `FacturaClienteLookupSectionComponent`
   - extraccion de `FacturasRecientesPanelComponent`
   - `ComprobantesService` como frontera de lectura para `listado` y `totales`
+  - validacion de fecha contra la ultima autorizada del mismo tipo de comprobante y punto de venta
+  - confirmacion temporizada cuando el monto supera `monto_maximo_factura`
 - PDF:
   - nuevo contrato `PdfComprobanteData` / `PdfInfo`
   - eliminacion de `any` en el flujo principal de PDF
+  - PDF.js deja de depender de CDN y usa modulo/worker locales
+- UI/PWA:
+  - preview del contribuyente en el header con acceso a configuracion y cierre de sesion
+  - ajuste de contraste para tema claro y oscuro
+  - iconos PWA `factos-icon-*`, favicon actualizado y cache headers en Netlify
 - Calidad:
   - mas cobertura en guards, auth flow, login, configuracion, comprobantes y facturacion
 
@@ -98,18 +111,23 @@ docs/
 - Clasificacion fiscal del cliente y resolucion del tipo de comprobante.
 - Emision y anulacion via `arca-proxy`.
 - Generacion de PDF local con `pdfmake`.
+- Visualizacion e impresion con PDF.js local.
+- Validacion de ventana fiscal y monotonia de fechas por tipo de comprobante.
 
 ## Como leer la documentacion
 
 - [Arquitectura](./docs/arquitectura.md)
 - [Flujos clave](./docs/flujos-clave.md)
+- [Runtime config](./docs/runtime-config.md)
+- [Contratos operativos de backend](./docs/backend-operational-contracts.md)
 - [Sectores a documentar mejor](./docs/sectores-a-documentar.md)
 
 ## Observaciones e inconsistencias vigentes
 
 - `supabase/config.toml` mantiene `verify_jwt = false`, aunque ambas funciones validan al usuario usando el token recibido por `Authorization`.
-- `src/environments/environment*.ts` contiene credenciales embebidas del proyecto actual.
-- PDF.js se carga desde CDN; ese comportamiento depende de conectividad hacia `jsdelivr` o `unpkg`.
+- `src/environments/environment*.ts` ya no contiene credenciales Supabase; solo define `runtimeConfigPath`.
+- `public/app-config.json` se genera en scripts de npm y contiene la configuracion operativa del cliente.
+- `public/manifest.webmanifest` todavia conserva texto descriptivo legacy de TusFacturas, aunque los iconos y la integracion runtime vigente son Factos/ARCA.
 - `src/app/features/listado/listado.component.ts` todavia tiene un bloque legacy comentado del acceso directo anterior a Supabase. El flujo runtime ya usa `ComprobantesService`, pero queda limpieza pendiente del archivo.
 
 ## Puesta en marcha local
@@ -160,9 +178,9 @@ npm run lint
 
 ### Frontend
 
-La app lee Supabase desde `src/environments/environment.ts` y `src/environments/environment.prod.ts`.
+La app lee `runtimeConfigPath` desde `src/environments/environment.ts` y `src/environments/environment.prod.ts`.
 
-Supuesto: hoy esos archivos se usan tal como estan y no hay un mecanismo alternativo versionado en Angular para entornos locales.
+La URL y la `anonKey` de Supabase se cargan en runtime desde `public/app-config.json`, generado por `scripts/generate-runtime-config.mjs` antes de `start`, `build`, `watch`, `test` y `netlify:build`.
 
 ### Supabase / Edge Functions
 

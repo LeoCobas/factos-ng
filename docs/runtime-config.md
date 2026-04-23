@@ -9,6 +9,7 @@ La app cliente ya no versiona la `anonKey` de Supabase dentro de `src/environmen
   - `supabase.url`
   - `supabase.anonKey`
 - `public/app-config.json` se genera automaticamente con `scripts/generate-runtime-config.mjs` antes de `start`, `build`, `watch`, `test` y `netlify:build`.
+- `environment.ts` y `environment.prod.ts` solo conservan `runtimeConfigPath`.
 
 ## Regla operativa
 
@@ -24,3 +25,10 @@ La app cliente ya no versiona la `anonKey` de Supabase dentro de `src/environmen
 - Netlify: no requiere edicion manual del archivo. Si definis `SUPABASE_URL` y `SUPABASE_ANON_KEY`, el build las usa; si no, usa el proyecto actual por defecto.
 - Produccion: se puede sobreescribir ese archivo durante build o deploy si cambia el proyecto.
 - Si falta o queda invalido, la app falla al iniciar con un error explicito.
+
+## Assets runtime
+
+- PDF.js se importa desde `pdfjs-dist` dentro del bundle.
+- El worker `pdf.worker.min.mjs` se copia desde `node_modules/pdfjs-dist/build` a `/assets/pdfjs`.
+- El visor y la impresion comparten `PdfjsLoaderService`, por lo que no hay fallback documentado a CDN.
+- La PWA usa iconos versionados como `icons/factos-icon-*.png`; Netlify fuerza revalidacion/caching correcto de esos assets para apps instaladas.

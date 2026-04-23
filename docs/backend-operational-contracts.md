@@ -152,6 +152,7 @@ Comportamiento:
 
 - valida contribuyente configurado
 - valida fecha fiscal segun actividad
+- valida que la fecha no sea anterior a la ultima autorizada del mismo tipo de comprobante y punto de venta
 - resuelve tipo de comprobante
 - obtiene o refresca access token de Supabase
 - llama `arca-proxy?action=crear-factura`
@@ -167,6 +168,7 @@ Comportamiento:
 
 - lee el comprobante original
 - deriva documento receptor y tipo de nota de credito
+- valida que la fecha local de la nota no sea anterior a la ultima autorizada del mismo tipo y punto de venta
 - llama `arca-proxy?action=crear-nota-credito`
 - inserta la nota de credito
 - actualiza el comprobante original a `estado='anulada'`
@@ -191,3 +193,5 @@ Comportamiento:
 - El documento receptor sale de `getClienteDocData(...)`.
 - La condicion IVA del receptor se normaliza antes de persistir o invocar ARCA.
 - La ventana de dias valida depende de `actividad`: bienes `5`, servicios `10`.
+- La monotonia de fecha se evalua por `contribuyente_id`, `tipo_comprobante`, `estado='emitida'` y, si existe, `punto_venta`.
+- `monto_maximo_factura` no se valida en `FacturacionService`: lo usa el contenedor de UI para pedir confirmacion antes de llamar al servicio.

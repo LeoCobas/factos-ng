@@ -10,12 +10,14 @@
 4. los guards esperan a que auth termine de inicializar antes de decidir acceso.
 5. si el usuario esta autenticado, la navegacion a rutas protegidas se resuelve sin redirecciones duplicadas.
 6. `main-layout.component.ts` carga el contribuyente al iniciar.
+7. si hay contribuyente, el header muestra un preview temporal con razon social, CUIT, acceso a configuracion y logout.
 
 ### Detalles
 
 - La sesion se persiste con un storage custom en `supabase.service.ts`.
 - Hay reintentos cortos al recuperar sesion para evitar fallas iniciales del cliente.
 - La app usa un `storageKey` propio: `factos-ng-supabase-auth`.
+- El logout se dispara desde `AuthService.signOut()` y la navegacion post-auth queda centralizada fuera de los componentes de pantalla.
 
 ## 2. Supabase
 
@@ -40,6 +42,7 @@
 - los `comprobantes` se buscan por `contribuyente_id`
 - las Edge Functions reciben `Authorization` y `apikey` explicitos desde frontend
 - la `anonKey` ya no vive en `environment*.ts`: el cliente la carga desde `public/app-config.json`
+- `public/app-config.json` se genera por script antes de `start`, `build`, `watch`, `test` y `netlify:build`.
 
 ## 3. Edge Functions
 
@@ -142,11 +145,13 @@
 4. si se consulta un CUIT, llama `FacturacionService.buscarClientePorCuit()`.
 5. esa llamada usa `padron-lookup` y obtiene condicion fiscal clasificada.
 6. la UI resuelve el tipo de comprobante y muestra si requiere revision.
-7. `FacturacionService.emitirFactura()` valida contribuyente y fecha.
-8. obtiene un access token fresco de Supabase.
-9. llama `arca-proxy?action=crear-factura`.
-10. si ARCA autoriza, inserta un registro en `comprobantes` con datos del receptor.
-11. el resultado se muestra en UI y se habilita PDF local usando el contrato `PdfComprobanteData`.
+7. si el monto supera `monto_maximo_factura`, muestra confirmacion con cuenta regresiva; con `0` no hay limite.
+8. `FacturacionService.emitirFactura()` valida contribuyente y fecha fiscal.
+9. consulta la ultima fecha emitida para el tipo resuelto y punto de venta; si la nueva fecha es anterior, corta antes de ARCA.
+10. obtiene un access token fresco de Supabase.
+11. llama `arca-proxy?action=crear-factura`.
+12. si ARCA autoriza, inserta un registro en `comprobantes` con datos del receptor.
+13. el resultado se muestra en UI y se habilita PDF local usando el contrato `PdfComprobanteData`.
 
 ## 7. Facturas recientes
 
@@ -159,10 +164,12 @@
 1. `listado.component.ts` pide confirmacion.
 2. llama `FacturacionService.crearNotaCredito(...)`.
 3. el servicio consulta el comprobante original, incluyendo datos del receptor.
-4. llama `arca-proxy?action=crear-nota-credito`.
-5. inserta la nota de credito en `comprobantes`.
-6. actualiza la factura original a estado `anulada`.
-7. refresca la vista del listado.
+4. deriva el tipo de nota de credito segun la factura asociada.
+5. valida que la fecha de la nota no sea anterior a la ultima autorizada del mismo tipo y punto de venta.
+6. llama `arca-proxy?action=crear-nota-credito`.
+7. inserta la nota de credito en `comprobantes`.
+8. actualiza la factura original a estado `anulada`.
+9. limpia cache de la fecha afectada y refresca la vista del listado.
 
 ## 9. Lectura de comprobantes y metricas
 
@@ -170,6 +177,7 @@
 2. `listado.component.ts` pide comprobantes tipados por fecha y ultima fecha disponible.
 3. `totales.component.ts` consume series tipadas para armar metricas y acumulados.
 4. las notas de credito asociadas se resuelven en el dominio de lectura y no en consultas ad hoc en cada componente.
+5. `listado.component.ts` mantiene cache por contribuyente/fecha y la invalida despues de anular.
 
 ## 10. ARCA SDK API
 
@@ -209,3 +217,13 @@ Ademas, si cambian certificados o entorno ARCA desde configuracion, la app limpi
 4. `pdf.service.ts` lo expone como blob para ver, compartir, descargar o imprimir
 5. `listado` y `facturar` reutilizan el mismo contrato tipado para evitar casts y objetos ad hoc
 6. `pdf-viewer.component.ts` y `pdfjs-print.service.ts` usan PDF.js empaquetado localmente, sin CDN publica
+
+## 13. Tema, PWA e instalacion
+
+1. `theme.service.ts` lee `theme` desde `localStorage` y acepta `light`, `dark` o `auto`.
+2. en modo `auto`, escucha `prefers-color-scheme` y recalcula el tema activo.
+3. aplica `light-theme` o `dark-theme` sobre `documentElement`.
+4. actualiza `meta[name="theme-color"]` para que la PWA y el navegador reflejen el tema.
+5. `main-layout.component.ts` usa `/logo.png` o `/logob.png` segun el tema activo.
+6. `public/manifest.webmanifest` usa iconos `icons/factos-icon-*.png`.
+7. `netlify.toml` fija headers para evitar que una app instalada retenga iconos anteriores.

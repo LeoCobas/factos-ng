@@ -2,18 +2,13 @@
 
 ## Prioridad alta
 
-- `supabase/functions/arca-proxy/index.ts`
-  - conviene documentar payloads esperados y ejemplos minimos para:
-    - factura
-    - nota de credito
-    - receptor con CUIT
-  - tambien conviene dejar documentados los errores AFIP/ARCA mas comunes
+- errores AFIP/ARCA frecuentes
+  - ya existe un contrato operativo base en `docs/backend-operational-contracts.md`
+  - queda sumar ejemplos reales de rechazos y mensajes recomendados para soporte
 
 - `supabase/functions/padron-lookup/index.ts`
-  - merece una nota tecnica especifica sobre:
-    - consulta de constancia de inscripcion
-    - timeouts
-    - significado de `fiscal_status_reliable`
+  - el contrato base ya esta documentado
+  - queda profundizar ejemplos de constancias ambiguas y criterios de `fiscal_status_reliable`
 
 - `src/app/core/services/facturacion.service.ts`
   - hoy concentra las operaciones transaccionales mas criticas
@@ -22,6 +17,7 @@
     - emitir factura
     - crear nota de credito
     - cargar facturas recientes
+    - validacion de ultima fecha por tipo/punto de venta
 
 - `src/app/core/services/comprobantes.service.ts`
   - es la nueva frontera de lectura para `listado` y `totales`
@@ -40,6 +36,8 @@
   - ahora es un contenedor mas claro, pero sigue siendo el coordinador del flujo
   - conviene documentar:
     - limites de fecha
+    - minimo dinamico por ultima fecha autorizada del tipo resuelto
+    - confirmacion por `monto_maximo_factura`
     - reset post-emision
     - recarga de recientes
     - sincronizacion del CUIT ingresado
@@ -53,6 +51,7 @@
     - tabs y ownership del contenedor
     - payloads de guardado
     - cuando se limpia `arca_ticket`
+    - como se guarda `monto_maximo_factura` y por que `0` significa sin limite
 
 - `src/app/features/listado/listado.component.ts`
   - ya consume `ComprobantesService`, pero aun conserva algo de ruido legacy
@@ -77,13 +76,21 @@
   - documentar inicializacion de sesion, storage custom y criterio de navegacion post-auth
 
 - `src/app/shared/components/ui/pdf-viewer.component.ts`
-  - documentar limitaciones de PDF.js en mobile
+  - documentar limitaciones de PDF.js local en mobile e impresion
+
+- `src/app/core/services/theme.service.ts`
+  - documentar persistencia de `light` / `dark` / `auto`
+  - documentar actualizacion de `meta[name="theme-color"]`
+
+- PWA assets
+  - documentar relacion entre `manifest.webmanifest`, `src/index.html`, iconos `factos-icon-*`, `ngsw-config.json` y headers de `netlify.toml`
 
 ## Inconsistencias o decisiones abiertas
 
-- documentar que `arca-proxy` y `padron-lookup` requieren `verify_jwt = true` y JWT valido
-- revisar si las credenciales de `environment*.ts` deben seguir versionadas
-- revisar si la carga de PDF.js desde CDN es aceptable para el entorno operativo real
+- `supabase/config.toml` mantiene `verify_jwt = false`; las functions validan JWT en codigo usando `Authorization`.
+- `environment*.ts` ya no versiona URL/anonKey Supabase; la fuente runtime es `public/app-config.json`.
+- PDF.js ya no depende de CDN; el worker local se copia a `/assets/pdfjs`.
+- `public/manifest.webmanifest` conserva descripcion legacy de TusFacturas aunque la app vigente opera con Factos/ARCA.
 - limpiar el bloque legacy comentado que sigue en `src/app/features/listado/listado.component.ts`
 - evaluar una pasada mas amplia de normalizacion UTF-8 en archivos no tocados por los refactors
 
@@ -95,7 +102,9 @@ La estructura simple actual sigue siendo razonable:
 README.md
 docs/
   arquitectura.md
+  backend-operational-contracts.md
   flujos-clave.md
+  runtime-config.md
   sectores-a-documentar.md
 ```
 
