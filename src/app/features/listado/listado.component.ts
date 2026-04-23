@@ -170,7 +170,7 @@ interface PdfFacturaLike {
             @for (factura of facturasFiltradas(); track factura.id) {
               <div
                 class="border border-border rounded-lg overflow-hidden transition-all duration-200"
-                [class]="facturaExpandida() === factura.id ? 'shadow-md border-primary' : 'shadow-sm'"
+                [class]="obtenerClaseContenedorFactura(factura)"
               >
                 <div
                   [class]="obtenerClaseFilaFactura(factura) + ' p-3 cursor-pointer hover:bg-muted'"
@@ -960,6 +960,14 @@ export class ListadoComponent {
 
   obtenerClaseFilaFactura(factura: Factura): string {
     return this.esNotaCredito(factura) ? 'card-nota-credito' : 'card-factura';
+  }
+
+  obtenerClaseContenedorFactura(factura: Factura): string {
+    const expandedClass =
+      this.facturaExpandida() === factura.id ? 'shadow-md border-primary' : 'shadow-sm';
+    return this.esNotaCredito(factura)
+      ? `${expandedClass} card-nota-credito-frame`
+      : expandedClass;
   }
 
   obtenerClaseMonto(factura: Factura): string {

@@ -226,20 +226,23 @@ body {
 }
 
 /* Cards específicas para diferentes tipos de documentos */
-.card-nota-credito {
-  /* Tema claro: fondo rosa suave */
-  background-color: rgb(252 231 243); /* pink-50 */
-  color: rgb(82 82 91); /* zinc-600 */
-  border: 1px solid rgb(244 163 195); /* pink-300 */
-  border-radius: calc(var(--radius));
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+.card-nota-credito-frame {
+  border-color: rgb(var(--destructive));
 }
 
-/* Tema oscuro: fondo bordó con texto claro */
+.card-nota-credito {
+  background-color: rgb(var(--card));
+  color: rgb(var(--card-foreground));
+  border: 1px solid rgb(var(--destructive));
+  border-radius: calc(var(--radius));
+  box-shadow: 0 1px 3px 0 rgb(220 38 38 / 0.08), 0 1px 2px -1px rgb(220 38 38 / 0.06);
+}
+
 .dark-theme .card-nota-credito {
-  background-color: rgb(97 30 38); /* #611e26 - bordó elegante */
-  color: rgb(244 244 245); /* zinc-100 texto claro */
-  border: 1px solid rgb(127 40 50); /* Borde más claro que el fondo para definición */
+  background-color: rgb(var(--card));
+  color: rgb(var(--card-foreground));
+  border-color: rgb(var(--destructive));
+  box-shadow: 0 1px 3px 0 rgb(239 68 68 / 0.12), 0 1px 2px -1px rgb(239 68 68 / 0.08);
 }
 
 .card-factura {
