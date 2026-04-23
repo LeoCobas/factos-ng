@@ -829,6 +829,21 @@ input[type="number"][formcontrolname="monto"] {
   height: 1.25rem;
 }
 
+.config-tab-wordmark {
+  display: inline-block;
+  width: 2.2rem;
+  height: 0.62rem;
+  background-color: currentColor;
+  -webkit-mask-image: url('/arca_letras.svg');
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  mask-image: url('/arca_letras.svg');
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
+
 .config-tab-icon-letter {
   display: inline-flex;
   align-items: center;

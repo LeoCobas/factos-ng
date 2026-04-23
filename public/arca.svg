@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Factos app icon</title>
+  <desc id="desc">White circular app icon with a stylized capital A and two side nodes.</desc>
+  <g fill="#FFFFFF">
+    <path d="M256 18c131.45 0 238 106.55 238 238S387.45 494 256 494 18 387.45 18 256 124.55 18 256 18Zm0 28C140.01 46 46 140.01 46 256s94.01 210 210 210 210-94.01 210-210S371.99 46 256 46Z"/>
+    <path d="M256 74c100.52 0 182 81.48 182 182s-81.48 182-182 182S74 356.52 74 256 155.48 74 256 74Zm0 12C162.11 86 86 162.11 86 256s76.11 170 170 170 170-76.11 170-170S349.89 86 256 86Z"/>
+    <circle cx="70" cy="256" r="26"/>
+    <circle cx="442" cy="256" r="26"/>
+    <path fill-rule="evenodd" d="M119 376 212 122h88l93 254h-71l-17-53h-98l-17 53Zm136-178-30 91h61Zm0-56-27 81h55Z"/>
+  </g>
+</svg>

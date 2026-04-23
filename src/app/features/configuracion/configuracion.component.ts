@@ -52,7 +52,7 @@ import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.u
             aria-label="Certificado ARCA"
             [class.config-tab-active]="tabActiva() === 'certificado'"
             [class.config-tab-inactive]="tabActiva() !== 'certificado'">
-            <div class="config-tab-icon config-tab-icon-letter">A</div>
+            <span class="config-tab-wordmark" aria-hidden="true"></span>
           </button>
           <button
             type="button"
