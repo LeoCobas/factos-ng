@@ -105,11 +105,28 @@ interface PdfFacturaLike {
         @if (mensajeAccion()) {
           <div
             class="mb-4 rounded-lg px-4 py-3 text-sm"
-            [class]="mensajeAccionTipo() === 'success'
-              ? 'border border-emerald-500/25 bg-emerald-500/10 text-emerald-700'
-              : 'border border-destructive/25 bg-destructive/10 text-destructive'"
+            [class]="
+              mensajeAccionTipo() === 'success'
+                ? 'border border-emerald-500/25 bg-emerald-500/10 text-emerald-700'
+                : mensajeAccionTipo() === 'warning'
+                  ? 'border border-amber-500/25 bg-amber-500/10 text-amber-800'
+                  : 'border border-destructive/25 bg-destructive/10 text-destructive'
+            "
           >
-            {{ mensajeAccion() }}
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <span>{{ mensajeAccion() }}</span>
+
+              @if (mensajeAccionTipo() === 'warning' && facturaPendienteReintento()) {
+                <button
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-lg border border-amber-500/30 bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-amber-500/10"
+                  (click)="reintentarAnulacion($event)"
+                  [disabled]="esAnulandoFactura(facturaPendienteReintento()!.id)"
+                >
+                  Reintentar
+                </button>
+              }
+            </div>
           </div>
         }
 
@@ -371,6 +388,54 @@ interface PdfFacturaLike {
                       }
                     </div>
 
+                    @if (
+                      mostrandoConfirmacionAnulacion() &&
+                      facturaPendienteAnulacion()?.id === factura.id
+                    ) {
+                      <div class="mb-4 rounded-2xl border border-amber-500/25 bg-card px-4 py-4 shadow-sm">
+                        <div class="mb-2 inline-flex rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                          Confirmar anulación
+                        </div>
+                        <div class="space-y-2">
+                          <h4 class="text-sm font-semibold text-foreground">
+                            ¿Seguro que querés anular la factura
+                            {{ facturaPendienteAnulacion()!.numero_factura }}?
+                          </h4>
+                          <p class="text-sm leading-6 text-muted-foreground">
+                            Se emitirá una nota de crédito automática por
+                            {{ formatearMoneda(facturaPendienteAnulacion()!.monto) }} para dejarla anulada.
+                          </p>
+                        </div>
+
+                        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                          <button
+                            type="button"
+                            class="rounded-lg border border-border bg-background px-4 py-2 font-medium text-foreground transition-colors hover:bg-muted"
+                            (click)="cancelarConfirmacionAnulacion($event)"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            class="receipt-danger-btn btn-loading justify-center"
+                            [disabled]="esAnulandoFactura(factura.id)"
+                            [class.btn-loading--active]="esAnulandoFactura(factura.id)"
+                            [attr.aria-busy]="esAnulandoFactura(factura.id)"
+                            (click)="confirmarAnulacionFactura($event)"
+                          >
+                            <span class="btn-loading__content">
+                              @if (esAnulandoFactura(factura.id)) {
+                                <span class="btn-loading__spinner" aria-hidden="true"></span>
+                                <span>Anulando...</span>
+                              } @else {
+                                <span>Confirmar anulación</span>
+                              }
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    }
+
                     <div class="text-xs text-muted-foreground space-y-1">
                       @if (factura.cliente_nombre) {
                         <div>Cliente: {{ factura.cliente_nombre }}</div>
@@ -499,7 +564,10 @@ export class ListadoComponent {
   ultimaFechaConFacturas = signal<string | null>(null);
   mensajeCarga = signal<string | null>(null);
   mensajeAccion = signal<string | null>(null);
-  mensajeAccionTipo = signal<'success' | 'error'>('success');
+  mensajeAccionTipo = signal<'success' | 'warning' | 'error'>('success');
+  facturaPendienteAnulacion = signal<Factura | null>(null);
+  mostrandoConfirmacionAnulacion = signal(false);
+  facturaPendienteReintento = signal<Factura | null>(null);
 
   private cacheFacturasPorFecha = new Map<string, Factura[]>();
   private cacheUltimaFechaConFacturas = new Map<string, string | null>();
@@ -642,6 +710,40 @@ export class ListadoComponent {
 
   esAnulandoFactura(facturaId: string): boolean {
     return this.anulandoFacturaId() === facturaId;
+  }
+
+  cancelarConfirmacionAnulacion(event?: Event): void {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    this.facturaPendienteAnulacion.set(null);
+    this.mostrandoConfirmacionAnulacion.set(false);
+  }
+
+  async confirmarAnulacionFactura(event?: Event): Promise<void> {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const factura = this.facturaPendienteAnulacion();
+    if (!factura) return;
+
+    await this.ejecutarAnulacionFactura(factura);
+  }
+
+  async reintentarAnulacion(event?: Event): Promise<void> {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    const factura = this.facturaPendienteReintento();
+    if (!factura || this.esAnulandoFactura(factura.id)) return;
+
+    await this.ejecutarAnulacionFactura(factura);
   }
 
   toggleNotaCreditoAcciones(): void {
@@ -1000,13 +1102,29 @@ export class ListadoComponent {
     }
   }
 
-  private setMensajeAccion(message: string, tipo: 'success' | 'error'): void {
+  private clearMensajeAccion(): void {
     if (this.mensajeAccionTimer !== null) {
       clearTimeout(this.mensajeAccionTimer);
+      this.mensajeAccionTimer = null;
     }
+
+    this.mensajeAccion.set(null);
+  }
+
+  private setMensajeAccion(
+    message: string,
+    tipo: 'success' | 'warning' | 'error',
+    options?: { persist?: boolean },
+  ): void {
+    this.clearMensajeAccion();
 
     this.mensajeAccion.set(message);
     this.mensajeAccionTipo.set(tipo);
+
+    if (options?.persist) {
+      return;
+    }
+
     this.mensajeAccionTimer = setTimeout(() => {
       this.mensajeAccion.set(null);
       this.mensajeAccionTimer = null;
@@ -1083,15 +1201,19 @@ export class ListadoComponent {
       return;
     }
 
-    const confirmar = confirm(
-      `¿Está seguro que desea anular la factura ${factura.numero_factura} por ${factura.monto.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}?\n\nEsto generará una Nota de Crédito automáticamente.`,
-    );
+    this.facturaPendienteReintento.set(null);
+    this.facturaPendienteAnulacion.set(factura);
+    this.mostrandoConfirmacionAnulacion.set(true);
+  }
 
-    if (!confirmar) {
+  private async ejecutarAnulacionFactura(factura: Factura): Promise<void> {
+    if (this.facturaEstaAnulada(factura) || this.esAnulandoFactura(factura.id)) {
       return;
     }
 
     this.anulandoFacturaId.set(factura.id);
+    this.facturaPendienteReintento.set(null);
+    this.clearMensajeAccion();
 
     try {
       const resultado = await this.facturacionService.crearNotaCredito(
@@ -1111,6 +1233,7 @@ export class ListadoComponent {
           tipo_comprobante: resultado.data?.comprobante.tipo_comprobante,
           notaCredito: resultado.data?.comprobante,
         });
+        this.cancelarConfirmacionAnulacion();
         this.notaCreditoAccionesAbiertas.set(false);
         this.limpiarCacheFecha(this.fechaSeleccionada());
         await this.cargarFacturasPorFecha(this.fechaSeleccionada(), { silent: true, force: true });
@@ -1122,47 +1245,63 @@ export class ListadoComponent {
       const errorMessage = resultado.error || 'Error desconocido';
 
       if (resultado.shouldRetry) {
-        const shouldRetry = confirm(
-          `⚠️ ARCA está en mantenimiento\n\nEl sistema de facturación de ARCA/AFIP está temporalmente fuera de servicio.\n${errorMessage}\n\n¿Quieres intentar nuevamente en unos segundos?`,
+        this.cancelarConfirmacionAnulacion();
+        this.facturaPendienteReintento.set(factura);
+        this.setMensajeAccion(
+          `ARCA está en mantenimiento. No se pudo emitir la nota de crédito ahora. ${errorMessage}`,
+          'warning',
+          { persist: true },
         );
-
-        if (shouldRetry) {
-          setTimeout(() => {
-            void this.anularFactura(factura);
-          }, 3000);
-          return;
-        }
+        return;
       }
 
       throw new Error(errorMessage);
     } catch (error) {
       console.error('Error al anular factura:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      this.cancelarConfirmacionAnulacion();
+      this.facturaPendienteReintento.set(null);
 
-      if (errorMessage.includes('mantenimiento')) {
-        alert(
-          `⚠️ ARCA está en mantenimiento\n\nEl sistema de facturación de ARCA/AFIP está temporalmente fuera de servicio.\nPor favor, intenta nuevamente en unos minutos.\n\nError: ${errorMessage}`,
+      if (this.isArcaMaintenanceError(errorMessage)) {
+        this.facturaPendienteReintento.set(factura);
+        this.setMensajeAccion(
+          `ARCA está en mantenimiento. Intentá nuevamente en unos minutos. ${errorMessage}`,
+          'warning',
+          { persist: true },
         );
       } else if (isLikelyNetworkErrorMessage(errorMessage)) {
-        alert(
-          `🌐 Error de conexión\n\nNo se pudo conectar con el servidor de facturación.\nVerifica tu conexión a internet e intenta nuevamente.\n\nError: ${errorMessage}`,
+        this.setMensajeAccion(
+          'No se pudo anular la factura porque no hay conexión con el servicio de facturación. Verificá tu red e intentá nuevamente.',
+          'error',
         );
-      } else if (
-        errorMessage.includes('autenticación') ||
-        errorMessage.includes('credentials') ||
-        errorMessage.includes('token')
-      ) {
-        alert(
-          `🔐 Error de autenticación\n\nLas credenciales de ARCA parecen estar incorrectas.\nRevisa los certificados en la configuración del servidor.\n\nError: ${errorMessage}`,
+      } else if (this.isCredentialError(errorMessage)) {
+        this.setMensajeAccion(
+          'No se pudo anular la factura por un problema de autenticación con ARCA. Revisá credenciales, certificados o sesión vigente.',
+          'error',
         );
       } else {
-        alert(
-          `❌ Error al anular la factura\n\n${errorMessage}\n\nSi el problema persiste, contacta al soporte técnico.`,
-        );
+        this.setMensajeAccion(`No se pudo anular la factura. ${errorMessage}`, 'error');
       }
     } finally {
       this.anulandoFacturaId.set(null);
     }
+  }
+
+  private isArcaMaintenanceError(errorMessage: string): boolean {
+    return errorMessage.toLowerCase().includes('mantenimiento');
+  }
+
+  private isCredentialError(errorMessage: string): boolean {
+    const normalizedMessage = errorMessage.toLowerCase();
+    return (
+      normalizedMessage.includes('autenticación') ||
+      normalizedMessage.includes('autenticacion') ||
+      normalizedMessage.includes('credentials') ||
+      normalizedMessage.includes('credenciales') ||
+      normalizedMessage.includes('token') ||
+      normalizedMessage.includes('sesión') ||
+      normalizedMessage.includes('sesion')
+    );
   }
 
   cerrarVisorPdf(): void {

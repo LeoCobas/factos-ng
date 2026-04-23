@@ -9,6 +9,20 @@ import { FacturacionService } from '../../core/services/facturacion.service';
 import { PdfService } from '../../core/services/pdf.service';
 import { ListadoComponent } from './listado.component';
 
+function crearFactura(
+  overrides: Partial<Parameters<ListadoComponent['anularFactura']>[0]> = {},
+): Parameters<ListadoComponent['anularFactura']>[0] {
+  return {
+    id: 'factura-1',
+    numero_factura: '0001-00000014',
+    fecha: '2026-04-16',
+    monto: 28000,
+    estado: 'emitida' as const,
+    tipo_comprobante: 'FACTURA C',
+    ...overrides,
+  };
+}
+
 describe('ListadoComponent', () => {
   beforeEach(async () => {
     registerLocaleData(localeEsAr);
@@ -276,5 +290,161 @@ describe('ListadoComponent', () => {
     expect(compiled.textContent).not.toContain('Anular');
     expect(compiled.textContent).toContain('Descargar');
     expect(compiled.textContent).toContain('Ver');
+  });
+
+  it('renderiza una confirmacion inline antes de anular y no ejecuta el servicio hasta confirmar', async () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+    const facturacionService = TestBed.inject(FacturacionService);
+    const crearNotaCreditoMock = vi.mocked(facturacionService.crearNotaCredito);
+    const factura = crearFactura();
+
+    component.facturas.set([factura]);
+    component.facturaExpandida.set(factura.id);
+    component.accionesSecundariasFacturaId.set(factura.id);
+
+    fixture.detectChanges();
+
+    await component.anularFactura(factura);
+    fixture.detectChanges();
+
+    expect(crearNotaCreditoMock).not.toHaveBeenCalled();
+    expect(component.mostrandoConfirmacionAnulacion()).toBe(true);
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('Confirmar anulación');
+    expect(compiled.textContent).toContain('¿Seguro que querés anular la factura');
+    expect(compiled.textContent).toContain('Se emitirá una nota de crédito automática');
+  });
+
+  it('cancela la confirmacion de anulación sin efectos laterales', async () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+    const facturacionService = TestBed.inject(FacturacionService);
+    const crearNotaCreditoMock = vi.mocked(facturacionService.crearNotaCredito);
+    const factura = crearFactura();
+
+    component.facturas.set([factura]);
+    component.facturaExpandida.set(factura.id);
+    component.accionesSecundariasFacturaId.set(factura.id);
+
+    await component.anularFactura(factura);
+    component.cancelarConfirmacionAnulacion();
+    fixture.detectChanges();
+
+    expect(crearNotaCreditoMock).not.toHaveBeenCalled();
+    expect(component.mostrandoConfirmacionAnulacion()).toBe(false);
+    expect(component.facturaPendienteAnulacion()).toBeNull();
+  });
+
+  it('muestra warning inline y CTA de reintento cuando ARCA esta en mantenimiento', async () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+    const facturacionService = TestBed.inject(FacturacionService);
+    const crearNotaCreditoMock = vi.mocked(facturacionService.crearNotaCredito);
+    const factura = crearFactura();
+
+    crearNotaCreditoMock.mockResolvedValueOnce({
+      success: false,
+      error: 'ARCA informa mantenimiento programado.',
+      shouldRetry: true,
+    });
+
+    component.facturas.set([factura]);
+    component.facturaExpandida.set(factura.id);
+    component.accionesSecundariasFacturaId.set(factura.id);
+
+    await component.anularFactura(factura);
+    await component.confirmarAnulacionFactura();
+    fixture.detectChanges();
+
+    expect(component.mensajeAccionTipo()).toBe('warning');
+    expect(component.facturaPendienteReintento()?.id).toBe(factura.id);
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('ARCA está en mantenimiento');
+    expect(compiled.textContent).toContain('Reintentar');
+  });
+
+  it('muestra un mensaje inline de red y limpia el estado temporal cuando falla la conexión', async () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+    const facturacionService = TestBed.inject(FacturacionService);
+    const crearNotaCreditoMock = vi.mocked(facturacionService.crearNotaCredito);
+    const factura = crearFactura();
+
+    crearNotaCreditoMock.mockRejectedValueOnce(new Error('fetch failed'));
+
+    component.facturas.set([factura]);
+    component.facturaExpandida.set(factura.id);
+    component.accionesSecundariasFacturaId.set(factura.id);
+
+    await component.anularFactura(factura);
+    await component.confirmarAnulacionFactura();
+    fixture.detectChanges();
+
+    expect(component.mensajeAccionTipo()).toBe('error');
+    expect(component.mensajeAccion()).toContain('no hay conexión');
+    expect(component.anulandoFacturaId()).toBeNull();
+    expect(component.mostrandoConfirmacionAnulacion()).toBe(false);
+    expect(component.facturaPendienteAnulacion()).toBeNull();
+  });
+
+  it('muestra un mensaje inline de credenciales para errores de autenticación', async () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+    const facturacionService = TestBed.inject(FacturacionService);
+    const crearNotaCreditoMock = vi.mocked(facturacionService.crearNotaCredito);
+    const factura = crearFactura();
+
+    crearNotaCreditoMock.mockRejectedValueOnce(new Error('token vencido'));
+
+    component.facturas.set([factura]);
+    component.facturaExpandida.set(factura.id);
+    component.accionesSecundariasFacturaId.set(factura.id);
+
+    await component.anularFactura(factura);
+    await component.confirmarAnulacionFactura();
+
+    expect(component.mensajeAccionTipo()).toBe('error');
+    expect(component.mensajeAccion()).toContain('autenticación con ARCA');
+  });
+
+  it('conserva el panel inline de nota de credito al anular con exito', async () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+    const facturacionService = TestBed.inject(FacturacionService);
+    const crearNotaCreditoMock = vi.mocked(facturacionService.crearNotaCredito);
+    const factura = crearFactura();
+
+    crearNotaCreditoMock.mockResolvedValueOnce({
+      success: true,
+      data: {
+        numero: '0001-00000021',
+        cae: '12345678901234',
+        vencimiento_cae: '20260501',
+        pdf_url: 'https://example.com/nc.pdf',
+        comprobante: {
+          id: 'nc-1',
+          tipo_comprobante: 'NOTA DE CREDITO C',
+          numero_comprobante: '0001-00000021',
+        } as any,
+      },
+    });
+
+    component.facturas.set([factura]);
+    component.facturaExpandida.set(factura.id);
+    component.accionesSecundariasFacturaId.set(factura.id);
+
+    await component.anularFactura(factura);
+    await component.confirmarAnulacionFactura();
+    fixture.detectChanges();
+
+    expect(component.notaCreditoEmitida()?.numero).toBe('0001-00000021');
+    expect(component.mostrandoConfirmacionAnulacion()).toBe(false);
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('Nota de crédito emitida');
+    expect(compiled.textContent).toContain('Anula factura 0001-00000014');
   });
 });
