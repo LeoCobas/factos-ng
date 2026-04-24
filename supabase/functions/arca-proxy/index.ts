@@ -1,40 +1,12 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { Arca, AuthRepository } from 'npm:@arcasdk/core@0.3.6';
-import {
-  readArcaTicketBucket,
-  writeArcaTicketBucket,
-} from '../../../src/app/core/utils/arca-ticket.util.ts';
+import { Arca } from 'npm:@arcasdk/core@0.3.6';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
-
-class SupabaseAuthRepository implements AuthRepository {
-  supabaseClient: any;
-  contribuyenteId: string;
-  dbTicket: any;
-
-  constructor(supabaseClient: any, contribuyenteId: string, dbTicket: any) {
-    this.supabaseClient = supabaseClient;
-    this.contribuyenteId = contribuyenteId;
-    this.dbTicket = dbTicket || null;
-  }
-
-  async get(_cuit: number): Promise<any | null> {
-    return readArcaTicketBucket(this.dbTicket, 'wsfe');
-  }
-
-  async save(_cuit: number, credentials: any): Promise<void> {
-    await this.supabaseClient
-      .from('contribuyentes')
-      .update({ arca_ticket: writeArcaTicketBucket(this.dbTicket, 'wsfe', credentials) })
-      .eq('id', this.contribuyenteId);
-    this.dbTicket = writeArcaTicketBucket(this.dbTicket, 'wsfe', credentials);
-  }
-}
 
 function getSupabaseClient(authHeader: string | null) {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -203,13 +175,9 @@ async function getUserArcaInstance(req: Request) {
     key: contribuyente.arca_key,
     cuit: parseInt(contribuyente.cuit, 10),
     production: contribuyente.arca_production === true,
-    handleTicket: true,
+    handleTicket: false,
     useHttpsAgent: false,
-    authRepository: new SupabaseAuthRepository(
-      supabaseUser,
-      contribuyente.id,
-      contribuyente.arca_ticket
-    ),
+    ticketPath: '/tmp/factos-arca-tickets',
   });
 
   return { arca };
