@@ -1,10 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { Arca } from 'npm:@arcasdk/core@0.3.6';
-import {
-  readArcaTicketBucket,
-  writeArcaTicketBucket,
-} from '../../../src/app/core/utils/arca-ticket.util.ts';
+import { readArcaTicketBucket } from '../../../src/app/core/utils/arca-ticket.util.ts';
 import { extractFiscalDataFromConstancia } from '../../../src/app/core/utils/constancia-inscripcion.util.ts';
 
 const corsHeaders = {
@@ -36,8 +33,6 @@ function getValidStoredTicket(storedTicket: any): any | null {
 
 async function persistTicketFromFile(params: {
   db: any;
-  userId: string;
-  currentTicket: any;
   cuit: number;
   production: boolean;
 }): Promise<void> {
@@ -48,11 +43,10 @@ async function persistTicketFromFile(params: {
 
     if (!isStoredTicketValid(ticket)) return;
 
-    const nextTicket = writeArcaTicketBucket(params.currentTicket, 'padron', ticket);
-    const { error } = await params.db
-      .from('contribuyentes')
-      .update({ arca_ticket: nextTicket })
-      .eq('user_id', params.userId);
+    const { error } = await params.db.rpc('merge_arca_ticket_bucket', {
+      p_bucket: 'padron',
+      p_ticket: ticket,
+    });
 
     if (error) {
       console.error('No se pudo guardar el ticket Padron en Supabase:', error.message);
@@ -153,8 +147,7 @@ function extractRazonSocial(datosGenerales: Record<string, unknown>): string {
 
 function buildLookupError(persona: Record<string, unknown>): string | null {
   const errorConstancia = getNestedRecord(persona, 'errorConstancia');
-  const errorMessage =
-    getString(errorConstancia.error) || getString(errorConstancia.mensaje) || '';
+  const errorMessage = getString(errorConstancia.error) || getString(errorConstancia.mensaje) || '';
 
   if (!errorMessage) {
     return null;
@@ -170,7 +163,7 @@ function buildLookupError(persona: Record<string, unknown>): string | null {
 async function withTimeout<T>(
   promise: Promise<T>,
   timeoutMs: number,
-  timeoutMessage: string
+  timeoutMessage: string,
 ): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -191,12 +184,12 @@ async function withTimeout<T>(
 
 async function fetchTaxpayerFromArca(
   arca: Arca,
-  cuit: number
+  cuit: number,
 ): Promise<Record<string, unknown> | null> {
   const constanciaBatch = await withTimeout(
     arca.registerInscriptionProofService.getTaxpayersDetails([cuit]),
     ARCA_TIMEOUT_MS,
-    'Timeout consultando la constancia de inscripcion batch en ARCA.'
+    'Timeout consultando la constancia de inscripcion batch en ARCA.',
   );
 
   const batchRecord = asRecord(constanciaBatch);
@@ -244,7 +237,7 @@ Deno.serve(async (req: Request) => {
           success: false,
           error: 'No se pudo leer tu configuracion. Intenta de nuevo.',
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
@@ -255,18 +248,21 @@ Deno.serve(async (req: Request) => {
           error:
             'No tenes perfil de contribuyente. En Facturacion toca Guardar Datos de Facturacion al menos una vez y luego vuelve a buscar la constancia.',
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    if (!String(contribuyente.arca_cert || '').trim() || !String(contribuyente.arca_key || '').trim()) {
+    if (
+      !String(contribuyente.arca_cert || '').trim() ||
+      !String(contribuyente.arca_key || '').trim()
+    ) {
       return new Response(
         JSON.stringify({
           success: false,
           error:
             'Faltan el certificado (.crt) o la clave (.key). Guardalos en Certificado ARCA y toca Guardar antes de consultar la constancia.',
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
@@ -279,15 +275,13 @@ Deno.serve(async (req: Request) => {
       cuit: cuitEmisor,
       production,
       credentials: credentials || undefined,
-      handleTicket: !!credentials,
+      handleTicket: true,
       useHttpsAgent: false,
       ticketPath: ARCA_TICKET_PATH,
     });
     const persistTicket = () =>
       persistTicketFromFile({
         db,
-        userId: user.id,
-        currentTicket: contribuyente.arca_ticket,
         cuit: cuitEmisor,
         production,
       });
@@ -307,12 +301,11 @@ Deno.serve(async (req: Request) => {
         return new Response(
           JSON.stringify({
             success: false,
-            error:
-              `ARCA no devolvio datos para ese CUIT en ${arcaEnvironment}. Verifica la relacion del servicio y vuelve a intentar en unos minutos.`,
+            error: `ARCA no devolvio datos para ese CUIT en ${arcaEnvironment}. Verifica la relacion del servicio y vuelve a intentar en unos minutos.`,
           }),
           {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
+          },
         );
       }
 
@@ -340,7 +333,7 @@ Deno.serve(async (req: Request) => {
             fiscal_status_source: 'constancia_inscripcion',
           },
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     } catch (afipErr: any) {
       const message = String(afipErr?.message || 'Error desconocido');
