@@ -1,10 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { Arca } from 'npm:@arcasdk/core@0.3.6';
-import {
-  readArcaTicketBucket,
-  writeArcaTicketBucket,
-} from '../../../src/app/core/utils/arca-ticket.util.ts';
+import { readArcaTicketBucket } from '../../../src/app/core/utils/arca-ticket.util.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -42,8 +39,6 @@ function getValidStoredTicket(storedTicket: any, bucket: 'wsfe' | 'padron'): any
 
 async function persistTicketFromFile(params: {
   supabase: any;
-  contribuyenteId: string;
-  currentTicket: any;
   cuit: number;
   production: boolean;
 }): Promise<void> {
@@ -54,11 +49,10 @@ async function persistTicketFromFile(params: {
 
     if (!isStoredTicketValid(ticket)) return;
 
-    const nextTicket = writeArcaTicketBucket(params.currentTicket, 'wsfe', ticket);
-    const { error } = await params.supabase
-      .from('contribuyentes')
-      .update({ arca_ticket: nextTicket })
-      .eq('id', params.contribuyenteId);
+    const { error } = await params.supabase.rpc('merge_arca_ticket_bucket', {
+      p_bucket: 'wsfe',
+      p_ticket: ticket,
+    });
 
     if (error) {
       console.error('No se pudo guardar el ticket WSFE en Supabase:', error.message);
@@ -276,7 +270,7 @@ async function getUserArcaInstance(req: Request) {
 
   const { data: contribuyente, error } = await supabaseUser
     .from('contribuyentes')
-    .select('id, cuit, arca_cert, arca_key, arca_production, arca_ticket')
+    .select('cuit, arca_cert, arca_key, arca_production, arca_ticket')
     .eq('user_id', user.id)
     .single();
 
@@ -295,7 +289,7 @@ async function getUserArcaInstance(req: Request) {
     cuit,
     production,
     credentials: credentials || undefined,
-    handleTicket: !!credentials,
+    handleTicket: true,
     useHttpsAgent: false,
     ticketPath: ARCA_TICKET_PATH,
   });
@@ -305,8 +299,6 @@ async function getUserArcaInstance(req: Request) {
     persistTicket: () =>
       persistTicketFromFile({
         supabase: supabaseUser,
-        contribuyenteId: contribuyente.id,
-        currentTicket: contribuyente.arca_ticket,
         cuit,
         production,
       }),
