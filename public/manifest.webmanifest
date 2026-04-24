@@ -1,7 +1,8 @@
 {
+  "id": "./",
   "name": "Factos - Sistema de Facturación",
   "short_name": "Factos",
-  "description": "Sistema de facturación electrónica con TusFacturas API. Emite, comparte e imprime facturas desde tu móvil.",
+  "description": "Sistema de facturación electrónica integrado con ARCA/AFIP. Emite, comparte e imprime comprobantes desde tu móvil.",
   "display": "standalone",
   "scope": "./",
   "start_url": "./",

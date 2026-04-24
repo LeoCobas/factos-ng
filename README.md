@@ -127,7 +127,6 @@ docs/
 - `supabase/config.toml` mantiene `verify_jwt = false`, aunque ambas funciones validan al usuario usando el token recibido por `Authorization`.
 - `src/environments/environment*.ts` ya no contiene credenciales Supabase; solo define `runtimeConfigPath`.
 - `public/app-config.json` se genera en scripts de npm y contiene la configuracion operativa del cliente.
-- `public/manifest.webmanifest` todavia conserva texto descriptivo legacy de TusFacturas, aunque los iconos y la integracion runtime vigente son Factos/ARCA.
 - `src/app/features/listado/listado.component.ts` todavia tiene un bloque legacy comentado del acceso directo anterior a Supabase. El flujo runtime ya usa `ComprobantesService`, pero queda limpieza pendiente del archivo.
 
 ## Puesta en marcha local

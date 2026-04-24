@@ -90,7 +90,6 @@
 - `supabase/config.toml` mantiene `verify_jwt = false`; las functions validan JWT en codigo usando `Authorization`.
 - `environment*.ts` ya no versiona URL/anonKey Supabase; la fuente runtime es `public/app-config.json`.
 - PDF.js ya no depende de CDN; el worker local se copia a `/assets/pdfjs`.
-- `public/manifest.webmanifest` conserva descripcion legacy de TusFacturas aunque la app vigente opera con Factos/ARCA.
 - limpiar el bloque legacy comentado que sigue en `src/app/features/listado/listado.component.ts`
 - evaluar una pasada mas amplia de normalizacion UTF-8 en archivos no tocados por los refactors
 
