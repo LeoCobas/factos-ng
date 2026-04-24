@@ -13,7 +13,7 @@ import {
   resolveTipoComprobanteDetallado,
   sanitizeCuit,
 } from '../utils/factura-cliente.util';
-import { getFriendlyNetworkErrorMessage } from '../utils/network-error.util';
+import { getFriendlyNetworkErrorMessage, isLikelyNetworkError } from '../utils/network-error.util';
 
 export interface FacturaRequestData {
   monto: number;
@@ -37,12 +37,24 @@ export interface ArcaProxyResponse {
     Resultado: string;
   };
   error?: string;
+  error_type?: FacturacionErrorType;
+  should_retry?: boolean;
 }
+
+export type FacturacionErrorType =
+  | 'arca_maintenance'
+  | 'arca_auth'
+  | 'network'
+  | 'arca_rejected'
+  | 'validation'
+  | 'server';
 
 export interface FacturaResult {
   success: boolean;
   comprobante?: Comprobante;
   error?: string;
+  errorType?: FacturacionErrorType;
+  shouldRetry?: boolean;
 }
 
 export interface NotaCreditoResult {
@@ -55,6 +67,7 @@ export interface NotaCreditoResult {
     comprobante: Comprobante;
   };
   error?: string;
+  errorType?: FacturacionErrorType;
   shouldRetry?: boolean;
 }
 
@@ -96,7 +109,7 @@ export class FacturacionService {
    */
   private isValidInvoiceDate(
     fecha: Date,
-    actividad: 'bienes' | 'servicios'
+    actividad: 'bienes' | 'servicios',
   ): { isValid: boolean; error?: string } {
     const today = new Date();
     const daysDiff = Math.floor((today.getTime() - fecha.getTime()) / (1000 * 60 * 60 * 24));
@@ -124,11 +137,15 @@ export class FacturacionService {
     const contribuyente = this.contribuyenteService.contribuyente();
 
     if (!contribuyente) {
-      throw new Error('No hay contribuyente configurado. Ve a Configuracion para completar tus datos.');
+      throw new Error(
+        'No hay contribuyente configurado. Ve a Configuracion para completar tus datos.',
+      );
     }
 
     if (!contribuyente.cuit || !contribuyente.razon_social) {
-      throw new Error('Configuracion incompleta. Completa al menos CUIT y razon social en Configuracion.');
+      throw new Error(
+        'Configuracion incompleta. Completa al menos CUIT y razon social en Configuracion.',
+      );
     }
 
     return contribuyente;
@@ -234,12 +251,17 @@ export class FacturacionService {
     const resultado = await this.llamarArca(contribuyente, facturaData, cliente, tipoComprobante);
 
     if (!resultado.success || !resultado.data) {
-      throw new Error(resultado.error || 'Error al emitir factura');
+      return {
+        success: false,
+        error: resultado.error || 'Error al emitir factura',
+        errorType: resultado.errorType,
+        shouldRetry: resultado.shouldRetry,
+      };
     }
 
     const numeroComprobante = this.formatNumeroComprobante(
       resultado.data.PtoVta,
-      resultado.data.CbteDesde
+      resultado.data.CbteDesde,
     );
 
     const { data: comprobante, error: insertError } = await supabase
@@ -295,8 +317,14 @@ export class FacturacionService {
       cliente_domicilio: string | null;
       cliente_condicion_iva: string;
     },
-    tipoComprobante: 'FACTURA A' | 'FACTURA B' | 'FACTURA C'
-  ): Promise<{ success: boolean; data?: ArcaProxyResponse['data']; error?: string }> {
+    tipoComprobante: 'FACTURA A' | 'FACTURA B' | 'FACTURA C',
+  ): Promise<{
+    success: boolean;
+    data?: ArcaProxyResponse['data'];
+    error?: string;
+    errorType?: FacturacionErrorType;
+    shouldRetry?: boolean;
+  }> {
     try {
       const accessToken = await this.getFreshAccessToken();
       const actividad = contribuyente.actividad === 'bienes' ? 'bienes' : 'servicios';
@@ -313,20 +341,28 @@ export class FacturacionService {
         condicion_iva_receptor_id: getCondicionIvaReceptorId(cliente.cliente_condicion_iva),
       };
 
-      const response = await fetch(`${this.supabaseUrl}/functions/v1/arca-proxy?action=crear-factura`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: getRuntimeConfig().supabase.anonKey,
-          Authorization: `Bearer ${accessToken}`,
+      const response = await fetch(
+        `${this.supabaseUrl}/functions/v1/arca-proxy?action=crear-factura`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: getRuntimeConfig().supabase.anonKey,
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(requestBody),
         },
-        body: JSON.stringify(requestBody),
-      });
+      );
 
       const responseData: ArcaProxyResponse = await response.json();
 
       if (!response.ok || !responseData.success) {
-        throw new Error(responseData.error || 'Error al emitir factura');
+        return {
+          success: false,
+          error: responseData.error || 'Error al emitir factura',
+          errorType: responseData.error_type,
+          shouldRetry: responseData.should_retry,
+        };
       }
 
       return {
@@ -334,12 +370,16 @@ export class FacturacionService {
         data: responseData.data,
       };
     } catch (error) {
+      const fallbackMessage =
+        error instanceof Error ? error.message : 'Error desconocido al emitir factura';
+
       return {
         success: false,
+        errorType: isLikelyNetworkError(error) ? 'network' : undefined,
         error: getFriendlyNetworkErrorMessage(
           error,
-          error instanceof Error ? error.message : 'Error desconocido al emitir factura',
-          'No se pudo emitir la factura porque no hay conexion a internet. Verifica la red e intenta nuevamente.'
+          fallbackMessage,
+          'No se pudo emitir la factura porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
         ),
       };
     }
@@ -352,7 +392,7 @@ export class FacturacionService {
   async crearNotaCredito(
     comprobanteId: string,
     numeroComprobante: string,
-    monto: number
+    monto: number,
   ): Promise<NotaCreditoResult> {
     try {
       const contribuyente = this.getValidatedConfig();
@@ -360,7 +400,8 @@ export class FacturacionService {
 
       const { data: comprobanteOriginal, error: fetchError } = await supabase
         .from('comprobantes')
-        .select(`
+        .select(
+          `
           tipo_comprobante,
           numero_comprobante,
           punto_venta,
@@ -371,7 +412,8 @@ export class FacturacionService {
           cliente_nombre,
           cliente_domicilio,
           cliente_condicion_iva
-        `)
+        `,
+        )
         .eq('id', comprobanteId)
         .single();
 
@@ -422,21 +464,26 @@ export class FacturacionService {
             doc_tipo: clienteDocData.docTipo,
             doc_nro: clienteDocData.docNro,
             condicion_iva_receptor_id: getCondicionIvaReceptorId(
-              comprobanteOriginal.cliente_condicion_iva
+              comprobanteOriginal.cliente_condicion_iva,
             ),
           }),
-        }
+        },
       );
 
       const responseData: ArcaProxyResponse = await response.json();
 
       if (!response.ok || !responseData.success || !responseData.data) {
-        throw new Error(responseData.error || 'Error al crear nota de credito');
+        const error = new Error(responseData.error || 'Error al crear nota de credito');
+        (error as Error & { shouldRetry?: boolean; errorType?: FacturacionErrorType }).shouldRetry =
+          responseData.should_retry === true;
+        (error as Error & { shouldRetry?: boolean; errorType?: FacturacionErrorType }).errorType =
+          responseData.error_type;
+        throw error;
       }
 
       const ncNumero = this.formatNumeroComprobante(
         responseData.data.PtoVta,
-        responseData.data.CbteDesde
+        responseData.data.CbteDesde,
       );
 
       const { data: ncComprobante, error: insertError } = await supabase
@@ -459,9 +506,7 @@ export class FacturacionService {
           cliente_doc_nro: clienteDocData.docNro,
           cliente_nombre: comprobanteOriginal.cliente_nombre || null,
           cliente_domicilio: comprobanteOriginal.cliente_domicilio || null,
-          cliente_condicion_iva: normalizeCondicionIva(
-            comprobanteOriginal.cliente_condicion_iva
-          ),
+          cliente_condicion_iva: normalizeCondicionIva(comprobanteOriginal.cliente_condicion_iva),
         })
         .select()
         .single();
@@ -497,8 +542,9 @@ export class FacturacionService {
         error: getFriendlyNetworkErrorMessage(
           error,
           error instanceof Error ? error.message : 'Error desconocido al crear nota de credito',
-          'No se pudo crear la nota de credito porque no hay conexion a internet. Verifica la red e intenta nuevamente.'
+          'No se pudo crear la nota de credito porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
         ),
+        errorType: (error as any)?.errorType,
         shouldRetry: isRetryable,
       };
     }

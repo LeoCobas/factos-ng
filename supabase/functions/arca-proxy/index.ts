@@ -15,6 +15,14 @@ const corsHeaders = {
 const ARCA_TICKET_PATH = '/tmp/factos-arca-tickets';
 const WSFE_SERVICE_NAME = 'wsfe';
 
+type ArcaProxyErrorType =
+  | 'arca_maintenance'
+  | 'arca_auth'
+  | 'network'
+  | 'arca_rejected'
+  | 'validation'
+  | 'server';
+
 function getTicketFilePath(cuit: number, serviceName: string, production: boolean): string {
   return `${ARCA_TICKET_PATH}/TA-${cuit}-${serviceName}${production ? '-production' : ''}.json`;
 }
@@ -138,7 +146,7 @@ function getDocPayload(body: any) {
     docNro: Number.isFinite(Number(body?.doc_nro)) ? Number(body.doc_nro) : 0,
     condicionIvaReceptorId: getCondicionIvaReceptorId(
       Number(body?.condicion_iva_receptor_id),
-      Number.isInteger(body?.doc_tipo) ? Number(body.doc_tipo) : 99
+      Number.isInteger(body?.doc_tipo) ? Number(body.doc_tipo) : 99,
     ),
   };
 }
@@ -163,7 +171,8 @@ function extractWsfeResult(result: any) {
     payload;
 
   const header = payload?.FECAESolicitarResult?.FeCabResp ?? payload?.FeCabResp ?? {};
-  const errors = payload?.FECAESolicitarResult?.Errors?.Err ?? payload?.Errors?.Err ?? payload?.errors ?? [];
+  const errors =
+    payload?.FECAESolicitarResult?.Errors?.Err ?? payload?.Errors?.Err ?? payload?.errors ?? [];
   const observations =
     detail?.Observaciones?.Obs ??
     payload?.FECAESolicitarResult?.FeDetResp?.FECAEDetResponse?.[0]?.Observaciones?.Obs ??
@@ -210,6 +219,58 @@ function mapArcaServerErrorMessage(message: string): string {
   return message;
 }
 
+function normalizeErrorText(message: string): string {
+  return message
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+}
+
+function classifyArcaError(message: string): ArcaProxyErrorType {
+  const normalizedMessage = normalizeErrorText(message);
+
+  if (
+    normalizedMessage.includes('mantenimiento') ||
+    normalizedMessage.includes('maintenance') ||
+    normalizedMessage.includes('service unavailable') ||
+    normalizedMessage.includes('temporarily unavailable')
+  ) {
+    return 'arca_maintenance';
+  }
+
+  if (
+    normalizedMessage.includes('wsaa') ||
+    normalizedMessage.includes('autenticacion') ||
+    normalizedMessage.includes('alreadyauthenticated') ||
+    normalizedMessage.includes('credentials') ||
+    normalizedMessage.includes('credenciales') ||
+    normalizedMessage.includes('certificado') ||
+    normalizedMessage.includes('token') ||
+    normalizedMessage.includes('sesion') ||
+    normalizedMessage.includes('session')
+  ) {
+    return 'arca_auth';
+  }
+
+  if (
+    normalizedMessage.includes('fetch failed') ||
+    normalizedMessage.includes('network') ||
+    normalizedMessage.includes('econnreset') ||
+    normalizedMessage.includes('etimedout') ||
+    normalizedMessage.includes('connection') ||
+    normalizedMessage.includes('socket') ||
+    normalizedMessage.includes('dns')
+  ) {
+    return 'network';
+  }
+
+  if (normalizedMessage.includes('validacion fallida')) {
+    return 'validation';
+  }
+
+  return 'server';
+}
+
 async function getUserArcaInstance(req: Request) {
   const { supabase: supabaseUser, user } = await getAuthenticatedUser(req);
 
@@ -252,11 +313,28 @@ async function getUserArcaInstance(req: Request) {
   };
 }
 
-function buildErrorResponse(errorMessage: string, extra?: Record<string, unknown>, status = 400) {
-  return new Response(JSON.stringify({ success: false, error: errorMessage, ...extra }), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+function buildErrorResponse(
+  errorMessage: string,
+  extra?: Record<string, unknown>,
+  status = 400,
+  errorType?: ArcaProxyErrorType,
+) {
+  const resolvedErrorType = errorType || classifyArcaError(errorMessage);
+  const shouldRetry = resolvedErrorType === 'arca_maintenance' || resolvedErrorType === 'network';
+
+  return new Response(
+    JSON.stringify({
+      success: false,
+      error: errorMessage,
+      error_type: resolvedErrorType,
+      should_retry: shouldRetry,
+      ...extra,
+    }),
+    {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    },
+  );
 }
 
 /**
@@ -270,7 +348,9 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
 
   try {
     if (!punto_venta || !Number.isInteger(punto_venta) || punto_venta <= 0) {
-      return buildErrorResponse('Validacion fallida: punto_venta debe ser un numero entero positivo');
+      return buildErrorResponse(
+        'Validacion fallida: punto_venta debe ser un numero entero positivo',
+      );
     }
 
     if (!tipo_comprobante || typeof tipo_comprobante !== 'string') {
@@ -288,10 +368,15 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
 
     const { arca, persistTicket } = await getUserArcaInstance(req);
     const cbteTipo = getCbteTipo(tipo_comprobante);
-    const lastVoucher: any = await arca.electronicBillingService.getLastVoucher(punto_venta, cbteTipo);
+    const lastVoucher: any = await arca.electronicBillingService.getLastVoucher(
+      punto_venta,
+      cbteTipo,
+    );
     await persistTicket();
     const lastNumber =
-      typeof lastVoucher === 'number' ? lastVoucher : lastVoucher?.cbteNro || lastVoucher?.CbteNro || 0;
+      typeof lastVoucher === 'number'
+        ? lastVoucher
+        : lastVoucher?.cbteNro || lastVoucher?.CbteNro || 0;
     const cbteNro = lastNumber + 1;
 
     const isFacturaC = String(tipo_comprobante).toUpperCase().includes(' C');
@@ -343,7 +428,9 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
       voucherPayload.FchVtoPago = fechaNum;
     }
 
-    const parsed = extractWsfeResult(await arca.electronicBillingService.createVoucher(voucherPayload));
+    const parsed = extractWsfeResult(
+      await arca.electronicBillingService.createVoucher(voucherPayload),
+    );
     await persistTicket();
 
     if (parsed.resultado !== 'A') {
@@ -357,23 +444,30 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
         .map((evt: any) => `[${evt.Code || evt.code}] ${evt.Msg || evt.msg}`)
         .join(' | ');
       const rawSummary = summarizeUnknownResult(parsed.raw);
-      const detalle = [detalleErrores, detalleObservaciones, detalleEventos].filter(Boolean).join(' | ');
+      const detalle = [detalleErrores, detalleObservaciones, detalleEventos]
+        .filter(Boolean)
+        .join(' | ');
       const errorMessage = detalle
         ? `Error AFIP (${parsed.resultado || 'sin resultado'}): ${detalle}`
         : rawSummary
           ? `Error AFIP: respuesta no reconocida (${parsed.resultado || 'sin resultado'}). Raw: ${rawSummary}`
           : `Error AFIP: La solicitud fue rechazada por AFIP (Resultado: ${parsed.resultado || 'sin resultado'})`;
 
-      return buildErrorResponse(errorMessage, {
-        debug: {
-          afipResponse: parsed.resultado,
-          errores: detalleErrores,
-          observaciones: detalleObservaciones,
-          eventos: detalleEventos,
-          rawSummary,
-          raw: parsed.raw,
+      return buildErrorResponse(
+        errorMessage,
+        {
+          debug: {
+            afipResponse: parsed.resultado,
+            errores: detalleErrores,
+            observaciones: detalleObservaciones,
+            eventos: detalleEventos,
+            rawSummary,
+            raw: parsed.raw,
+          },
         },
-      });
+        400,
+        'arca_rejected',
+      );
     }
 
     return new Response(
@@ -388,11 +482,17 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
           Resultado: parsed.resultado,
         },
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err: any) {
-    const detail = mapArcaServerErrorMessage(String(err?.message || ''));
-    return buildErrorResponse(`Error del servidor: ${detail}`, { debug: { detalle: err.message } }, 500);
+    const rawMessage = String(err?.message || '');
+    const detail = mapArcaServerErrorMessage(rawMessage);
+    return buildErrorResponse(
+      `Error del servidor: ${detail}`,
+      { debug: { detalle: err.message } },
+      500,
+      classifyArcaError(rawMessage || detail),
+    );
   }
 }
 
@@ -418,7 +518,9 @@ async function handleCrearNotaCredito(req: Request, body: any): Promise<Response
     const { docTipo, docNro, condicionIvaReceptorId } = getDocPayload(body);
 
     if (!punto_venta || !Number.isInteger(punto_venta) || punto_venta <= 0) {
-      return buildErrorResponse('Validacion fallida: punto_venta debe ser un numero entero positivo');
+      return buildErrorResponse(
+        'Validacion fallida: punto_venta debe ser un numero entero positivo',
+      );
     }
 
     if (!tipo_comprobante_original || typeof tipo_comprobante_original !== 'string') {
@@ -432,13 +534,13 @@ async function handleCrearNotaCredito(req: Request, body: any): Promise<Response
 
     if (!cbte_asociado_nro || !Number.isInteger(cbte_asociado_nro) || cbte_asociado_nro <= 0) {
       return buildErrorResponse(
-        'Validacion fallida: cbte_asociado_nro debe ser un numero entero positivo'
+        'Validacion fallida: cbte_asociado_nro debe ser un numero entero positivo',
       );
     }
 
     if (!cbte_asociado_fecha || !/^\d{8}$/.test(String(cbte_asociado_fecha))) {
       return buildErrorResponse(
-        'Validacion fallida: cbte_asociado_fecha debe estar en formato YYYYMMDD'
+        'Validacion fallida: cbte_asociado_fecha debe estar en formato YYYYMMDD',
       );
     }
 
@@ -455,10 +557,15 @@ async function handleCrearNotaCredito(req: Request, body: any): Promise<Response
 
     const cbteTipo = getCbteTipo(tipoNC);
     const cbteTipoOriginal = getCbteTipo(tipo_comprobante_original);
-    const lastVoucher: any = await arca.electronicBillingService.getLastVoucher(punto_venta, cbteTipo);
+    const lastVoucher: any = await arca.electronicBillingService.getLastVoucher(
+      punto_venta,
+      cbteTipo,
+    );
     await persistTicket();
     const lastNumber =
-      typeof lastVoucher === 'number' ? lastVoucher : lastVoucher?.cbteNro || lastVoucher?.CbteNro || 0;
+      typeof lastVoucher === 'number'
+        ? lastVoucher
+        : lastVoucher?.cbteNro || lastVoucher?.CbteNro || 0;
     const cbteNro = lastNumber + 1;
 
     const isNcC = tipoNC === 'NOTA DE CREDITO C';
@@ -518,7 +625,9 @@ async function handleCrearNotaCredito(req: Request, body: any): Promise<Response
       voucherPayload.FchVtoPago = fechaHoy;
     }
 
-    const parsed = extractWsfeResult(await arca.electronicBillingService.createVoucher(voucherPayload));
+    const parsed = extractWsfeResult(
+      await arca.electronicBillingService.createVoucher(voucherPayload),
+    );
     await persistTicket();
 
     if (parsed.resultado !== 'A') {
@@ -532,23 +641,30 @@ async function handleCrearNotaCredito(req: Request, body: any): Promise<Response
         .map((evt: any) => `[${evt.Code || evt.code}] ${evt.Msg || evt.msg}`)
         .join(' | ');
       const rawSummary = summarizeUnknownResult(parsed.raw);
-      const detalle = [detalleErrores, detalleObservaciones, detalleEventos].filter(Boolean).join(' | ');
+      const detalle = [detalleErrores, detalleObservaciones, detalleEventos]
+        .filter(Boolean)
+        .join(' | ');
       const errorMessage = detalle
         ? `Error AFIP (${parsed.resultado || 'sin resultado'}): ${detalle}`
         : rawSummary
           ? `Error AFIP: respuesta no reconocida (${parsed.resultado || 'sin resultado'}). Raw: ${rawSummary}`
           : `Error AFIP: La solicitud fue rechazada por AFIP (Resultado: ${parsed.resultado || 'sin resultado'})`;
 
-      return buildErrorResponse(errorMessage, {
-        debug: {
-          afipResponse: parsed.resultado,
-          errores: detalleErrores,
-          observaciones: detalleObservaciones,
-          eventos: detalleEventos,
-          rawSummary,
-          raw: parsed.raw,
+      return buildErrorResponse(
+        errorMessage,
+        {
+          debug: {
+            afipResponse: parsed.resultado,
+            errores: detalleErrores,
+            observaciones: detalleObservaciones,
+            eventos: detalleEventos,
+            rawSummary,
+            raw: parsed.raw,
+          },
         },
-      });
+        400,
+        'arca_rejected',
+      );
     }
 
     return new Response(
@@ -563,11 +679,17 @@ async function handleCrearNotaCredito(req: Request, body: any): Promise<Response
           Resultado: parsed.resultado,
         },
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err: any) {
-    const detail = mapArcaServerErrorMessage(String(err?.message || ''));
-    return buildErrorResponse(`Error del servidor: ${detail}`, { debug: { detalle: err.message } }, 500);
+    const rawMessage = String(err?.message || '');
+    const detail = mapArcaServerErrorMessage(rawMessage);
+    return buildErrorResponse(
+      `Error del servidor: ${detail}`,
+      { debug: { detalle: err.message } },
+      500,
+      classifyArcaError(rawMessage || detail),
+    );
   }
 }
 
@@ -581,15 +703,17 @@ async function handleUltimoComprobante(req: Request, body: any): Promise<Respons
     const { punto_venta, tipo_comprobante } = body;
     const lastVoucher: any = await arca.electronicBillingService.getLastVoucher(
       punto_venta,
-      getCbteTipo(tipo_comprobante)
+      getCbteTipo(tipo_comprobante),
     );
     await persistTicket();
     const ultimoCbteNro =
-      typeof lastVoucher === 'number' ? lastVoucher : lastVoucher?.cbteNro || lastVoucher?.CbteNro || 0;
+      typeof lastVoucher === 'number'
+        ? lastVoucher
+        : lastVoucher?.cbteNro || lastVoucher?.CbteNro || 0;
 
     return new Response(
       JSON.stringify({ success: true, data: { ultimo_comprobante: ultimoCbteNro } }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err: any) {
     return new Response(JSON.stringify({ success: false, error: err.message }), {

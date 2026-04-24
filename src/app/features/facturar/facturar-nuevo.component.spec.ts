@@ -243,8 +243,89 @@ describe('FacturarNuevoComponent', () => {
 
     await component.emitirFactura();
 
-    expect(component.mensaje()).toContain('no hay conexion a internet');
+    expect(component.mensaje()).toContain('no hay conexion');
     expect(component.esExito()).toBe(false);
+  });
+
+  it('muestra un warning inline cuando ARCA esta en mantenimiento durante la emision', async () => {
+    const fixture = TestBed.createComponent(FacturarNuevoComponent);
+    const component = fixture.componentInstance;
+    const service = TestBed.inject(FacturacionService) as unknown as ReturnType<
+      typeof createFacturacionServiceStub
+    >;
+
+    service.emitirFactura.mockResolvedValue({
+      success: false,
+      error: 'ARCA informa mantenimiento programado.',
+      errorType: 'arca_maintenance',
+      shouldRetry: true,
+    });
+
+    component.formFactura.setValue({
+      monto: 12000,
+      fecha: '2026-04-20',
+      cliente_cuit: '',
+    });
+
+    await component.emitirFactura();
+    fixture.detectChanges();
+
+    expect(component.esExito()).toBe(false);
+    expect(component.mensaje()).toContain('ARCA esta en mantenimiento');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'ARCA esta en mantenimiento',
+    );
+  });
+
+  it('muestra un mensaje inline de autenticacion/WSAA al fallar credenciales', async () => {
+    const fixture = TestBed.createComponent(FacturarNuevoComponent);
+    const component = fixture.componentInstance;
+    const service = TestBed.inject(FacturacionService) as unknown as ReturnType<
+      typeof createFacturacionServiceStub
+    >;
+
+    service.emitirFactura.mockResolvedValue({
+      success: false,
+      error: 'WSAA rechazo el token de autenticacion.',
+      errorType: 'arca_auth',
+    });
+
+    component.formFactura.setValue({
+      monto: 12000,
+      fecha: '2026-04-20',
+      cliente_cuit: '',
+    });
+
+    await component.emitirFactura();
+
+    expect(component.esExito()).toBe(false);
+    expect(component.mensaje()).toContain('autenticacion con ARCA/WSAA');
+  });
+
+  it('muestra un mensaje inline de red al fallar la emision por conexion', async () => {
+    const fixture = TestBed.createComponent(FacturarNuevoComponent);
+    const component = fixture.componentInstance;
+    const service = TestBed.inject(FacturacionService) as unknown as ReturnType<
+      typeof createFacturacionServiceStub
+    >;
+
+    service.emitirFactura.mockResolvedValue({
+      success: false,
+      error:
+        'No se pudo emitir la factura porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+      errorType: 'network',
+    });
+
+    component.formFactura.setValue({
+      monto: 12000,
+      fecha: '2026-04-20',
+      cliente_cuit: '',
+    });
+
+    await component.emitirFactura();
+
+    expect(component.esExito()).toBe(false);
+    expect(component.mensaje()).toContain('no hay conexion con el servicio de facturacion');
   });
 
   it('bloquea doble click mientras una accion del comprobante sigue en curso', async () => {

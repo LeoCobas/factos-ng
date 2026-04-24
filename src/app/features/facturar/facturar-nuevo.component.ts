@@ -25,11 +25,15 @@ import {
   FacturacionService,
   FacturaReciente,
 } from '../../core/services/facturacion.service';
+import type { FacturacionErrorType, FacturaResult } from '../../core/services/facturacion.service';
 import { type PdfActionResult, PdfService } from '../../core/services/pdf.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import { Comprobante } from '../../core/types/database.types';
 import { PdfComprobanteData } from '../../core/types/pdf.types';
-import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.util';
+import {
+  getFriendlyNetworkErrorMessage,
+  isLikelyNetworkErrorMessage,
+} from '../../core/utils/network-error.util';
 import {
   resolveTipoComprobanteDetallado,
   sanitizeCuit,
@@ -524,7 +528,9 @@ export class FacturarNuevoComponent implements OnDestroy {
       });
 
       if (!resultado.success || !resultado.comprobante) {
-        throw new Error(resultado.error || 'Error al emitir factura');
+        this.esExito.set(false);
+        this.mensaje.set(this.getMensajeErrorEmision(resultado));
+        return;
       }
 
       this.esExito.set(true);
@@ -549,9 +555,7 @@ export class FacturarNuevoComponent implements OnDestroy {
     } catch (error) {
       console.error('Error al emitir factura:', error);
       this.esExito.set(false);
-      this.mensaje.set(
-        error instanceof Error ? error.message : 'Error desconocido al emitir factura',
-      );
+      this.mensaje.set(this.getMensajeErrorEmision(error));
     } finally {
       this.isSubmitting.set(false);
     }
@@ -846,6 +850,62 @@ export class FacturarNuevoComponent implements OnDestroy {
     }
 
     return 'No se pudo enviar a imprimir porque no hay conexion a internet. Verifica la red e intenta nuevamente.';
+  }
+
+  private getMensajeErrorEmision(error: FacturaResult | unknown): string {
+    const errorType = this.getFacturacionErrorType(error);
+    const errorMessage =
+      this.getFacturacionErrorMessage(error) || 'Error desconocido al emitir factura';
+
+    if (errorType === 'arca_maintenance' || this.isArcaMaintenanceError(errorMessage)) {
+      return `ARCA esta en mantenimiento. No se pudo emitir la factura ahora. Intenta nuevamente en unos minutos. ${errorMessage}`;
+    }
+
+    if (errorType === 'network' || isLikelyNetworkErrorMessage(errorMessage)) {
+      return 'No se pudo emitir la factura porque no hay conexion con el servicio de facturacion. Verifica tu red e intenta nuevamente.';
+    }
+
+    if (errorType === 'arca_auth' || this.isCredentialError(errorMessage)) {
+      return 'No se pudo emitir la factura por un problema de autenticacion con ARCA/WSAA. Revisa credenciales, certificados o sesion vigente.';
+    }
+
+    return errorMessage;
+  }
+
+  private getFacturacionErrorType(error: FacturaResult | unknown): FacturacionErrorType | null {
+    if (error && typeof error === 'object' && 'errorType' in error) {
+      return ((error as FacturaResult).errorType || null) as FacturacionErrorType | null;
+    }
+
+    return null;
+  }
+
+  private getFacturacionErrorMessage(error: FacturaResult | unknown): string | null {
+    if (error && typeof error === 'object' && 'error' in error) {
+      return (error as FacturaResult).error || null;
+    }
+
+    return error instanceof Error ? error.message : null;
+  }
+
+  private isArcaMaintenanceError(errorMessage: string): boolean {
+    return errorMessage.toLowerCase().includes('mantenimiento');
+  }
+
+  private isCredentialError(errorMessage: string): boolean {
+    const normalizedMessage = errorMessage.toLowerCase();
+    return (
+      normalizedMessage.includes('autenticacion') ||
+      normalizedMessage.includes('autenticaciÃ³n') ||
+      normalizedMessage.includes('wsaa') ||
+      normalizedMessage.includes('credentials') ||
+      normalizedMessage.includes('credenciales') ||
+      normalizedMessage.includes('certificado') ||
+      normalizedMessage.includes('certificados') ||
+      normalizedMessage.includes('token') ||
+      normalizedMessage.includes('sesion') ||
+      normalizedMessage.includes('sesiÃ³n')
+    );
   }
 
   private requiereConfirmacionMontoExtra(monto: number): boolean {
