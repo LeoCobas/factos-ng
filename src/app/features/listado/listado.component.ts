@@ -18,7 +18,10 @@ import {
   ComprobanteResultadoActionId,
   ComprobanteResultadoPanelComponent,
 } from '../../shared/components/ui/comprobante-resultado-panel.component';
-import { PdfViewerComponent, PdfViewerConfig } from '../../shared/components/ui/pdf-viewer.component';
+import {
+  PdfViewerComponent,
+  PdfViewerConfig,
+} from '../../shared/components/ui/pdf-viewer.component';
 
 function getFechaLocalArgentina(): string {
   const hoy = new Date();
@@ -97,7 +100,9 @@ interface PdfFacturaLike {
         <h3 class="form-label mb-4">{{ nombreFechaSeleccionada() }}</h3>
 
         @if (mensajeCarga()) {
-          <div class="mb-4 rounded-lg border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <div
+            class="mb-4 rounded-lg border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          >
             {{ mensajeCarga() }}
           </div>
         }
@@ -147,7 +152,9 @@ interface PdfFacturaLike {
 
         @if (cargando()) {
           <div class="text-center py-8">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div
+              class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"
+            ></div>
             <p class="text-muted-foreground mt-4">Cargando facturas...</p>
           </div>
         } @else if (facturasFiltradas().length === 0) {
@@ -190,7 +197,10 @@ interface PdfFacturaLike {
                 [class]="obtenerClaseContenedorFactura(factura)"
               >
                 <div
-                  [class]="obtenerClaseFilaFactura(factura) + ' px-2 py-2.5 sm:p-3 cursor-pointer hover:bg-muted'"
+                  [class]="
+                    obtenerClaseFilaFactura(factura) +
+                    ' px-2 py-2.5 sm:p-3 cursor-pointer hover:bg-muted'
+                  "
                   (click)="toggleExpansion(factura.id, $event)"
                   role="button"
                   tabindex="0"
@@ -220,7 +230,10 @@ interface PdfFacturaLike {
                       class="text-right font-semibold text-[0.95rem] sm:text-sm min-w-0 justify-self-end"
                       [class]="obtenerClaseMonto(factura)"
                     >
-                      {{ obtenerMontoMostrar(factura) | currency:'ARS':'symbol':'1.2-2':'es-AR' }}
+                      {{
+                        obtenerMontoMostrar(factura)
+                          | currency: 'ARS' : 'symbol' : '1.2-2' : 'es-AR'
+                      }}
                     </div>
                     <div class="ml-1 sm:ml-2 justify-self-end text-muted-foreground">
                       <svg
@@ -392,8 +405,12 @@ interface PdfFacturaLike {
                       mostrandoConfirmacionAnulacion() &&
                       facturaPendienteAnulacion()?.id === factura.id
                     ) {
-                      <div class="mb-4 rounded-2xl border border-amber-500/25 bg-card px-4 py-4 shadow-sm">
-                        <div class="mb-2 inline-flex rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                      <div
+                        class="mb-4 rounded-2xl border border-amber-500/25 bg-card px-4 py-4 shadow-sm"
+                      >
+                        <div
+                          class="mb-2 inline-flex rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700"
+                        >
                           Confirmar anulación
                         </div>
                         <div class="space-y-2">
@@ -403,7 +420,8 @@ interface PdfFacturaLike {
                           </h4>
                           <p class="text-sm leading-6 text-muted-foreground">
                             Se emitirá una nota de crédito automática por
-                            {{ formatearMoneda(facturaPendienteAnulacion()!.monto) }} para dejarla anulada.
+                            {{ formatearMoneda(facturaPendienteAnulacion()!.monto) }} para dejarla
+                            anulada.
                           </p>
                         </div>
 
@@ -485,7 +503,7 @@ interface PdfFacturaLike {
               Total del día ({{ facturasFiltradas().length }} facturas)
             </span>
             <span class="text-lg font-bold text-blue-900">
-              {{ totalDelDia() | currency:'ARS':'symbol':'1.2-2':'es-AR' }}
+              {{ totalDelDia() | currency: 'ARS' : 'symbol' : '1.2-2' : 'es-AR' }}
             </span>
           </div>
         </div>
@@ -510,7 +528,9 @@ interface PdfFacturaLike {
             } @else {
               <div class="flex items-center justify-center h-full">
                 <div class="text-center">
-                  <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+                  <div
+                    class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"
+                  ></div>
                   <p class="text-muted-foreground">Cargando PDF...</p>
                 </div>
               </div>
@@ -614,7 +634,9 @@ export class ListadoComponent {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
 
-      return this.extraerNumeroFactura(b.numero_factura) - this.extraerNumeroFactura(a.numero_factura);
+      return (
+        this.extraerNumeroFactura(b.numero_factura) - this.extraerNumeroFactura(a.numero_factura)
+      );
     }),
   );
 
@@ -699,9 +721,7 @@ export class ListadoComponent {
     }
 
     this.ultimoToggleAccionesSecundarias = { facturaId, timestamp: ahora };
-    this.accionesSecundariasFacturaId.update((actual) =>
-      actual === facturaId ? null : facturaId,
-    );
+    this.accionesSecundariasFacturaId.update((actual) => (actual === facturaId ? null : facturaId));
   }
 
   puedeAnularFactura(factura: Factura): boolean {
@@ -795,7 +815,8 @@ export class ListadoComponent {
 
     try {
       const pdfInfo = this.pdfService.createPdfInfo(this.toPdfComprobanteData(factura));
-      await this.pdfService.sharePdf(pdfInfo);
+      const result = await this.pdfService.sharePdf(pdfInfo);
+      this.setMensajeAccion(result.message, result.type);
     } catch (error) {
       console.error('Error al compartir:', error);
       this.setMensajeAccion(
@@ -817,7 +838,8 @@ export class ListadoComponent {
 
     try {
       const pdfInfo = this.pdfService.createPdfInfo(this.toPdfComprobanteData(factura));
-      await this.pdfService.downloadPdf(pdfInfo);
+      const result = await this.pdfService.downloadPdf(pdfInfo);
+      this.setMensajeAccion(result.message, result.type);
     } catch (error) {
       console.error('Error al descargar:', error);
       this.setMensajeAccion(
@@ -898,7 +920,8 @@ export class ListadoComponent {
 
     try {
       const pdfInfo = this.pdfService.createPdfInfo(this.buildNotaCreditoPdfPayload(notaCredito));
-      await this.pdfService.sharePdf(pdfInfo);
+      const result = await this.pdfService.sharePdf(pdfInfo);
+      this.setMensajeAccion(result.message, result.type);
     } catch (error) {
       console.error('Error al compartir nota de crédito:', error);
       this.setMensajeAccion(
@@ -918,7 +941,8 @@ export class ListadoComponent {
 
     try {
       const pdfInfo = this.pdfService.createPdfInfo(this.buildNotaCreditoPdfPayload(notaCredito));
-      await this.pdfService.downloadPdf(pdfInfo);
+      const result = await this.pdfService.downloadPdf(pdfInfo);
+      this.setMensajeAccion(result.message, result.type);
     } catch (error) {
       console.error('Error al descargar nota de crédito:', error);
       this.setMensajeAccion(
@@ -1154,14 +1178,14 @@ export class ListadoComponent {
   obtenerClaseContenedorFactura(factura: Factura): string {
     const expandedClass =
       this.facturaExpandida() === factura.id ? 'shadow-md receipt-expanded-frame' : 'shadow-sm';
-    return this.esNotaCredito(factura)
-      ? `${expandedClass} card-nota-credito-frame`
-      : expandedClass;
+    return this.esNotaCredito(factura) ? `${expandedClass} card-nota-credito-frame` : expandedClass;
   }
 
   obtenerClaseMonto(factura: Factura): string {
     const baseClass = 'text-right';
-    return this.esNotaCredito(factura) ? `${baseClass} monto-negativo` : `${baseClass} text-foreground`;
+    return this.esNotaCredito(factura)
+      ? `${baseClass} monto-negativo`
+      : `${baseClass} text-foreground`;
   }
 
   obtenerTextoEstado(estado: string): string {

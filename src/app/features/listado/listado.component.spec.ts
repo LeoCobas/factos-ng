@@ -33,7 +33,10 @@ describe('ListadoComponent', () => {
         {
           provide: PdfService,
           useValue: {
-            revokeBlobUrl: () => undefined,
+            createPdfInfo: vi.fn(),
+            sharePdf: vi.fn(),
+            downloadPdf: vi.fn(),
+            revokeBlobUrl: vi.fn(),
           },
         },
         {
@@ -408,6 +411,50 @@ describe('ListadoComponent', () => {
 
     expect(component.mensajeAccionTipo()).toBe('error');
     expect(component.mensajeAccion()).toContain('autenticación con ARCA');
+  });
+
+  it('muestra el resultado inline al compartir un PDF', async () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+    const pdfService = TestBed.inject(PdfService) as unknown as {
+      createPdfInfo: ReturnType<typeof vi.fn>;
+      sharePdf: ReturnType<typeof vi.fn>;
+    };
+    const factura = crearFactura();
+
+    pdfService.createPdfInfo.mockReturnValue({ filename: 'a.pdf', title: 'A', text: 'x' });
+    pdfService.sharePdf.mockResolvedValue({
+      success: true,
+      message: 'Informacion de factura copiada al portapapeles.',
+      type: 'success',
+    });
+
+    await component.compartir(factura);
+
+    expect(component.mensajeAccion()).toBe('Informacion de factura copiada al portapapeles.');
+    expect(component.mensajeAccionTipo()).toBe('success');
+  });
+
+  it('muestra cancelacion de descarga sin depender de alertas del servicio', async () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+    const pdfService = TestBed.inject(PdfService) as unknown as {
+      createPdfInfo: ReturnType<typeof vi.fn>;
+      downloadPdf: ReturnType<typeof vi.fn>;
+    };
+    const factura = crearFactura();
+
+    pdfService.createPdfInfo.mockReturnValue({ filename: 'a.pdf', title: 'A', text: 'x' });
+    pdfService.downloadPdf.mockResolvedValue({
+      success: false,
+      message: 'Descarga cancelada.',
+      type: 'warning',
+    });
+
+    await component.descargar(factura);
+
+    expect(component.mensajeAccion()).toBe('Descarga cancelada.');
+    expect(component.mensajeAccionTipo()).toBe('warning');
   });
 
   it('conserva el panel inline de nota de credito al anular con exito', async () => {

@@ -11,6 +11,12 @@ export interface PdfAsset<T extends PdfComprobanteData = PdfComprobanteData> {
   info: PdfInfo<T>;
 }
 
+export interface PdfActionResult {
+  success: boolean;
+  message: string;
+  type: 'success' | 'warning' | 'error';
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -52,7 +58,7 @@ export class PdfService {
     }
   }
 
-  async sharePdf<T extends PdfComprobanteData>(pdfInfo: PdfInfo<T>): Promise<boolean> {
+  async sharePdf<T extends PdfComprobanteData>(pdfInfo: PdfInfo<T>): Promise<PdfActionResult> {
     const caps = this.capabilities;
 
     try {
@@ -69,44 +75,50 @@ export class PdfService {
             text: pdfInfo.text,
             files: [file],
           });
-          return true;
+          return this.createActionResult(true, 'Comprobante listo para compartir.');
         }
 
         await navigator.share({
           title: pdfInfo.title,
           text: pdfInfo.text,
         });
-        return true;
+        return this.createActionResult(true, 'Comprobante listo para compartir.');
       }
 
       if (caps.isAndroid) {
         const blobUrl = URL.createObjectURL(pdfBlob);
         window.open(blobUrl, '_blank');
         setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-        return true;
+        return this.createActionResult(true, 'PDF abierto en una pestaña nueva.');
       }
 
       return this.copyToClipboard(pdfInfo.text);
     } catch (error) {
       console.error('Error en sharePdf:', error);
-      return this.copyToClipboard(pdfInfo.text);
+      return this.copyToClipboard(
+        pdfInfo.text,
+        'No se pudo compartir el comprobante. Se copio la informacion al portapapeles.',
+        'warning',
+      );
     }
   }
 
-  async downloadPdf<T extends PdfComprobanteData>(pdfInfo: PdfInfo<T>): Promise<boolean> {
+  async downloadPdf<T extends PdfComprobanteData>(pdfInfo: PdfInfo<T>): Promise<PdfActionResult> {
     try {
       const pdfBlob = await this.getPdfBlob(pdfInfo.factura);
 
       if (this.capabilities.fileSystemAccess) {
         try {
-          const fileHandle = await (window as Window & {
-            showSaveFilePicker?: (options: unknown) => Promise<{
-              createWritable: () => Promise<{
-                write: (blob: Blob) => Promise<void>;
-                close: () => Promise<void>;
+          const fileHandle = await (
+            window as Window & {
+              showSaveFilePicker?: (options: unknown) => Promise<{
+                createWritable: () => Promise<{
+                  write: (blob: Blob) => Promise<void>;
+                  close: () => Promise<void>;
+                }>;
               }>;
-            }>;
-          }).showSaveFilePicker?.({
+            }
+          ).showSaveFilePicker?.({
             suggestedName: pdfInfo.filename,
             types: [
               {
@@ -121,22 +133,20 @@ export class PdfService {
             await writable.write(pdfBlob);
             await writable.close();
 
-            alert('Ticket guardado exitosamente');
-            return true;
+            return this.createActionResult(true, 'Ticket guardado exitosamente.');
           }
         } catch (fsError) {
           if (fsError instanceof Error && fsError.name === 'AbortError') {
-            return false;
+            return this.createActionResult(false, 'Descarga cancelada.', 'warning');
           }
         }
       }
 
       this.downloadFallback(pdfBlob, pdfInfo.filename);
-      return true;
+      return this.createActionResult(true, 'Descarga iniciada.');
     } catch (error) {
       console.error('Error descargando PDF:', error);
-      alert('Error al generar el PDF del ticket');
-      return false;
+      return this.createActionResult(false, 'Error al generar el PDF del ticket.', 'error');
     }
   }
 
@@ -181,12 +191,23 @@ export class PdfService {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  private async copyToClipboard(text: string): Promise<boolean> {
+  private createActionResult(
+    success: boolean,
+    message: string,
+    type: PdfActionResult['type'] = success ? 'success' : 'error',
+  ): PdfActionResult {
+    return { success, message, type };
+  }
+
+  private async copyToClipboard(
+    text: string,
+    successMessage = 'Informacion de factura copiada al portapapeles.',
+    successType: PdfActionResult['type'] = 'success',
+  ): Promise<PdfActionResult> {
     if (this.capabilities.clipboard) {
       try {
         await navigator.clipboard.writeText(text);
-        alert('Información de factura copiada al portapapeles');
-        return true;
+        return this.createActionResult(true, successMessage, successType);
       } catch (error) {
         console.warn('Error copiando al portapapeles:', error);
       }
@@ -203,11 +224,13 @@ export class PdfService {
 
     try {
       document.execCommand('copy');
-      alert('Información de factura copiada al portapapeles');
-      return true;
+      return this.createActionResult(true, successMessage, successType);
     } catch {
-      alert(`Información de la factura:\n\n${text}`);
-      return false;
+      return this.createActionResult(
+        false,
+        `No se pudo copiar la informacion de la factura. ${text}`,
+        'error',
+      );
     } finally {
       document.body.removeChild(textarea);
     }

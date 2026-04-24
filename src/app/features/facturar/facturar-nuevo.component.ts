@@ -25,7 +25,7 @@ import {
   FacturacionService,
   FacturaReciente,
 } from '../../core/services/facturacion.service';
-import { PdfService } from '../../core/services/pdf.service';
+import { type PdfActionResult, PdfService } from '../../core/services/pdf.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import { Comprobante } from '../../core/types/database.types';
 import { PdfComprobanteData } from '../../core/types/pdf.types';
@@ -89,7 +89,9 @@ interface FacturaRecienteView {
                 [clienteCuitValido]="clienteCuitValido()"
                 [buscandoCliente]="buscandoCliente()"
                 [clienteSeleccionado]="clienteSeleccionado()"
-                [clienteCuitFormateado]="clienteSeleccionado() ? formatearCuit(clienteSeleccionado()!.cuit || '') : ''"
+                [clienteCuitFormateado]="
+                  clienteSeleccionado() ? formatearCuit(clienteSeleccionado()!.cuit || '') : ''
+                "
                 [condicionClienteLabel]="condicionClienteLabel()"
                 [tipoComprobanteResueltoLabel]="tipoComprobanteResueltoLabel()"
                 [requiereRevision]="tipoComprobanteResolution().requiereRevision"
@@ -175,7 +177,9 @@ interface FacturaRecienteView {
           <app-factura-emitida-panel
             [factura]="facturaEmitida()"
             [tipoComprobante]="facturaEmitida() ? obtenerTipoComprobante(facturaEmitida()!) : ''"
-            [numeroComprobante]="facturaEmitida() ? obtenerNumeroSinCeros(facturaEmitida()!.numero_comprobante) : ''"
+            [numeroComprobante]="
+              facturaEmitida() ? obtenerNumeroSinCeros(facturaEmitida()!.numero_comprobante) : ''
+            "
             [monto]="facturaEmitida() ? montoFacturaEmitida() : ''"
             [accionEnCurso]="accionComprobanteEnCurso()"
             [mensajeAccion]="mensajeAccionComprobante()"
@@ -211,10 +215,7 @@ interface FacturaRecienteView {
             class="bg-card rounded-lg w-full max-w-2xl h-full max-h-[95vh] flex flex-col shadow-2xl overflow-hidden"
             (click)="$event.stopPropagation()"
           >
-            <app-pdf-viewer
-              [config]="pdfViewingConfig()!"
-              (closeRequested)="cerrarVisorPdf()"
-            />
+            <app-pdf-viewer [config]="pdfViewingConfig()!" (closeRequested)="cerrarVisorPdf()" />
           </div>
         </div>
       }
@@ -230,7 +231,9 @@ interface FacturaRecienteView {
             class="w-full max-w-md rounded-2xl border border-amber-500/30 bg-card p-5 shadow-2xl"
             (click)="$event.stopPropagation()"
           >
-            <div class="mb-4 inline-flex rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-300">
+            <div
+              class="mb-4 inline-flex rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-300"
+            >
               Atenci&oacute;n
             </div>
 
@@ -245,8 +248,8 @@ interface FacturaRecienteView {
                 </span>
                 y tu tope configurado es
                 <span class="font-semibold text-foreground">
-                  {{ formatearMonto(montoMaximoFacturaConfigurado()) }}
-                </span>.
+                  {{ formatearMonto(montoMaximoFacturaConfigurado()) }} </span
+                >.
               </p>
               <p class="text-sm leading-6 text-muted-foreground">
                 Revis&aacute; el importe. Si igual quer&eacute;s continuar, el bot&oacute;n se
@@ -302,9 +305,9 @@ export class FacturarNuevoComponent implements OnDestroy {
   readonly pdfViewing = signal<Comprobante | null>(null);
   readonly pdfViewingConfig = signal<PdfViewerConfig | null>(null);
   readonly pdfViewingBlobUrl = signal<string | null>(null);
-  readonly accionComprobanteEnCurso = signal<
-    'ver' | 'compartir' | 'descargar' | 'imprimir' | null
-  >(null);
+  readonly accionComprobanteEnCurso = signal<'ver' | 'compartir' | 'descargar' | 'imprimir' | null>(
+    null,
+  );
   readonly mensajeAccionComprobante = signal<string | null>(null);
   readonly mensajeAccionComprobanteTipo = signal<'success' | 'warning' | 'error'>('success');
 
@@ -354,7 +357,9 @@ export class FacturarNuevoComponent implements OnDestroy {
       return this.mensajeClienteTipo() === 'warning' && Boolean(this.mensajeCliente());
     }
 
-    return this.tipoComprobanteResolution().requiereRevision || this.mensajeClienteTipo() === 'warning';
+    return (
+      this.tipoComprobanteResolution().requiereRevision || this.mensajeClienteTipo() === 'warning'
+    );
   });
   readonly alertaClienteTexto = computed(() => {
     if (this.mensajeClienteTipo() === 'error') {
@@ -423,8 +428,7 @@ export class FacturarNuevoComponent implements OnDestroy {
   private confirmacionMontoTimer: ReturnType<typeof setInterval> | null = null;
   private mensajeAccionComprobanteTimer: ReturnType<typeof setTimeout> | null = null;
   private limitesFechaRequestId = 0;
-  private readonly visualViewport =
-    typeof window !== 'undefined' ? window.visualViewport : null;
+  private readonly visualViewport = typeof window !== 'undefined' ? window.visualViewport : null;
   private readonly onViewportChange = () => this.actualizarPosicionConfirmacionMonto();
 
   ngOnDestroy(): void {
@@ -668,9 +672,7 @@ export class FacturarNuevoComponent implements OnDestroy {
           this.pdfService.createPdfInfo(this.mapComprobanteToPdfData(comprobante)),
         );
 
-        if (!shared) {
-          throw new Error('No se pudo compartir el ticket.');
-        }
+        return shared;
       },
       'Comprobante listo para compartir.',
       'No se pudo compartir el ticket.',
@@ -700,9 +702,7 @@ export class FacturarNuevoComponent implements OnDestroy {
           this.pdfService.createPdfInfo(this.mapComprobanteToPdfData(comprobante)),
         );
 
-        if (!downloaded) {
-          throw new Error('No se pudo descargar el ticket.');
-        }
+        return downloaded;
       },
       'Descarga iniciada.',
       'No se pudo descargar el ticket.',
@@ -790,7 +790,7 @@ export class FacturarNuevoComponent implements OnDestroy {
 
   private async ejecutarAccionComprobante(
     action: 'ver' | 'compartir' | 'descargar' | 'imprimir',
-    handler: () => Promise<void>,
+    handler: () => Promise<void | PdfActionResult>,
     successMessage: string,
     fallbackErrorMessage: string,
   ): Promise<void> {
@@ -802,8 +802,16 @@ export class FacturarNuevoComponent implements OnDestroy {
     this.clearMensajeAccionComprobante();
 
     try {
-      await handler();
-      this.setMensajeAccionComprobante(successMessage, 'success');
+      const result = await handler();
+      if (result && !result.success) {
+        this.setMensajeAccionComprobante(result.message, result.type);
+        return;
+      }
+
+      this.setMensajeAccionComprobante(
+        result?.message || successMessage,
+        result?.type || 'success',
+      );
     } catch (error) {
       console.error(`Error al ejecutar accion ${action}:`, error);
 
@@ -824,9 +832,7 @@ export class FacturarNuevoComponent implements OnDestroy {
     }
   }
 
-  private getOfflineActionMessage(
-    action: 'ver' | 'compartir' | 'descargar' | 'imprimir',
-  ): string {
+  private getOfflineActionMessage(action: 'ver' | 'compartir' | 'descargar' | 'imprimir'): string {
     if (action === 'ver') {
       return 'No se pudo generar el ticket porque no hay conexion a internet. Verifica la red e intenta nuevamente.';
     }
@@ -916,7 +922,10 @@ export class FacturarNuevoComponent implements OnDestroy {
     const headerBottom = this.obtenerHeaderBottom();
     const desiredTop = Math.max(topSafeMargin, headerBottom + 12);
     const cardHeight = this.confirmacionMontoCardRef()?.nativeElement.offsetHeight ?? 0;
-    const maxTop = Math.max(topSafeMargin, Math.floor(viewportBottom - cardHeight - bottomSafeMargin));
+    const maxTop = Math.max(
+      topSafeMargin,
+      Math.floor(viewportBottom - cardHeight - bottomSafeMargin),
+    );
 
     this.confirmacionMontoTopOffset.set(Math.min(desiredTop, maxTop));
   }
@@ -961,12 +970,11 @@ export class FacturarNuevoComponent implements OnDestroy {
     const contribuyente = this.contribuyenteService.contribuyente();
     if (contribuyente) {
       try {
-        const ultimaFechaTipo =
-          await this.facturacionService.cargarUltimaFechaComprobantePorTipo(
-            contribuyente.id,
-            tipoComprobante,
-            contribuyente.punto_venta,
-          );
+        const ultimaFechaTipo = await this.facturacionService.cargarUltimaFechaComprobantePorTipo(
+          contribuyente.id,
+          tipoComprobante,
+          contribuyente.punto_venta,
+        );
 
         if (requestId !== this.limitesFechaRequestId) {
           return;
@@ -1117,4 +1125,3 @@ export class FacturarNuevoComponent implements OnDestroy {
     };
   }
 }
-

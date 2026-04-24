@@ -4,10 +4,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
-import {
-  FacturacionService,
-  FacturaReciente,
-} from '../../core/services/facturacion.service';
+import { FacturacionService, FacturaReciente } from '../../core/services/facturacion.service';
 import { PdfService } from '../../core/services/pdf.service';
 import { FacturarNuevoComponent } from './facturar-nuevo.component';
 
@@ -162,9 +159,9 @@ describe('FacturarNuevoComponent', () => {
     const service = TestBed.inject(FacturacionService) as unknown as ReturnType<
       typeof createFacturacionServiceStub
     >;
-    const contribuyenteService = TestBed.inject(
-      ContribuyenteService,
-    ) as unknown as { contribuyente: ReturnType<typeof signal> };
+    const contribuyenteService = TestBed.inject(ContribuyenteService) as unknown as {
+      contribuyente: ReturnType<typeof signal>;
+    };
 
     contribuyenteService.contribuyente.set({
       id: 'cont-1',
@@ -234,7 +231,8 @@ describe('FacturarNuevoComponent', () => {
 
     service.emitirFactura.mockResolvedValue({
       success: false,
-      error: 'No se pudo emitir la factura porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
+      error:
+        'No se pudo emitir la factura porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
     });
 
     component.formFactura.setValue({
@@ -256,7 +254,7 @@ describe('FacturarNuevoComponent', () => {
       createPdfInfo: ReturnType<typeof vi.fn>;
       sharePdf: ReturnType<typeof vi.fn>;
     };
-    const deferred = createDeferred<boolean>();
+    const deferred = createDeferred<{ success: boolean; message: string; type: 'success' }>();
 
     component.facturaEmitida.set({
       id: 'comp-1',
@@ -291,7 +289,11 @@ describe('FacturarNuevoComponent', () => {
     expect(component.accionComprobanteEnCurso()).toBe('compartir');
     expect(pdfService.sharePdf).toHaveBeenCalledTimes(1);
 
-    deferred.resolve(true);
+    deferred.resolve({
+      success: true,
+      message: 'Comprobante listo para compartir.',
+      type: 'success',
+    });
     await firstCall;
     await secondCall;
 
@@ -331,11 +333,15 @@ describe('FacturarNuevoComponent', () => {
       updated_at: null,
     });
     pdfService.createPdfInfo.mockReturnValue({ filename: 'a.pdf', title: 'A', text: 'x' });
-    pdfService.downloadPdf.mockResolvedValue(true);
+    pdfService.downloadPdf.mockResolvedValue({
+      success: true,
+      message: 'Ticket guardado exitosamente.',
+      type: 'success',
+    });
 
     await component.descargar();
 
-    expect(component.mensajeAccionComprobante()).toBe('Descarga iniciada.');
+    expect(component.mensajeAccionComprobante()).toBe('Ticket guardado exitosamente.');
     expect(component.mensajeAccionComprobanteTipo()).toBe('success');
   });
 
@@ -389,9 +395,9 @@ describe('FacturarNuevoComponent', () => {
       const service = TestBed.inject(FacturacionService) as unknown as ReturnType<
         typeof createFacturacionServiceStub
       >;
-      const contribuyenteService = TestBed.inject(
-        ContribuyenteService,
-      ) as unknown as { contribuyente: ReturnType<typeof signal> };
+      const contribuyenteService = TestBed.inject(ContribuyenteService) as unknown as {
+        contribuyente: ReturnType<typeof signal>;
+      };
 
       contribuyenteService.contribuyente.set({
         id: 'cont-1',
@@ -425,11 +431,9 @@ describe('FacturarNuevoComponent', () => {
   it('ubica la confirmacion debajo del header en desktop aunque no haya teclado', () => {
     const fixture = TestBed.createComponent(FacturarNuevoComponent);
     const component = fixture.componentInstance as any;
-    const querySelectorSpy = vi
-      .spyOn(document, 'querySelector')
-      .mockReturnValue({
-        getBoundingClientRect: () => ({ bottom: 132 }),
-      } as HTMLElement);
+    const querySelectorSpy = vi.spyOn(document, 'querySelector').mockReturnValue({
+      getBoundingClientRect: () => ({ bottom: 132 }),
+    } as HTMLElement);
 
     component.actualizarPosicionConfirmacionMonto();
 
@@ -452,11 +456,9 @@ describe('FacturarNuevoComponent', () => {
     try {
       const fixture = TestBed.createComponent(FacturarNuevoComponent);
       const component = fixture.componentInstance as any;
-      const querySelectorSpy = vi
-        .spyOn(document, 'querySelector')
-        .mockReturnValue({
-          getBoundingClientRect: () => ({ bottom: 140 }),
-        } as HTMLElement);
+      const querySelectorSpy = vi.spyOn(document, 'querySelector').mockReturnValue({
+        getBoundingClientRect: () => ({ bottom: 140 }),
+      } as HTMLElement);
 
       component.confirmacionMontoCardRef = () => ({ nativeElement: { offsetHeight: 240 } });
 
