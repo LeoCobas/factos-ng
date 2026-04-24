@@ -1346,6 +1346,61 @@ input[type="date"].form-input:focus {
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03);
 }
 
+.config-context-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3.45rem;
+  padding: 0.45rem;
+  border: 1px solid rgb(var(--border) / 0.85);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgb(var(--muted) / 0.82), rgb(var(--muted) / 0.58));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03);
+}
+
+.config-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.55rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid rgb(var(--border) / 0.9);
+  border-radius: 0.8rem;
+  background: rgb(var(--card) / 0.62);
+  color: rgb(var(--foreground));
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.2;
+  transition: all 0.2s ease;
+}
+
+.config-back-btn:hover {
+  border-color: rgb(var(--primary) / 0.24);
+  background: rgb(var(--card) / 0.86);
+  transform: translateY(-1px);
+}
+
+.config-context-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-width: 0;
+  padding-right: 0.45rem;
+  color: rgb(var(--muted-foreground));
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+@media (max-width: 380px) {
+  .config-back-btn span {
+    display: none;
+  }
+}
+
 .nav-button-text {
   display: inline-flex;
   align-items: center;

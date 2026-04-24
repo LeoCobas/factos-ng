@@ -24,7 +24,6 @@ import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.u
   template: `
     <div class="space-y-5">
       <div class="config-tabs-wrapper">
-        <p class="config-tabs-title">Configuraci&oacute;n</p>
         <div class="config-tabs-list">
           <button
             type="button"
