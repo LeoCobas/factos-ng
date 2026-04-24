@@ -1,6 +1,10 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { Arca } from 'npm:@arcasdk/core@0.3.6';
+import {
+  readArcaTicketBucket,
+  writeArcaTicketBucket,
+} from '../../../src/app/core/utils/arca-ticket.util.ts';
 import { extractFiscalDataFromConstancia } from '../../../src/app/core/utils/constancia-inscripcion.util.ts';
 
 const corsHeaders = {
@@ -10,6 +14,56 @@ const corsHeaders = {
 };
 
 const ARCA_TIMEOUT_MS = 15000;
+const ARCA_TICKET_PATH = '/tmp/factos-arca-tickets';
+const PADRON_SERVICE_NAME = 'ws_sr_constancia_inscripcion';
+
+function getTicketFilePath(cuit: number, serviceName: string, production: boolean): string {
+  return `${ARCA_TICKET_PATH}/TA-${cuit}-${serviceName}${production ? '-production' : ''}.json`;
+}
+
+function isStoredTicketValid(ticket: any): boolean {
+  const expirationTime = ticket?.header?.[1]?.expirationtime;
+  if (!expirationTime) return false;
+
+  const expirationMs = new Date(String(expirationTime)).getTime();
+  return Number.isFinite(expirationMs) && expirationMs - Date.now() > 60_000;
+}
+
+function getValidStoredTicket(storedTicket: any): any | null {
+  const ticket = readArcaTicketBucket(storedTicket, 'padron');
+  return isStoredTicketValid(ticket) ? ticket : null;
+}
+
+async function persistTicketFromFile(params: {
+  db: any;
+  userId: string;
+  currentTicket: any;
+  cuit: number;
+  production: boolean;
+}): Promise<void> {
+  try {
+    const filePath = getTicketFilePath(params.cuit, PADRON_SERVICE_NAME, params.production);
+    const fileData = await Deno.readTextFile(filePath);
+    const ticket = JSON.parse(fileData);
+
+    if (!isStoredTicketValid(ticket)) return;
+
+    const nextTicket = writeArcaTicketBucket(params.currentTicket, 'padron', ticket);
+    const { error } = await params.db
+      .from('contribuyentes')
+      .update({ arca_ticket: nextTicket })
+      .eq('user_id', params.userId);
+
+    if (error) {
+      console.error('No se pudo guardar el ticket Padron en Supabase:', error.message);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes('No such file') && !message.includes('os error 2')) {
+      console.error('No se pudo leer el ticket Padron temporal:', message);
+    }
+  }
+}
 
 function getArcaEnvironmentLabel(production: boolean): 'produccion' | 'homologacion' {
   return production ? 'produccion' : 'homologacion';
@@ -216,21 +270,38 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const cuitEmisor = parseInt(contribuyente.cuit, 10);
+    const production = contribuyente.arca_production === true;
+    const credentials = getValidStoredTicket(contribuyente.arca_ticket);
     const arca = new Arca({
       key: contribuyente.arca_key,
       cert: contribuyente.arca_cert,
-      cuit: parseInt(contribuyente.cuit, 10),
-      production: contribuyente.arca_production === true,
-      handleTicket: false,
+      cuit: cuitEmisor,
+      production,
+      credentials: credentials || undefined,
+      handleTicket: !!credentials,
       useHttpsAgent: false,
-      ticketPath: '/tmp/factos-arca-tickets',
+      ticketPath: ARCA_TICKET_PATH,
     });
+    const persistTicket = () =>
+      persistTicketFromFile({
+        db,
+        userId: user.id,
+        currentTicket: contribuyente.arca_ticket,
+        cuit: cuitEmisor,
+        production,
+      });
 
     try {
       const normalizedCuit = parseInt(String(cuit), 10);
       const arcaEnvironment = getArcaEnvironmentLabel(contribuyente.arca_production === true);
 
-      const personaObj = await fetchTaxpayerFromArca(arca, normalizedCuit);
+      let personaObj: Record<string, unknown> | null = null;
+      try {
+        personaObj = await fetchTaxpayerFromArca(arca, normalizedCuit);
+      } finally {
+        await persistTicket();
+      }
 
       if (!personaObj) {
         return new Response(

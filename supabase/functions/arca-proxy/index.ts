@@ -1,12 +1,67 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { Arca } from 'npm:@arcasdk/core@0.3.6';
+import {
+  readArcaTicketBucket,
+  writeArcaTicketBucket,
+} from '../../../src/app/core/utils/arca-ticket.util.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+const ARCA_TICKET_PATH = '/tmp/factos-arca-tickets';
+const WSFE_SERVICE_NAME = 'wsfe';
+
+function getTicketFilePath(cuit: number, serviceName: string, production: boolean): string {
+  return `${ARCA_TICKET_PATH}/TA-${cuit}-${serviceName}${production ? '-production' : ''}.json`;
+}
+
+function isStoredTicketValid(ticket: any): boolean {
+  const expirationTime = ticket?.header?.[1]?.expirationtime;
+  if (!expirationTime) return false;
+
+  const expirationMs = new Date(String(expirationTime)).getTime();
+  return Number.isFinite(expirationMs) && expirationMs - Date.now() > 60_000;
+}
+
+function getValidStoredTicket(storedTicket: any, bucket: 'wsfe' | 'padron'): any | null {
+  const ticket = readArcaTicketBucket(storedTicket, bucket);
+  return isStoredTicketValid(ticket) ? ticket : null;
+}
+
+async function persistTicketFromFile(params: {
+  supabase: any;
+  contribuyenteId: string;
+  currentTicket: any;
+  cuit: number;
+  production: boolean;
+}): Promise<void> {
+  try {
+    const filePath = getTicketFilePath(params.cuit, WSFE_SERVICE_NAME, params.production);
+    const fileData = await Deno.readTextFile(filePath);
+    const ticket = JSON.parse(fileData);
+
+    if (!isStoredTicketValid(ticket)) return;
+
+    const nextTicket = writeArcaTicketBucket(params.currentTicket, 'wsfe', ticket);
+    const { error } = await params.supabase
+      .from('contribuyentes')
+      .update({ arca_ticket: nextTicket })
+      .eq('id', params.contribuyenteId);
+
+    if (error) {
+      console.error('No se pudo guardar el ticket WSFE en Supabase:', error.message);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes('No such file') && !message.includes('os error 2')) {
+      console.error('No se pudo leer el ticket WSFE temporal:', message);
+    }
+  }
+}
 
 function getSupabaseClient(authHeader: string | null) {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -170,17 +225,31 @@ async function getUserArcaInstance(req: Request) {
     throw new Error('Certificados no configurados');
   }
 
+  const cuit = parseInt(contribuyente.cuit, 10);
+  const production = contribuyente.arca_production === true;
+  const credentials = getValidStoredTicket(contribuyente.arca_ticket, 'wsfe');
   const arca = new Arca({
     cert: contribuyente.arca_cert,
     key: contribuyente.arca_key,
-    cuit: parseInt(contribuyente.cuit, 10),
-    production: contribuyente.arca_production === true,
-    handleTicket: false,
+    cuit,
+    production,
+    credentials: credentials || undefined,
+    handleTicket: !!credentials,
     useHttpsAgent: false,
-    ticketPath: '/tmp/factos-arca-tickets',
+    ticketPath: ARCA_TICKET_PATH,
   });
 
-  return { arca };
+  return {
+    arca,
+    persistTicket: () =>
+      persistTicketFromFile({
+        supabase: supabaseUser,
+        contribuyenteId: contribuyente.id,
+        currentTicket: contribuyente.arca_ticket,
+        cuit,
+        production,
+      }),
+  };
 }
 
 function buildErrorResponse(errorMessage: string, extra?: Record<string, unknown>, status = 400) {
@@ -217,9 +286,10 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
       return buildErrorResponse('Validacion fallida: fecha debe estar en formato YYYY-MM-DD');
     }
 
-    const { arca } = await getUserArcaInstance(req);
+    const { arca, persistTicket } = await getUserArcaInstance(req);
     const cbteTipo = getCbteTipo(tipo_comprobante);
     const lastVoucher: any = await arca.electronicBillingService.getLastVoucher(punto_venta, cbteTipo);
+    await persistTicket();
     const lastNumber =
       typeof lastVoucher === 'number' ? lastVoucher : lastVoucher?.cbteNro || lastVoucher?.CbteNro || 0;
     const cbteNro = lastNumber + 1;
@@ -274,6 +344,7 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
     }
 
     const parsed = extractWsfeResult(await arca.electronicBillingService.createVoucher(voucherPayload));
+    await persistTicket();
 
     if (parsed.resultado !== 'A') {
       const detalleErrores = parsed.errors
@@ -332,7 +403,7 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
  */
 async function handleCrearNotaCredito(req: Request, body: any): Promise<Response> {
   try {
-    const { arca } = await getUserArcaInstance(req);
+    const { arca, persistTicket } = await getUserArcaInstance(req);
     const {
       punto_venta,
       punto_venta_original,
@@ -385,6 +456,7 @@ async function handleCrearNotaCredito(req: Request, body: any): Promise<Response
     const cbteTipo = getCbteTipo(tipoNC);
     const cbteTipoOriginal = getCbteTipo(tipo_comprobante_original);
     const lastVoucher: any = await arca.electronicBillingService.getLastVoucher(punto_venta, cbteTipo);
+    await persistTicket();
     const lastNumber =
       typeof lastVoucher === 'number' ? lastVoucher : lastVoucher?.cbteNro || lastVoucher?.CbteNro || 0;
     const cbteNro = lastNumber + 1;
@@ -447,6 +519,7 @@ async function handleCrearNotaCredito(req: Request, body: any): Promise<Response
     }
 
     const parsed = extractWsfeResult(await arca.electronicBillingService.createVoucher(voucherPayload));
+    await persistTicket();
 
     if (parsed.resultado !== 'A') {
       const detalleErrores = parsed.errors
@@ -504,12 +577,13 @@ async function handleCrearNotaCredito(req: Request, body: any): Promise<Response
  */
 async function handleUltimoComprobante(req: Request, body: any): Promise<Response> {
   try {
-    const { arca } = await getUserArcaInstance(req);
+    const { arca, persistTicket } = await getUserArcaInstance(req);
     const { punto_venta, tipo_comprobante } = body;
     const lastVoucher: any = await arca.electronicBillingService.getLastVoucher(
       punto_venta,
       getCbteTipo(tipo_comprobante)
     );
+    await persistTicket();
     const ultimoCbteNro =
       typeof lastVoucher === 'number' ? lastVoucher : lastVoucher?.cbteNro || lastVoucher?.CbteNro || 0;
 
