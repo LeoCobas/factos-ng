@@ -1,0 +1,1263 @@
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cargarComprobantesPorFecha' does not exist on type 'ComprobantesService'. Did you mean 'cargarResumenComprobantesPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1004:58:
+[37m      1004 │ ...tes = await this.comprobantesService.[32mcargarComprobantesPorFecha[37m(
+           ╵                                         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarResumenComprobantesPorFecha' is declared here.
+
+    src/app/core/services/comprobantes.service.ts:68:8:
+[37m      68 │   async [32mcargarResumenComprobantesPorFecha[37m(
+         ╵         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarUltimaFechaConComprobantes' does not exist on type 'ComprobantesService'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1110:57:
+[37m      1110 │ ...await this.comprobantesService.[32mcargarUltimaFechaConComprobantes[37m(
+           ╵                                   [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2304: Cannot find name 'getFechaLocalArgentina'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:574:29:
+[37m      574 │   fechaSeleccionada = signal([32mgetFechaLocalArgentina[37m());
+          ╵                              [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cargarComprobantesPorFecha' does not exist on type 'ComprobantesService'. Did you mean 'cargarResumenComprobantesPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1004:58:
+[37m      1004 │ ...tes = await this.comprobantesService.[32mcargarComprobantesPorFecha[37m(
+           ╵                                         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarResumenComprobantesPorFecha' is declared here.
+
+    src/app/core/services/comprobantes.service.ts:68:8:
+[37m      68 │   async [32mcargarResumenComprobantesPorFecha[37m(
+         ╵         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarUltimaFechaConComprobantes' does not exist on type 'ComprobantesService'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1110:57:
+[37m      1110 │ ...await this.comprobantesService.[32mcargarUltimaFechaConComprobantes[37m(
+           ╵                                   [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'modoFechaActivo' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:97:15:
+[37m      97 │           @if ([32mmodoFechaActivo[37m()) {
+         ╵                [32m~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'verUltimasFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:100:23:
+[37m      100 │               (click)="[32mverUltimasFacturas[37m()"
+          ╵                        [32m~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2304: Cannot find name 'getFechaLocalArgentina'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:584:29:
+[37m      584 │   fechaSeleccionada = signal([32mgetFechaLocalArgentina[37m());
+          ╵                              [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cargarComprobantesPorFecha' does not exist on type 'ComprobantesService'. Did you mean 'cargarResumenComprobantesPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1014:58:
+[37m      1014 │ ...tes = await this.comprobantesService.[32mcargarComprobantesPorFecha[37m(
+           ╵                                         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarResumenComprobantesPorFecha' is declared here.
+
+    src/app/core/services/comprobantes.service.ts:68:8:
+[37m      68 │   async [32mcargarResumenComprobantesPorFecha[37m(
+         ╵         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarUltimaFechaConComprobantes' does not exist on type 'ComprobantesService'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1120:57:
+[37m      1120 │ ...await this.comprobantesService.[32mcargarUltimaFechaConComprobantes[37m(
+           ╵                                   [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[39m[22m
+[1m[33m[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: All imports are unused[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:83:2:
+[37m      83 │   [32mimports[37m: [CurrencyPipe, PdfViewerComponent, ComprobanteResultado...
+         ╵   [32m~~~~~~~[0m
+
+[39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG5002: Unexpected closing block. The block may have been closed earlier. Did you forget to close the <div> element? If you meant to write the `}` character, you should use the "&#125;" HTML entity instead.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:197:12:
+[37m      197 │             [32m}[37m
+          ╵             [32m^[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG5002: Unexpected closing block. The block may have been closed earlier. If you meant to write the `}` character, you should use the "&#125;" HTML entity instead.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:199:8:
+[37m      199 │         [32m}[37m @else {
+          ╵         [32m^[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG5002: Unexpected closing tag "div". It may happen when the tag has already been closed by another tag. For more info see https://www.w3.org/TR/html5/syntax.html#closing-elements-that-have-implied-end-tags[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:518:4:
+[37m      518 │     [32m</div>[37m
+          ╵     [32m~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2304: Cannot find name 'getFechaLocalArgentina'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:583:29:
+[37m      583 │   fechaSeleccionada = signal([32mgetFechaLocalArgentina[37m());
+          ╵                              [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cargarComprobantesPorFecha' does not exist on type 'ComprobantesService'. Did you mean 'cargarResumenComprobantesPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1013:58:
+[37m      1013 │ ...tes = await this.comprobantesService.[32mcargarComprobantesPorFecha[37m(
+           ╵                                         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarResumenComprobantesPorFecha' is declared here.
+
+    src/app/core/services/comprobantes.service.ts:68:8:
+[37m      68 │   async [32mcargarResumenComprobantesPorFecha[37m(
+         ╵         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarUltimaFechaConComprobantes' does not exist on type 'ComprobantesService'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1119:57:
+[37m      1119 │ ...await this.comprobantesService.[32mcargarUltimaFechaConComprobantes[37m(
+           ╵                                   [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[39m[22m
+[1m[33m[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: All imports are unused[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:83:2:
+[37m      83 │   [32mimports[37m: [CurrencyPipe, PdfViewerComponent, ComprobanteResultado...
+         ╵   [32m~~~~~~~[0m
+
+[39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG5002: Unexpected closing tag "p". It may happen when the tag has already been closed by another tag. For more info see https://www.w3.org/TR/html5/syntax.html#closing-elements-that-have-implied-end-tags[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:188:14:
+[37m      188 │               [32m</p>[37m
+          ╵               [32m~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG5002: Unexpected closing block. The block may have been closed earlier. Did you forget to close the <div> element? If you meant to write the `}` character, you should use the "&#125;" HTML entity instead.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:196:12:
+[37m      196 │             [32m}[37m
+          ╵             [32m^[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG5002: Unexpected closing block. The block may have been closed earlier. If you meant to write the `}` character, you should use the "&#125;" HTML entity instead.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:198:8:
+[37m      198 │         [32m}[37m @else {
+          ╵         [32m^[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG5002: Unexpected closing tag "div". It may happen when the tag has already been closed by another tag. For more info see https://www.w3.org/TR/html5/syntax.html#closing-elements-that-have-implied-end-tags[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:517:4:
+[37m      517 │     [32m</div>[37m
+          ╵     [32m~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2304: Cannot find name 'getFechaLocalArgentina'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:582:29:
+[37m      582 │   fechaSeleccionada = signal([32mgetFechaLocalArgentina[37m());
+          ╵                              [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cargarComprobantesPorFecha' does not exist on type 'ComprobantesService'. Did you mean 'cargarResumenComprobantesPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1012:58:
+[37m      1012 │ ...tes = await this.comprobantesService.[32mcargarComprobantesPorFecha[37m(
+           ╵                                         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarResumenComprobantesPorFecha' is declared here.
+
+    src/app/core/services/comprobantes.service.ts:68:8:
+[37m      68 │   async [32mcargarResumenComprobantesPorFecha[37m(
+         ╵         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarUltimaFechaConComprobantes' does not exist on type 'ComprobantesService'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1118:57:
+[37m      1118 │ ...await this.comprobantesService.[32mcargarUltimaFechaConComprobantes[37m(
+           ╵                                   [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[39m[22m
+[1m[33m[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: All imports are unused[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:83:2:
+[37m      83 │   [32mimports[37m: [CurrencyPipe, PdfViewerComponent, ComprobanteResultado...
+         ╵   [32m~~~~~~~[0m
+
+[39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG5002: Unexpected closing tag "button". It may happen when the tag has already been closed by another tag. For more info see https://www.w3.org/TR/html5/syntax.html#closing-elements-that-have-implied-end-tags[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:186:14:
+[37m      186 │               [32m</button>[37m
+          ╵               [32m~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG5002: Unexpected closing block. The block may have been closed earlier. Did you forget to close the <div> element? If you meant to write the `}` character, you should use the "&#125;" HTML entity instead.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:187:12:
+[37m      187 │             [32m}[37m
+          ╵             [32m^[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG5002: Unexpected closing block. The block may have been closed earlier. If you meant to write the `}` character, you should use the "&#125;" HTML entity instead.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:189:8:
+[37m      189 │         [32m}[37m @else {
+          ╵         [32m^[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG5002: Unexpected closing tag "div". It may happen when the tag has already been closed by another tag. For more info see https://www.w3.org/TR/html5/syntax.html#closing-elements-that-have-implied-end-tags[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:508:4:
+[37m      508 │     [32m</div>[37m
+          ╵     [32m~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2304: Cannot find name 'getFechaLocalArgentina'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:573:29:
+[37m      573 │   fechaSeleccionada = signal([32mgetFechaLocalArgentina[37m());
+          ╵                              [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cargarComprobantesPorFecha' does not exist on type 'ComprobantesService'. Did you mean 'cargarResumenComprobantesPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1003:58:
+[37m      1003 │ ...tes = await this.comprobantesService.[32mcargarComprobantesPorFecha[37m(
+           ╵                                         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarResumenComprobantesPorFecha' is declared here.
+
+    src/app/core/services/comprobantes.service.ts:68:8:
+[37m      68 │   async [32mcargarResumenComprobantesPorFecha[37m(
+         ╵         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarUltimaFechaConComprobantes' does not exist on type 'ComprobantesService'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1109:57:
+[37m      1109 │ ...await this.comprobantesService.[32mcargarUltimaFechaConComprobantes[37m(
+           ╵                                   [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'modoFechaActivo' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:97:15:
+[37m      97 │           @if ([32mmodoFechaActivo[37m()) {
+         ╵                [32m~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'verUltimasFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:100:23:
+[37m      100 │               (click)="[32mverUltimasFacturas[37m()"
+          ╵                        [32m~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2304: Cannot find name 'getFechaLocalArgentina'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:571:29:
+[37m      571 │   fechaSeleccionada = signal([32mgetFechaLocalArgentina[37m());
+          ╵                              [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cargarComprobantesPorFecha' does not exist on type 'ComprobantesService'. Did you mean 'cargarResumenComprobantesPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1001:58:
+[37m      1001 │ ...tes = await this.comprobantesService.[32mcargarComprobantesPorFecha[37m(
+           ╵                                         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarResumenComprobantesPorFecha' is declared here.
+
+    src/app/core/services/comprobantes.service.ts:68:8:
+[37m      68 │   async [32mcargarResumenComprobantesPorFecha[37m(
+         ╵         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarUltimaFechaConComprobantes' does not exist on type 'ComprobantesService'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1107:57:
+[37m      1107 │ ...await this.comprobantesService.[32mcargarUltimaFechaConComprobantes[37m(
+           ╵                                   [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'modoFechaActivo' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:97:15:
+[37m      97 │           @if ([32mmodoFechaActivo[37m()) {
+         ╵                [32m~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'verUltimasFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:100:23:
+[37m      100 │               (click)="[32mverUltimasFacturas[37m()"
+          ╵                        [32m~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2304: Cannot find name 'getFechaLocalArgentina'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:569:29:
+[37m      569 │   fechaSeleccionada = signal([32mgetFechaLocalArgentina[37m());
+          ╵                              [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cargarComprobantesPorFecha' does not exist on type 'ComprobantesService'. Did you mean 'cargarResumenComprobantesPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:999:58:
+[37m      999 │ ...ntes = await this.comprobantesService.[32mcargarComprobantesPorFecha[37m(
+          ╵                                          [32m~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarResumenComprobantesPorFecha' is declared here.
+
+    src/app/core/services/comprobantes.service.ts:68:8:
+[37m      68 │   async [32mcargarResumenComprobantesPorFecha[37m(
+         ╵         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarUltimaFechaConComprobantes' does not exist on type 'ComprobantesService'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1105:57:
+[37m      1105 │ ...await this.comprobantesService.[32mcargarUltimaFechaConComprobantes[37m(
+           ╵                                   [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'modoFechaActivo' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:97:15:
+[37m      97 │           @if ([32mmodoFechaActivo[37m()) {
+         ╵                [32m~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'verUltimasFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:100:23:
+[37m      100 │               (click)="[32mverUltimasFacturas[37m()"
+          ╵                        [32m~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'hayMasFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:490:15:
+[37m      490 │           @if ([32mhayMasFacturas[37m()) {
+          ╵                [32m~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarMasFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:494:25:
+[37m      494 │                 (click)="[32mcargarMasFacturas[37m()"
+          ╵                          [32m~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cargandoMas' does not exist on type 'ListadoComponent'. Did you mean 'cargando'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:495:28:
+[37m      495 │                 [disabled]="[32mcargandoMas[37m()"
+          ╵                             [32m~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cargandoMas' does not exist on type 'ListadoComponent'. Did you mean 'cargando'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:498:21:
+[37m      498 │                 @if ([32mcargandoMas[37m()) {
+          ╵                      [32m~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'modoFechaActivo' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:509:11:
+[37m      509 │       @if ([32mmodoFechaActivo[37m() && resumenDia()) {
+          ╵            [32m~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'resumenDia' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:509:32:
+[37m      509 │       @if (modoFechaActivo() && [32mresumenDia[37m()) {
+          ╵                                 [32m~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'resumenDia' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:513:33:
+[37m      513 │ ...         Total del dÃ­a ({[32m{ resumenD[37mia()!.cantidad }} facturas)
+          ╵                              [32m~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'resumenDia' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:516:17:
+[37m      516 │               {{ [32mresumenDia[37m()!.total | currency: 'ARS' : 'symbol'...
+          ╵                  [32m~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2304: Cannot find name 'getFechaLocalArgentina'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:586:29:
+[37m      586 │   fechaSeleccionada = signal([32mgetFechaLocalArgentina[37m());
+          ╵                              [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cargarComprobantesPorFecha' does not exist on type 'ComprobantesService'. Did you mean 'cargarResumenComprobantesPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1016:58:
+[37m      1016 │ ...tes = await this.comprobantesService.[32mcargarComprobantesPorFecha[37m(
+           ╵                                         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarResumenComprobantesPorFecha' is declared here.
+
+    src/app/core/services/comprobantes.service.ts:68:8:
+[37m      68 │   async [32mcargarResumenComprobantesPorFecha[37m(
+         ╵         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarUltimaFechaConComprobantes' does not exist on type 'ComprobantesService'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1122:57:
+[37m      1122 │ ...await this.comprobantesService.[32mcargarUltimaFechaConComprobantes[37m(
+           ╵                                   [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'verUltimasFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:100:23:
+[37m      100 │               (click)="[32mverUltimasFacturas[37m()"
+          ╵                        [32m~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarMasFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:494:25:
+[37m      494 │                 (click)="[32mcargarMasFacturas[37m()"
+          ╵                          [32m~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:692:41:
+[37m      692 │         void this.cargarFacturasPorFecha([32mthis.fechaSeleccionada()[37m);
+          ╵                                          [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:986:38:
+[37m      986 │     await this.cargarFacturasPorFecha([32mthis.fechaSeleccionada()[37m);
+          ╵                                       [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1000:23:
+[37m      1000 │     if (!force && this.[32mcacheFacturasPorFecha[37m.has(cacheKey)) {
+           ╵                        [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:989:8:
+[37m      989 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1001:37:
+[37m      1001 │ ...t facturasCacheadas = this.[32mcacheFacturasPorFecha[37m.get(cacheKey)!;
+           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:989:8:
+[37m      989 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cargarComprobantesPorFecha' does not exist on type 'ComprobantesService'. Did you mean 'cargarResumenComprobantesPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1014:58:
+[37m      1014 │ ...tes = await this.comprobantesService.[32mcargarComprobantesPorFecha[37m(
+           ╵                                         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarResumenComprobantesPorFecha' is declared here.
+
+    src/app/core/services/comprobantes.service.ts:68:8:
+[37m      68 │   async [32mcargarResumenComprobantesPorFecha[37m(
+         ╵         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1018:11:
+[37m      1018 │       this.[32mcacheFacturasPorFecha[37m.set(cacheKey, comprobantes);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:989:8:
+[37m      989 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1045:29:
+[37m      1045 │     const ultimaFecha = this.[32multimaFechaConFacturas[37m();
+           ╵                              [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1084:27:
+[37m      1084 │     for (const key of this.[32mcacheFacturasPorFecha[37m.keys()) {
+           ╵                            [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:989:8:
+[37m      989 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1086:13:
+[37m      1086 │         this.[32mcacheFacturasPorFecha[37m.delete(key);
+           ╵              [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:989:8:
+[37m      989 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1092:9:
+[37m      1092 │     this.[32mcacheFacturasPorFecha[37m.clear();
+           ╵          [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:989:8:
+[37m      989 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1093:9:
+[37m      1093 │     this.[32mcacheUltimaFechaConFacturas[37m.clear();
+           ╵          [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1094:9:
+[37m      1094 │     this.[32multimaFechaConFacturas[37m.set(null);
+           ╵          [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1103:11:
+[37m      1103 │       this.[32multimaFechaConFacturas[37m.set(null);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1108:11:
+[37m      1108 │       this.[32mcacheUltimaFechaConFacturas[37m.set(contribuyente.id, fec...
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1109:11:
+[37m      1109 │       this.[32multimaFechaConFacturas[37m.set(fecha);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1114:13:
+[37m      1114 │     if (this.[32mcacheUltimaFechaConFacturas[37m.has(cacheKey)) {
+           ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1115:11:
+[37m      1115 │       this.[32multimaFechaConFacturas[37m.set(this.cacheUltimaFechaConFa...
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1115:43:
+[37m      1115 │ ...acturas.set(this.[32mcacheUltimaFechaConFacturas[37m.get(cacheKey) ??...
+           ╵                     [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarUltimaFechaConComprobantes' does not exist on type 'ComprobantesService'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1120:57:
+[37m      1120 │ ...await this.comprobantesService.[32mcargarUltimaFechaConComprobantes[37m(
+           ╵                                   [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1123:11:
+[37m      1123 │       this.[32mcacheUltimaFechaConFacturas[37m.set(cacheKey, ultimaFecha);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1124:11:
+[37m      1124 │       this.[32multimaFechaConFacturas[37m.set(ultimaFecha);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1127:11:
+[37m      1127 │       this.[32multimaFechaConFacturas[37m.set(null);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1263:31:
+[37m      1263 │         this.limpiarCacheFecha([32mthis.fechaSeleccionada()[37m);
+           ╵                                [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1264:42:
+[37m      1264 │ ...arFacturasPorFecha([32mthis.fechaSeleccionada()[37m, { silent: true, ...
+           ╵                       [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'verUltimasFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:100:23:
+[37m      100 │               (click)="[32mverUltimasFacturas[37m()"
+          ╵                        [32m~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarMasFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:494:25:
+[37m      494 │                 (click)="[32mcargarMasFacturas[37m()"
+          ╵                          [32m~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:683:41:
+[37m      683 │         void this.cargarFacturasPorFecha([32mthis.fechaSeleccionada()[37m);
+          ╵                                          [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:977:38:
+[37m      977 │     await this.cargarFacturasPorFecha([32mthis.fechaSeleccionada()[37m);
+          ╵                                       [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:991:23:
+[37m      991 │     if (!force && this.[32mcacheFacturasPorFecha[37m.has(cacheKey)) {
+          ╵                        [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:980:8:
+[37m      980 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:992:37:
+[37m      992 │ ...st facturasCacheadas = this.[32mcacheFacturasPorFecha[37m.get(cacheKey)!;
+          ╵                                [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:980:8:
+[37m      980 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cargarComprobantesPorFecha' does not exist on type 'ComprobantesService'. Did you mean 'cargarResumenComprobantesPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1005:58:
+[37m      1005 │ ...tes = await this.comprobantesService.[32mcargarComprobantesPorFecha[37m(
+           ╵                                         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarResumenComprobantesPorFecha' is declared here.
+
+    src/app/core/services/comprobantes.service.ts:68:8:
+[37m      68 │   async [32mcargarResumenComprobantesPorFecha[37m(
+         ╵         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1009:11:
+[37m      1009 │       this.[32mcacheFacturasPorFecha[37m.set(cacheKey, comprobantes);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:980:8:
+[37m      980 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1036:29:
+[37m      1036 │     const ultimaFecha = this.[32multimaFechaConFacturas[37m();
+           ╵                              [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1075:27:
+[37m      1075 │     for (const key of this.[32mcacheFacturasPorFecha[37m.keys()) {
+           ╵                            [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:980:8:
+[37m      980 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1077:13:
+[37m      1077 │         this.[32mcacheFacturasPorFecha[37m.delete(key);
+           ╵              [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:980:8:
+[37m      980 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1083:9:
+[37m      1083 │     this.[32mcacheFacturasPorFecha[37m.clear();
+           ╵          [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:980:8:
+[37m      980 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1084:9:
+[37m      1084 │     this.[32mcacheUltimaFechaConFacturas[37m.clear();
+           ╵          [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1085:9:
+[37m      1085 │     this.[32multimaFechaConFacturas[37m.set(null);
+           ╵          [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1094:11:
+[37m      1094 │       this.[32multimaFechaConFacturas[37m.set(null);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1099:11:
+[37m      1099 │       this.[32mcacheUltimaFechaConFacturas[37m.set(contribuyente.id, fec...
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1100:11:
+[37m      1100 │       this.[32multimaFechaConFacturas[37m.set(fecha);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1105:13:
+[37m      1105 │     if (this.[32mcacheUltimaFechaConFacturas[37m.has(cacheKey)) {
+           ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1106:11:
+[37m      1106 │       this.[32multimaFechaConFacturas[37m.set(this.cacheUltimaFechaConFa...
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1106:43:
+[37m      1106 │ ...acturas.set(this.[32mcacheUltimaFechaConFacturas[37m.get(cacheKey) ??...
+           ╵                     [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarUltimaFechaConComprobantes' does not exist on type 'ComprobantesService'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1111:57:
+[37m      1111 │ ...await this.comprobantesService.[32mcargarUltimaFechaConComprobantes[37m(
+           ╵                                   [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1114:11:
+[37m      1114 │       this.[32mcacheUltimaFechaConFacturas[37m.set(cacheKey, ultimaFecha);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1115:11:
+[37m      1115 │       this.[32multimaFechaConFacturas[37m.set(ultimaFecha);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1118:11:
+[37m      1118 │       this.[32multimaFechaConFacturas[37m.set(null);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1254:31:
+[37m      1254 │         this.limpiarCacheFecha([32mthis.fechaSeleccionada()[37m);
+           ╵                                [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1255:42:
+[37m      1255 │ ...arFacturasPorFecha([32mthis.fechaSeleccionada()[37m, { silent: true, ...
+           ╵                       [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'verUltimasFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:100:23:
+[37m      100 │               (click)="[32mverUltimasFacturas[37m()"
+          ╵                        [32m~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarMasFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:494:25:
+[37m      494 │                 (click)="[32mcargarMasFacturas[37m()"
+          ╵                          [32m~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:976:38:
+[37m      976 │     await this.cargarFacturasPorFecha([32mthis.fechaSeleccionada()[37m);
+          ╵                                       [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:990:23:
+[37m      990 │     if (!force && this.[32mcacheFacturasPorFecha[37m.has(cacheKey)) {
+          ╵                        [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:979:8:
+[37m      979 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:991:37:
+[37m      991 │ ...st facturasCacheadas = this.[32mcacheFacturasPorFecha[37m.get(cacheKey)!;
+          ╵                                [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:979:8:
+[37m      979 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cargarComprobantesPorFecha' does not exist on type 'ComprobantesService'. Did you mean 'cargarResumenComprobantesPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1004:58:
+[37m      1004 │ ...tes = await this.comprobantesService.[32mcargarComprobantesPorFecha[37m(
+           ╵                                         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarResumenComprobantesPorFecha' is declared here.
+
+    src/app/core/services/comprobantes.service.ts:68:8:
+[37m      68 │   async [32mcargarResumenComprobantesPorFecha[37m(
+         ╵         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1008:11:
+[37m      1008 │       this.[32mcacheFacturasPorFecha[37m.set(cacheKey, comprobantes);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:979:8:
+[37m      979 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1035:29:
+[37m      1035 │     const ultimaFecha = this.[32multimaFechaConFacturas[37m();
+           ╵                              [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1074:27:
+[37m      1074 │     for (const key of this.[32mcacheFacturasPorFecha[37m.keys()) {
+           ╵                            [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:979:8:
+[37m      979 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1076:13:
+[37m      1076 │         this.[32mcacheFacturasPorFecha[37m.delete(key);
+           ╵              [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:979:8:
+[37m      979 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'. Did you mean 'cargarFacturasPorFecha'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1082:9:
+[37m      1082 │     this.[32mcacheFacturasPorFecha[37m.clear();
+           ╵          [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+  'cargarFacturasPorFecha' is declared here.
+
+    src/app/features/listado/listado.component.ts:979:8:
+[37m      979 │   async [32mcargarFacturasPorFecha[37m(
+          ╵         [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1083:9:
+[37m      1083 │     this.[32mcacheUltimaFechaConFacturas[37m.clear();
+           ╵          [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1084:9:
+[37m      1084 │     this.[32multimaFechaConFacturas[37m.set(null);
+           ╵          [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1093:11:
+[37m      1093 │       this.[32multimaFechaConFacturas[37m.set(null);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1098:11:
+[37m      1098 │       this.[32mcacheUltimaFechaConFacturas[37m.set(contribuyente.id, fec...
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1099:11:
+[37m      1099 │       this.[32multimaFechaConFacturas[37m.set(fecha);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1104:13:
+[37m      1104 │     if (this.[32mcacheUltimaFechaConFacturas[37m.has(cacheKey)) {
+           ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1105:11:
+[37m      1105 │       this.[32multimaFechaConFacturas[37m.set(this.cacheUltimaFechaConFa...
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1105:43:
+[37m      1105 │ ...acturas.set(this.[32mcacheUltimaFechaConFacturas[37m.get(cacheKey) ??...
+           ╵                     [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarUltimaFechaConComprobantes' does not exist on type 'ComprobantesService'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1110:57:
+[37m      1110 │ ...await this.comprobantesService.[32mcargarUltimaFechaConComprobantes[37m(
+           ╵                                   [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1113:11:
+[37m      1113 │       this.[32mcacheUltimaFechaConFacturas[37m.set(cacheKey, ultimaFecha);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1114:11:
+[37m      1114 │       this.[32multimaFechaConFacturas[37m.set(ultimaFecha);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1117:11:
+[37m      1117 │       this.[32multimaFechaConFacturas[37m.set(null);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1253:31:
+[37m      1253 │         this.limpiarCacheFecha([32mthis.fechaSeleccionada()[37m);
+           ╵                                [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1254:42:
+[37m      1254 │ ...arFacturasPorFecha([32mthis.fechaSeleccionada()[37m, { silent: true, ...
+           ╵                       [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarResumenDia' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1013:32:
+[37m      1013 │ ...append && fecha ? this.[32mcargarResumenDia[37m(contribuyente.id, fec...
+           ╵                           [32m~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1091:27:
+[37m      1091 │     for (const key of this.[32mcacheFacturasPorFecha[37m.keys()) {
+           ╵                            [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1093:13:
+[37m      1093 │         this.[32mcacheFacturasPorFecha[37m.delete(key);
+           ╵              [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheFacturasPorFecha' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1099:9:
+[37m      1099 │     this.[32mcacheFacturasPorFecha[37m.clear();
+           ╵          [32m~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1100:9:
+[37m      1100 │     this.[32mcacheUltimaFechaConFacturas[37m.clear();
+           ╵          [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1101:9:
+[37m      1101 │     this.[32multimaFechaConFacturas[37m.set(null);
+           ╵          [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1110:11:
+[37m      1110 │       this.[32multimaFechaConFacturas[37m.set(null);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1115:11:
+[37m      1115 │       this.[32mcacheUltimaFechaConFacturas[37m.set(contribuyente.id, fec...
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1116:11:
+[37m      1116 │       this.[32multimaFechaConFacturas[37m.set(fecha);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1121:13:
+[37m      1121 │     if (this.[32mcacheUltimaFechaConFacturas[37m.has(cacheKey)) {
+           ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1122:11:
+[37m      1122 │       this.[32multimaFechaConFacturas[37m.set(this.cacheUltimaFechaConFa...
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1122:43:
+[37m      1122 │ ...acturas.set(this.[32mcacheUltimaFechaConFacturas[37m.get(cacheKey) ??...
+           ╵                     [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarUltimaFechaConComprobantes' does not exist on type 'ComprobantesService'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1127:57:
+[37m      1127 │ ...await this.comprobantesService.[32mcargarUltimaFechaConComprobantes[37m(
+           ╵                                   [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cacheUltimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1130:11:
+[37m      1130 │       this.[32mcacheUltimaFechaConFacturas[37m.set(cacheKey, ultimaFecha);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1131:11:
+[37m      1131 │       this.[32multimaFechaConFacturas[37m.set(ultimaFecha);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'ultimaFechaConFacturas' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1134:11:
+[37m      1134 │       this.[32multimaFechaConFacturas[37m.set(null);
+           ╵            [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1270:31:
+[37m      1270 │         this.limpiarCacheFecha([32mthis.fechaSeleccionada()[37m);
+           ╵                                [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarFacturasPorFecha' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1271:19:
+[37m      1271 │         await this.[32mcargarFacturasPorFecha[37m(this.fechaSeleccionada...
+           ╵                    [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'limpiarCacheFecha' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1230:13:
+[37m      1230 │         this.[32mlimpiarCacheFecha[37m(this.fechaSeleccionada());
+           ╵              [32m~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'cargarFacturasPorFecha' does not exist on type 'ListadoComponent'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/listado/listado.component.ts:1231:19:
+[37m      1231 │         await this.[32mcargarFacturasPorFecha[37m(this.fechaSeleccionada...
+           ╵                    [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[39m[22m

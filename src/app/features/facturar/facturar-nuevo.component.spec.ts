@@ -49,6 +49,7 @@ describe('FacturarNuevoComponent', () => {
       },
     }),
     buscarClientePorCuit: vi.fn(),
+    precalentarUltimoComprobante: vi.fn().mockResolvedValue(undefined),
     cargarUltimaFechaComprobantePorTipo: vi.fn().mockResolvedValue(null),
     cargarFacturasRecientes: vi.fn().mockResolvedValue([
       {
@@ -122,6 +123,41 @@ describe('FacturarNuevoComponent', () => {
 
     expect(moneyPrefix?.textContent).toContain('$');
     expect(submitButton?.disabled).toBe(true);
+  });
+
+  it('precalienta el ultimo comprobante al enfocar el campo monto', async () => {
+    const fixture = TestBed.createComponent(FacturarNuevoComponent);
+    const service = TestBed.inject(FacturacionService) as unknown as ReturnType<
+      typeof createFacturacionServiceStub
+    >;
+
+    fixture.detectChanges();
+    const input = (fixture.nativeElement as HTMLElement).querySelector(
+      '#monto',
+    ) as HTMLInputElement;
+    input.dispatchEvent(new FocusEvent('focus'));
+    await fixture.whenStable();
+
+    expect(service.precalentarUltimoComprobante).toHaveBeenCalledWith('FACTURA C');
+  });
+
+  it('precalienta al ingresar un monto valido sin duplicar el control del componente', async () => {
+    const fixture = TestBed.createComponent(FacturarNuevoComponent);
+    const component = fixture.componentInstance;
+    const service = TestBed.inject(FacturacionService) as unknown as ReturnType<
+      typeof createFacturacionServiceStub
+    >;
+    const input = document.createElement('input');
+    input.value = '1';
+
+    component.onMontoInput({
+      target: input,
+      data: '1',
+      inputType: 'insertText',
+    } as unknown as InputEvent);
+    await fixture.whenStable();
+
+    expect(service.precalentarUltimoComprobante).toHaveBeenCalledWith('FACTURA C');
   });
 
   it('usa la ultima fecha del tipo resuelto como minimo si es posterior a la ventana fiscal', async () => {
@@ -200,6 +236,47 @@ describe('FacturarNuevoComponent', () => {
       1,
     );
     expect(component.minFecha()).toBe('2026-04-20');
+  });
+
+  it('precalienta otra vez cuando cambia el tipo resuelto con monto cargado', async () => {
+    const fixture = TestBed.createComponent(FacturarNuevoComponent);
+    const component = fixture.componentInstance;
+    const service = TestBed.inject(FacturacionService) as unknown as ReturnType<
+      typeof createFacturacionServiceStub
+    >;
+    const contribuyenteService = TestBed.inject(ContribuyenteService) as unknown as {
+      contribuyente: ReturnType<typeof signal>;
+    };
+
+    contribuyenteService.contribuyente.set({
+      id: 'cont-1',
+      actividad: 'servicios',
+      condicion_iva: 'IVA Responsable Inscripto',
+      punto_venta: 1,
+    });
+    component.rawMonto.set('100');
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(service.precalentarUltimoComprobante).toHaveBeenCalledWith('FACTURA B');
+
+    component.clienteSeleccionado.set({
+      cuit: '20111111112',
+      nombre: 'Cliente RI',
+      domicilio: null,
+      condicion_iva: 'IVA Responsable Inscripto',
+      doc_tipo: 80,
+      doc_nro: 20111111112,
+      condicion_iva_normalizada: 'IVA Responsable Inscripto',
+      fiscal_profile: 'responsable-inscripto',
+      fiscal_status_message: 'ok',
+      fiscal_status_reliable: true,
+      fiscal_status_source: 'constancia_inscripcion',
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(service.precalentarUltimoComprobante).toHaveBeenCalledWith('FACTURA A');
   });
 
   it('envia el submit valido y resetea el formulario en exito', async () => {

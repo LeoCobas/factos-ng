@@ -48,8 +48,8 @@ describe('ListadoComponent', () => {
         {
           provide: ComprobantesService,
           useValue: {
-            cargarComprobantesPorFecha: vi.fn().mockResolvedValue([]),
-            cargarUltimaFechaConComprobantes: vi.fn().mockResolvedValue(null),
+            cargarComprobantesListado: vi.fn().mockResolvedValue({ items: [], hasMore: false }),
+            cargarResumenComprobantesPorFecha: vi.fn().mockResolvedValue({ cantidad: 0, total: 0 }),
           },
         },
         {
@@ -499,5 +499,135 @@ describe('ListadoComponent', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.textContent).toContain('Nota de crédito emitida');
     expect(compiled.textContent).toContain('Anula factura 0001-00000014');
+  });
+  it('carga 10 comprobantes recientes al iniciar el listado', async () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+    const contribuyenteService = TestBed.inject(ContribuyenteService) as unknown as {
+      contribuyente: ReturnType<typeof signal>;
+    };
+    const comprobantesService = TestBed.inject(ComprobantesService) as unknown as {
+      cargarComprobantesListado: ReturnType<typeof vi.fn>;
+    };
+
+    contribuyenteService.contribuyente.set({ id: 'cont-1' });
+    comprobantesService.cargarComprobantesListado.mockClear();
+
+    await component.cargarFacturasIniciales();
+
+    expect(comprobantesService.cargarComprobantesListado).toHaveBeenCalledWith('cont-1', {
+      fecha: undefined,
+      offset: 0,
+      limit: 10,
+    });
+  });
+
+  it('selecciona fecha, carga 10 comprobantes y obtiene resumen real del dia', async () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+    const contribuyenteService = TestBed.inject(ContribuyenteService) as unknown as {
+      contribuyente: ReturnType<typeof signal>;
+    };
+    const comprobantesService = TestBed.inject(ComprobantesService) as unknown as {
+      cargarComprobantesListado: ReturnType<typeof vi.fn>;
+      cargarResumenComprobantesPorFecha: ReturnType<typeof vi.fn>;
+    };
+
+    contribuyenteService.contribuyente = (() => ({ id: 'cont-1' })) as never;
+    comprobantesService.cargarComprobantesListado.mockResolvedValueOnce({
+      items: [crearFactura()],
+      hasMore: true,
+    });
+    comprobantesService.cargarResumenComprobantesPorFecha.mockResolvedValueOnce({
+      cantidad: 20,
+      total: 11403,
+    });
+
+    await component.cambiarFecha({
+      target: { value: '2026-04-20' },
+    } as unknown as Event);
+
+    expect(comprobantesService.cargarComprobantesListado).toHaveBeenCalledWith('cont-1', {
+      fecha: '2026-04-20',
+      offset: 0,
+      limit: 10,
+    });
+    expect(comprobantesService.cargarResumenComprobantesPorFecha).toHaveBeenCalledWith(
+      'cont-1',
+      '2026-04-20',
+    );
+    expect(component.facturas()).toHaveLength(1);
+    expect(component.hayMasFacturas()).toBe(true);
+    expect(component.resumenDia()).toEqual({ cantidad: 20, total: 11403 });
+  });
+
+  it('cargar mas agrega 10 comprobantes sin reemplazar los anteriores', async () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+    const contribuyenteService = TestBed.inject(ContribuyenteService) as unknown as {
+      contribuyente: ReturnType<typeof signal>;
+    };
+    const comprobantesService = TestBed.inject(ComprobantesService) as unknown as {
+      cargarComprobantesListado: ReturnType<typeof vi.fn>;
+    };
+    const facturaInicial = crearFactura({ id: 'factura-1' });
+    const facturaNueva = crearFactura({ id: 'factura-2', numero_factura: '0001-00000015' });
+
+    contribuyenteService.contribuyente.set({ id: 'cont-1' });
+    component.facturas.set([facturaInicial]);
+    component.hayMasFacturas.set(true);
+    comprobantesService.cargarComprobantesListado.mockClear();
+    comprobantesService.cargarComprobantesListado.mockResolvedValueOnce({
+      items: [facturaNueva],
+      hasMore: false,
+    });
+
+    await component.cargarMasFacturas();
+
+    expect(comprobantesService.cargarComprobantesListado).toHaveBeenCalledWith('cont-1', {
+      fecha: undefined,
+      offset: 1,
+      limit: 10,
+    });
+    expect(component.facturas().map((factura) => factura.id)).toEqual(['factura-1', 'factura-2']);
+    expect(component.hayMasFacturas()).toBe(false);
+  });
+
+  it('ver ultimas vuelve a modo global y oculta el resumen diario', async () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+    const contribuyenteService = TestBed.inject(ContribuyenteService) as unknown as {
+      contribuyente: ReturnType<typeof signal>;
+    };
+    const comprobantesService = TestBed.inject(ComprobantesService) as unknown as {
+      cargarComprobantesListado: ReturnType<typeof vi.fn>;
+    };
+
+    contribuyenteService.contribuyente.set({ id: 'cont-1' });
+    component.fechaSeleccionada.set('2026-04-20');
+    component.resumenDia.set({ cantidad: 20, total: 11403 });
+    comprobantesService.cargarComprobantesListado.mockClear();
+
+    await component.verUltimasFacturas();
+    fixture.detectChanges();
+
+    expect(component.fechaSeleccionada()).toBeNull();
+    expect(component.resumenDia()).toBeNull();
+    expect(comprobantesService.cargarComprobantesListado).toHaveBeenCalledWith('cont-1', {
+      fecha: undefined,
+      offset: 0,
+      limit: 10,
+    });
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Total del día');
+  });
+
+  it('no renderiza el boton de ultimo dia facturado', () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
+      'Ir al último día facturado',
+    );
   });
 });

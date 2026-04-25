@@ -151,6 +151,41 @@ export interface Database {
           updated_at?: string | null;
         };
       };
+      ultimo_comprobante_cache: {
+        Row: {
+          id: string;
+          contribuyente_id: string;
+          punto_venta: number;
+          tipo_comprobante: string;
+          cbte_tipo: number;
+          ultimo_comprobante: number;
+          synced_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          contribuyente_id: string;
+          punto_venta: number;
+          tipo_comprobante: string;
+          cbte_tipo: number;
+          ultimo_comprobante: number;
+          synced_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          contribuyente_id?: string;
+          punto_venta?: number;
+          tipo_comprobante?: string;
+          cbte_tipo?: number;
+          ultimo_comprobante?: number;
+          synced_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
   };
 }
@@ -162,3 +197,5 @@ export type ContribuyenteUpdate = Database['public']['Tables']['contribuyentes']
 export type Comprobante = Database['public']['Tables']['comprobantes']['Row'];
 export type ComprobanteInsert = Database['public']['Tables']['comprobantes']['Insert'];
 export type ComprobanteUpdate = Database['public']['Tables']['comprobantes']['Update'];
+export type UltimoComprobanteCache =
+  Database['public']['Tables']['ultimo_comprobante_cache']['Row'];

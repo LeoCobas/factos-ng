@@ -1,4 +1,4 @@
-import { CurrencyPipe } from '@angular/common';
+﻿import { CurrencyPipe } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -23,13 +23,8 @@ import {
   PdfViewerConfig,
 } from '../../shared/components/ui/pdf-viewer.component';
 
-function getFechaLocalArgentina(): string {
-  const hoy = new Date();
-  const anio = hoy.getFullYear();
-  const mes = String(hoy.getMonth() + 1).padStart(2, '0');
-  const dia = String(hoy.getDate()).padStart(2, '0');
-  return `${anio}-${mes}-${dia}`;
-}
+const PAGE_INITIAL_SIZE = 10;
+const PAGE_MORE_SIZE = 10;
 
 interface Factura {
   id: string;
@@ -77,6 +72,11 @@ interface PdfFacturaLike {
   vencimiento_cae?: string | null;
 }
 
+interface ResumenDia {
+  cantidad: number;
+  total: number;
+}
+
 @Component({
   selector: 'app-listado',
   standalone: true,
@@ -86,13 +86,23 @@ interface PdfFacturaLike {
       <div class="card-surface px-2.5 py-3 sm:p-4">
         <label class="form-label mb-4">Seleccionar fecha</label>
 
-        <div class="relative">
+        <div class="flex items-center gap-2 sm:gap-3">
           <input
             type="date"
-            [value]="fechaSeleccionada()"
+            [value]="fechaSeleccionada() ?? ''"
             (change)="cambiarFecha($event)"
-            class="form-input w-full py-2 px-3"
+            class="form-input min-w-0 flex-1 py-2 px-3"
           />
+
+          @if (modoFechaActivo()) {
+            <button
+              type="button"
+              (click)="verUltimasFacturas()"
+              class="inline-flex shrink-0 items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted sm:px-4"
+            >
+              Ver últimas
+            </button>
+          }
         </div>
       </div>
 
@@ -171,21 +181,6 @@ interface PdfFacturaLike {
               ></path>
             </svg>
             <p class="text-muted-foreground">{{ mensajeEstadoVacio() }}</p>
-            @if (ultimaFechaConFacturasDisponible()) {
-              <p class="text-sm text-muted-foreground mt-2">
-                Último día facturado:
-                <span class="font-medium text-foreground">
-                  {{ formatearFechaParaVista(ultimaFechaConFacturas()!) }}
-                </span>
-              </p>
-              <button
-                type="button"
-                (click)="irAUltimoDiaFacturado()"
-                class="mt-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-              >
-                Ir al último día facturado
-              </button>
-            }
           </div>
         } @else {
           <div class="space-y-2">
@@ -491,17 +486,34 @@ interface PdfFacturaLike {
               </div>
             }
           </div>
+
+          @if (hayMasFacturas()) {
+            <div class="mt-4 flex justify-center">
+              <button
+                type="button"
+                (click)="cargarMasFacturas()"
+                [disabled]="cargandoMas()"
+                class="inline-flex min-w-36 items-center justify-center rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                @if (cargandoMas()) {
+                  Cargando...
+                } @else {
+                  Cargar más
+                }
+              </button>
+            </div>
+          }
         }
       </div>
 
-      @if (facturasFiltradas().length > 0) {
+      @if (modoFechaActivo() && resumenDia()) {
         <div class="bg-blue-50 rounded-lg border border-blue-200 p-2">
           <div class="flex justify-between items-center">
             <span class="text-sm font-medium text-blue-800">
-              Total del día ({{ facturasFiltradas().length }} facturas)
+              Total del día ({{ resumenDia()!.cantidad }} facturas)
             </span>
             <span class="text-lg font-bold text-blue-900">
-              {{ totalDelDia() | currency: 'ARS' : 'symbol' : '1.2-2' : 'es-AR' }}
+              {{ resumenDia()!.total | currency: 'ARS' : 'symbol' : '1.2-2' : 'es-AR' }}
             </span>
           </div>
         </div>
@@ -571,14 +583,16 @@ export class ListadoComponent {
     { id: 'imprimir', label: 'Imprimir', title: 'Imprimir comprobante' },
   ];
 
-  fechaSeleccionada = signal(getFechaLocalArgentina());
+  fechaSeleccionada = signal<string | null>(null);
   facturas = signal<Factura[]>([]);
   cargando = signal(false);
+  cargandoMas = signal(false);
+  hayMasFacturas = signal(false);
   facturaExpandida = signal<string | null>(null);
   accionesSecundariasFacturaId = signal<string | null>(null);
   anulandoFacturaId = signal<string | null>(null);
   notaCreditoEmitida = signal<NotaCreditoEmitida | null>(null);
-  ultimaFechaConFacturas = signal<string | null>(null);
+  resumenDia = signal<ResumenDia | null>(null);
   mensajeCarga = signal<string | null>(null);
   mensajeAccion = signal<string | null>(null);
   mensajeAccionTipo = signal<'success' | 'warning' | 'error'>('success');
@@ -586,8 +600,6 @@ export class ListadoComponent {
   mostrandoConfirmacionAnulacion = signal(false);
   facturaPendienteReintento = signal<Factura | null>(null);
 
-  private cacheFacturasPorFecha = new Map<string, Factura[]>();
-  private cacheUltimaFechaConFacturas = new Map<string, string | null>();
   private mensajeAccionTimer: ReturnType<typeof setTimeout> | null = null;
   private ultimoToggleExpansion: { facturaId: string; timestamp: number } | null = null;
   private ultimoToggleAccionesSecundarias: { facturaId: string; timestamp: number } | null = null;
@@ -609,21 +621,19 @@ export class ListadoComponent {
     };
   });
 
+  readonly modoFechaActivo = computed(() => Boolean(this.fechaSeleccionada()));
+
   readonly nombreFechaSeleccionada = computed(() => {
-    const fecha = new Date(`${this.fechaSeleccionada()}T00:00:00`);
+    const fechaSeleccionada = this.fechaSeleccionada();
+    if (!fechaSeleccionada) return 'Últimas facturas';
+
+    const fecha = new Date(`${fechaSeleccionada}T00:00:00`);
     return `Facturas del ${format(fecha, 'dd/MM/yyyy', { locale: es })}`;
   });
 
   readonly mensajeEstadoVacio = computed(() =>
-    this.ultimaFechaConFacturas()
-      ? 'No hay facturas para esta fecha'
-      : 'Todavía no hay facturas emitidas',
+    this.modoFechaActivo() ? 'No hay facturas para esta fecha' : 'Todavía no hay facturas emitidas',
   );
-
-  readonly ultimaFechaConFacturasDisponible = computed(() => {
-    const ultimaFecha = this.ultimaFechaConFacturas();
-    return Boolean(ultimaFecha && ultimaFecha !== this.fechaSeleccionada());
-  });
 
   readonly facturasFiltradas = computed(() =>
     this.facturas().sort((a, b) => {
@@ -635,15 +645,6 @@ export class ListadoComponent {
         this.extraerNumeroFactura(b.numero_factura) - this.extraerNumeroFactura(a.numero_factura)
       );
     }),
-  );
-
-  readonly totalDelDia = computed(() =>
-    this.facturasFiltradas()
-      .filter((factura) => factura.estado === 'emitida')
-      .reduce((total, factura) => {
-        const esNotaCredito = this.esNotaCredito(factura);
-        return total + (esNotaCredito ? -factura.monto : factura.monto);
-      }, 0),
   );
 
   readonly mapaFacturasAnuladas = computed(() => {
@@ -678,8 +679,7 @@ export class ListadoComponent {
     effect(() => {
       const contribuyente = this.contribuyenteService.contribuyente();
       if (contribuyente) {
-        this.limpiarTodoElCache();
-        void this.cargarFacturasPorFecha(this.fechaSeleccionada());
+        void this.cargarFacturasIniciales();
       }
     });
   }
@@ -973,74 +973,95 @@ export class ListadoComponent {
   }
 
   async cargarFacturasIniciales(): Promise<void> {
-    await this.cargarFacturasPorFecha(this.fechaSeleccionada());
+    await this.cargarFacturasListado({ reset: true });
   }
 
-  async cargarFacturasPorFecha(
-    fecha: string,
-    options?: { silent?: boolean; force?: boolean },
-  ): Promise<void> {
+  async cargarFacturasListado(options?: {
+    reset?: boolean;
+    append?: boolean;
+    silent?: boolean;
+  }): Promise<void> {
     const contribuyente = this.contribuyenteService.contribuyente();
     if (!contribuyente) return;
 
+    const reset = options?.reset ?? false;
+    const append = options?.append ?? false;
     const silent = options?.silent ?? false;
-    const force = options?.force ?? false;
-    const cacheKey = `${contribuyente.id}:${fecha}`;
+    const offset = append ? this.facturas().length : 0;
+    const limit = append ? PAGE_MORE_SIZE : PAGE_INITIAL_SIZE;
+    const fecha = this.fechaSeleccionada() ?? undefined;
 
-    if (!force && this.cacheFacturasPorFecha.has(cacheKey)) {
-      const facturasCacheadas = this.cacheFacturasPorFecha.get(cacheKey)!;
-      this.facturas.set(facturasCacheadas);
-      this.mensajeCarga.set(null);
-      await this.actualizarUltimaFechaConFacturas(fecha, facturasCacheadas);
-      return;
+    if (reset) {
+      this.facturas.set([]);
+      this.hayMasFacturas.set(false);
+      this.facturaExpandida.set(null);
+      this.accionesSecundariasFacturaId.set(null);
     }
 
     if (!silent) {
-      this.cargando.set(true);
+      if (append) {
+        this.cargandoMas.set(true);
+      } else {
+        this.cargando.set(true);
+      }
     }
     this.mensajeCarga.set(null);
 
     try {
-      const comprobantes = await this.comprobantesService.cargarComprobantesPorFecha(
-        contribuyente.id,
-        fecha,
-      );
-      this.cacheFacturasPorFecha.set(cacheKey, comprobantes);
-      this.facturas.set(comprobantes);
-      await this.actualizarUltimaFechaConFacturas(fecha, comprobantes);
+      const [listado] = await Promise.all([
+        this.comprobantesService.cargarComprobantesListado(contribuyente.id, {
+          fecha,
+          offset,
+          limit,
+        }),
+        !append && fecha ? this.cargarResumenDia(contribuyente.id, fecha) : Promise.resolve(),
+      ]);
+
+      this.facturas.set(append ? [...this.facturas(), ...listado.items] : listado.items);
+      this.hayMasFacturas.set(listado.hasMore);
     } catch (error) {
       console.error('Error inesperado al cargar comprobantes:', error);
-      this.facturas.set([]);
+      if (!append) {
+        this.facturas.set([]);
+        this.hayMasFacturas.set(false);
+        if (this.modoFechaActivo()) {
+          this.resumenDia.set(null);
+        }
+      }
       this.mensajeCarga.set(
         getFriendlyNetworkErrorMessage(
           error,
-          'No se pudieron cargar los comprobantes para esa fecha.',
+          'No se pudieron cargar los comprobantes.',
           'No se pudieron cargar los comprobantes porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
         ),
       );
     } finally {
       if (!silent) {
-        this.cargando.set(false);
+        if (append) {
+          this.cargandoMas.set(false);
+        } else {
+          this.cargando.set(false);
+        }
       }
     }
   }
 
+  async cargarMasFacturas(): Promise<void> {
+    if (this.cargandoMas() || !this.hayMasFacturas()) return;
+    await this.cargarFacturasListado({ append: true });
+  }
+
   async cambiarFecha(event: Event): Promise<void> {
-    const nuevaFecha = (event.target as HTMLInputElement).value;
+    const nuevaFecha = (event.target as HTMLInputElement).value || null;
     this.fechaSeleccionada.set(nuevaFecha);
-    await this.cargarFacturasPorFecha(nuevaFecha);
+    this.resumenDia.set(null);
+    await this.cargarFacturasListado({ reset: true });
   }
 
-  async irAUltimoDiaFacturado(): Promise<void> {
-    const ultimaFecha = this.ultimaFechaConFacturas();
-    if (!ultimaFecha || ultimaFecha === this.fechaSeleccionada()) return;
-
-    this.fechaSeleccionada.set(ultimaFecha);
-    await this.cargarFacturasPorFecha(ultimaFecha);
-  }
-
-  formatearFechaParaVista(fecha: string): string {
-    return format(new Date(`${fecha}T00:00:00`), 'dd/MM/yyyy', { locale: es });
+  async verUltimasFacturas(): Promise<void> {
+    this.fechaSeleccionada.set(null);
+    this.resumenDia.set(null);
+    await this.cargarFacturasListado({ reset: true });
   }
 
   extraerNumeroFactura(numeroCompleto: string): number {
@@ -1070,52 +1091,12 @@ export class ListadoComponent {
     return this.mapaFacturasAnuladas().get(factura.numero_factura) || null;
   }
 
-  limpiarCacheFecha(fecha: string): void {
-    for (const key of this.cacheFacturasPorFecha.keys()) {
-      if (key.endsWith(`:${fecha}`)) {
-        this.cacheFacturasPorFecha.delete(key);
-      }
-    }
-  }
-
-  limpiarTodoElCache(): void {
-    this.cacheFacturasPorFecha.clear();
-    this.cacheUltimaFechaConFacturas.clear();
-    this.ultimaFechaConFacturas.set(null);
-  }
-
-  private async actualizarUltimaFechaConFacturas(
-    fecha: string,
-    comprobantes: Factura[],
-  ): Promise<void> {
-    const contribuyente = this.contribuyenteService.contribuyente();
-    if (!contribuyente) {
-      this.ultimaFechaConFacturas.set(null);
-      return;
-    }
-
-    if (comprobantes.length > 0) {
-      this.cacheUltimaFechaConFacturas.set(contribuyente.id, fecha);
-      this.ultimaFechaConFacturas.set(fecha);
-      return;
-    }
-
-    const cacheKey = contribuyente.id;
-    if (this.cacheUltimaFechaConFacturas.has(cacheKey)) {
-      this.ultimaFechaConFacturas.set(this.cacheUltimaFechaConFacturas.get(cacheKey) ?? null);
-      return;
-    }
-
-    try {
-      const ultimaFecha = await this.comprobantesService.cargarUltimaFechaConComprobantes(
-        contribuyente.id,
-      );
-      this.cacheUltimaFechaConFacturas.set(cacheKey, ultimaFecha);
-      this.ultimaFechaConFacturas.set(ultimaFecha);
-    } catch (error) {
-      console.error('Error inesperado al buscar última fecha con facturas:', error);
-      this.ultimaFechaConFacturas.set(null);
-    }
+  private async cargarResumenDia(contribuyenteId: string, fecha: string): Promise<void> {
+    const resumen = await this.comprobantesService.cargarResumenComprobantesPorFecha(
+      contribuyenteId,
+      fecha,
+    );
+    this.resumenDia.set(resumen);
   }
 
   private clearMensajeAccion(): void {
@@ -1250,8 +1231,7 @@ export class ListadoComponent {
           notaCredito: resultado.data?.comprobante,
         });
         this.cancelarConfirmacionAnulacion();
-        this.limpiarCacheFecha(this.fechaSeleccionada());
-        await this.cargarFacturasPorFecha(this.fechaSeleccionada(), { silent: true, force: true });
+        await this.cargarFacturasListado({ reset: true, silent: true });
         this.facturaExpandida.set(null);
         this.accionesSecundariasFacturaId.set(null);
         return;

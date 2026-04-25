@@ -149,6 +149,52 @@ describe('FacturacionService', () => {
     expect(arcaSpy).not.toHaveBeenCalled();
   });
 
+  it('precalienta el ultimo comprobante y deduplica pedidos en curso por tipo', async () => {
+    const service = TestBed.inject(FacturacionService);
+    let resolveRequest!: () => void;
+    const request = new Promise<void>((resolve) => {
+      resolveRequest = resolve;
+    });
+    const prefetchSpy = vi
+      .spyOn(service as any, 'llamarPrecalentarUltimoComprobante')
+      .mockReturnValue(request);
+
+    const first = service.precalentarUltimoComprobante('FACTURA C');
+    const second = service.precalentarUltimoComprobante('FACTURA C');
+
+    expect(prefetchSpy).toHaveBeenCalledTimes(1);
+    expect(prefetchSpy).toHaveBeenCalledWith(1, 'FACTURA C');
+
+    resolveRequest();
+    await Promise.all([first, second]);
+  });
+
+  it('respeta TTL local despues de un prefetch exitoso', async () => {
+    const service = TestBed.inject(FacturacionService);
+    const prefetchSpy = vi
+      .spyOn(service as any, 'llamarPrecalentarUltimoComprobante')
+      .mockResolvedValue(undefined);
+
+    await service.precalentarUltimoComprobante('FACTURA C');
+    await service.precalentarUltimoComprobante('FACTURA C');
+
+    expect(prefetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('vuelve a precalentar cuando cambia el tipo de comprobante', async () => {
+    const service = TestBed.inject(FacturacionService);
+    const prefetchSpy = vi
+      .spyOn(service as any, 'llamarPrecalentarUltimoComprobante')
+      .mockResolvedValue(undefined);
+
+    await service.precalentarUltimoComprobante('FACTURA C');
+    await service.precalentarUltimoComprobante('FACTURA B');
+
+    expect(prefetchSpy).toHaveBeenCalledTimes(2);
+    expect(prefetchSpy).toHaveBeenCalledWith(1, 'FACTURA C');
+    expect(prefetchSpy).toHaveBeenCalledWith(1, 'FACTURA B');
+  });
+
   it('rechaza nota de credito con fecha anterior a la ultima NC del mismo tipo', async () => {
     const service = TestBed.inject(FacturacionService);
     const originalQuery = {
