@@ -104,6 +104,12 @@ describe('ListadoComponent', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.textContent).toContain('Nota de crédito emitida');
     expect(compiled.textContent).toContain('Anula factura 0001-00000018');
+    expect(compiled.textContent).toContain('Ver');
+    expect(compiled.textContent).toContain('Compartir');
+    expect(compiled.textContent).toContain('Descargar');
+    expect(compiled.textContent).toContain('Imprimir');
+    expect(compiled.textContent).not.toContain('Ver acciones');
+    expect(compiled.textContent).not.toContain('Ocultar acciones');
     expect(compiled.textContent).not.toContain('fixed inset-0');
   });
 

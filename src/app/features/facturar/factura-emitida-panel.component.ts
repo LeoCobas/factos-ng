@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 
 import { Comprobante } from '../../core/types/database.types';
 import {
@@ -20,12 +20,10 @@ import {
         [title]="tipoComprobante + ' ' + numeroComprobante + ' ' + monto"
         [subtitle]="clienteDescripcion()"
         [actions]="acciones"
-        [actionsOpen]="accionesAbiertas()"
         [actionInProgress]="accionEnCurso"
         [message]="mensajeAccion"
         [messageType]="mensajeAccionTipo"
-        closeLabel="Volver"
-        (toggleActions)="toggleAcciones()"
+        closeLabel="Cerrar"
         (actionSelected)="onAction($event)"
         (closeRequested)="volver.emit()"
       />
@@ -47,7 +45,6 @@ export class FacturaEmitidaPanelComponent {
   @Output() readonly imprimir = new EventEmitter<void>();
   @Output() readonly volver = new EventEmitter<void>();
 
-  readonly accionesAbiertas = signal(false);
   readonly acciones: ComprobanteResultadoAction[] = [
     { id: 'ver', label: 'Ver', title: 'Ver comprobante' },
     { id: 'compartir', label: 'Compartir', title: 'Compartir comprobante' },
@@ -63,10 +60,6 @@ export class FacturaEmitidaPanelComponent {
     return [this.factura.cliente_nombre, this.factura.cliente_condicion_iva]
       .filter(Boolean)
       .join(' - ');
-  }
-
-  toggleAcciones(): void {
-    this.accionesAbiertas.update((value) => !value);
   }
 
   onAction(action: ComprobanteResultadoActionId): void {

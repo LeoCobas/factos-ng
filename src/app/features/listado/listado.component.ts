@@ -142,9 +142,7 @@ interface PdfFacturaLike {
             [subtitle]="notaCreditoPanelSubtitle()"
             [meta]="notaCreditoPanelMeta()"
             [actions]="accionesComprobante"
-            [actionsOpen]="notaCreditoAccionesAbiertas()"
             closeLabel="Cerrar"
-            (toggleActions)="toggleNotaCreditoAcciones()"
             (actionSelected)="onNotaCreditoAction($event)"
             (closeRequested)="cerrarNotaCredito()"
           />
@@ -580,7 +578,6 @@ export class ListadoComponent {
   accionesSecundariasFacturaId = signal<string | null>(null);
   anulandoFacturaId = signal<string | null>(null);
   notaCreditoEmitida = signal<NotaCreditoEmitida | null>(null);
-  notaCreditoAccionesAbiertas = signal(false);
   ultimaFechaConFacturas = signal<string | null>(null);
   mensajeCarga = signal<string | null>(null);
   mensajeAccion = signal<string | null>(null);
@@ -764,10 +761,6 @@ export class ListadoComponent {
     if (!factura || this.esAnulandoFactura(factura.id)) return;
 
     await this.ejecutarAnulacionFactura(factura);
-  }
-
-  toggleNotaCreditoAcciones(): void {
-    this.notaCreditoAccionesAbiertas.update((value) => !value);
   }
 
   onNotaCreditoAction(action: ComprobanteResultadoActionId): void {
@@ -977,7 +970,6 @@ export class ListadoComponent {
 
   cerrarNotaCredito(): void {
     this.notaCreditoEmitida.set(null);
-    this.notaCreditoAccionesAbiertas.set(false);
   }
 
   async cargarFacturasIniciales(): Promise<void> {
@@ -1258,7 +1250,6 @@ export class ListadoComponent {
           notaCredito: resultado.data?.comprobante,
         });
         this.cancelarConfirmacionAnulacion();
-        this.notaCreditoAccionesAbiertas.set(false);
         this.limpiarCacheFecha(this.fechaSeleccionada());
         await this.cargarFacturasPorFecha(this.fechaSeleccionada(), { silent: true, force: true });
         this.facturaExpandida.set(null);
