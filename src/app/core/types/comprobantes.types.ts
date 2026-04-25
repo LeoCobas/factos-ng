@@ -27,6 +27,22 @@ export interface ComprobanteListadoItem {
   nota_credito_anuladora?: string;
 }
 
+export interface ComprobantesListadoOptions {
+  fecha?: string;
+  offset: number;
+  limit: number;
+}
+
+export interface ComprobantesListadoResult {
+  items: ComprobanteListadoItem[];
+  hasMore: boolean;
+}
+
+export interface ResumenComprobantesPorFecha {
+  cantidad: number;
+  total: number;
+}
+
 export interface NotaCreditoEmitida {
   numero?: string;
   cae?: string;

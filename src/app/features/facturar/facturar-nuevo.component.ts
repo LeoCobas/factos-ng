@@ -128,6 +128,7 @@ interface FacturaRecienteView {
                   autocomplete="off"
                   placeholder="0"
                   [value]="displayMonto()"
+                  (focus)="precalentarUltimoComprobante()"
                   (beforeinput)="onMontoBeforeInput($event)"
                   (input)="onMontoInput($event)"
                   class="premium-money-field__input"
@@ -427,6 +428,15 @@ export class FacturarNuevoComponent implements OnDestroy {
         tipoComprobante,
       );
     });
+
+    effect(() => {
+      const tipoComprobante = this.tipoComprobanteResolution().tipo;
+      if (!this.rawMonto()) {
+        return;
+      }
+
+      void this.precalentarUltimoComprobante(tipoComprobante);
+    });
   }
 
   private confirmacionMontoTimer: ReturnType<typeof setInterval> | null = null;
@@ -617,10 +627,24 @@ export class FacturarNuevoComponent implements OnDestroy {
     this.formFactura.controls.monto.setValue(parsedValue ?? '');
     this.resetMontoExcedidoConfirmado(parsedValue);
 
+    if (parsedValue && parsedValue > 0) {
+      void this.precalentarUltimoComprobante();
+    }
+
     queueMicrotask(() => {
       const cursorPosition = this.displayMonto().length;
       input.setSelectionRange(cursorPosition, cursorPosition);
     });
+  }
+
+  async precalentarUltimoComprobante(
+    tipoComprobante = this.tipoComprobanteResolution().tipo,
+  ): Promise<void> {
+    try {
+      await this.facturacionService.precalentarUltimoComprobante(tipoComprobante);
+    } catch (error) {
+      console.debug('No se pudo precalentar ultimo comprobante:', error);
+    }
   }
 
   onMontoBeforeInput(event: InputEvent): void {

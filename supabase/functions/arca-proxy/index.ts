@@ -11,6 +11,7 @@ const corsHeaders = {
 
 const ARCA_TICKET_PATH = '/tmp/factos-arca-tickets';
 const WSFE_SERVICE_NAME = 'wsfe';
+const LAST_VOUCHER_CACHE_TTL_MS = 15 * 60 * 1000;
 
 type ArcaProxyErrorType =
   | 'arca_maintenance'
@@ -145,6 +146,30 @@ function getDocPayload(body: any) {
   };
 }
 
+function parseLastVoucherNumber(lastVoucher: any): number {
+  const lastNumber =
+    typeof lastVoucher === 'number'
+      ? lastVoucher
+      : lastVoucher?.cbteNro || lastVoucher?.CbteNro || 0;
+
+  return Number.isFinite(Number(lastNumber)) ? Number(lastNumber) : 0;
+}
+
+function getLastVoucherCacheCutoffIso(): string {
+  return new Date(Date.now() - LAST_VOUCHER_CACHE_TTL_MS).toISOString();
+}
+
+function logArcaProxy(event: string, data: Record<string, unknown>): void {
+  console.info(
+    JSON.stringify({
+      scope: 'arca-proxy',
+      event,
+      at: new Date().toISOString(),
+      ...data,
+    }),
+  );
+}
+
 function getTodayInArgentina(): string {
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Argentina/Buenos_Aires',
@@ -265,6 +290,149 @@ function classifyArcaError(message: string): ArcaProxyErrorType {
   return 'server';
 }
 
+function isNumberingRejection(parsed: ReturnType<typeof extractWsfeResult>, message: string) {
+  const details = [
+    message,
+    ...parsed.errors.map((err: any) => `${err.Code || err.code || ''} ${err.Msg || err.msg || ''}`),
+    ...parsed.observations.map(
+      (obs: any) => `${obs.Code || obs.code || ''} ${obs.Msg || obs.msg || ''}`,
+    ),
+    summarizeUnknownResult(parsed.raw),
+  ].join(' ');
+  const normalizedDetails = normalizeErrorText(details);
+
+  return (
+    normalizedDetails.includes('proximo a autorizar') ||
+    normalizedDetails.includes('ultimo autorizado') ||
+    normalizedDetails.includes('ya fue autorizado') ||
+    normalizedDetails.includes('comprobante ya existe') ||
+    normalizedDetails.includes('comprobante duplicado') ||
+    (normalizedDetails.includes('numero') &&
+      normalizedDetails.includes('comprobante') &&
+      normalizedDetails.includes('autorizar'))
+  );
+}
+
+async function getCachedLastVoucher(params: {
+  supabase: any;
+  contribuyenteId: string;
+  puntoVenta: number;
+  tipoComprobante: string;
+  cbteTipo: number;
+}): Promise<number | null> {
+  const { data, error } = await params.supabase
+    .from('ultimo_comprobante_cache')
+    .select('ultimo_comprobante, synced_at')
+    .eq('contribuyente_id', params.contribuyenteId)
+    .eq('punto_venta', params.puntoVenta)
+    .eq('tipo_comprobante', params.tipoComprobante)
+    .eq('cbte_tipo', params.cbteTipo)
+    .gte('synced_at', getLastVoucherCacheCutoffIso())
+    .maybeSingle();
+
+  if (error) {
+    console.error('No se pudo leer cache de ultimo comprobante:', error.message);
+    return null;
+  }
+
+  const cachedNumber = Number(data?.ultimo_comprobante);
+  return Number.isFinite(cachedNumber) ? cachedNumber : null;
+}
+
+async function upsertLastVoucherCache(params: {
+  supabase: any;
+  contribuyenteId: string;
+  puntoVenta: number;
+  tipoComprobante: string;
+  cbteTipo: number;
+  ultimoComprobante: number;
+}): Promise<void> {
+  const { error } = await params.supabase.from('ultimo_comprobante_cache').upsert(
+    {
+      contribuyente_id: params.contribuyenteId,
+      punto_venta: params.puntoVenta,
+      tipo_comprobante: params.tipoComprobante,
+      cbte_tipo: params.cbteTipo,
+      ultimo_comprobante: params.ultimoComprobante,
+      synced_at: new Date().toISOString(),
+    },
+    { onConflict: 'contribuyente_id,punto_venta,tipo_comprobante' },
+  );
+
+  if (error) {
+    console.error('No se pudo guardar cache de ultimo comprobante:', error.message);
+  }
+}
+
+async function fetchAndCacheLastVoucher(params: {
+  arca: any;
+  persistTicket: () => Promise<void>;
+  supabase: any;
+  contribuyenteId: string;
+  puntoVenta: number;
+  tipoComprobante: string;
+  cbteTipo: number;
+}): Promise<number> {
+  const startedAt = Date.now();
+  const lastVoucher = await params.arca.electronicBillingService.getLastVoucher(
+    params.puntoVenta,
+    params.cbteTipo,
+  );
+  await params.persistTicket();
+  const ultimoComprobante = parseLastVoucherNumber(lastVoucher);
+  logArcaProxy('last_voucher_fetch', {
+    contribuyenteId: params.contribuyenteId,
+    puntoVenta: params.puntoVenta,
+    tipoComprobante: params.tipoComprobante,
+    cbteTipo: params.cbteTipo,
+    ultimoComprobante,
+    durationMs: Date.now() - startedAt,
+  });
+  await upsertLastVoucherCache({
+    supabase: params.supabase,
+    contribuyenteId: params.contribuyenteId,
+    puntoVenta: params.puntoVenta,
+    tipoComprobante: params.tipoComprobante,
+    cbteTipo: params.cbteTipo,
+    ultimoComprobante,
+  });
+
+  return ultimoComprobante;
+}
+
+function getArcaRejectionError(parsed: ReturnType<typeof extractWsfeResult>) {
+  const detalleErrores = parsed.errors
+    .map((err: any) => `[${err.Code || err.code}] ${err.Msg || err.msg}`)
+    .join(' | ');
+  const detalleObservaciones = parsed.observations
+    .map((obs: any) => `[${obs.Code || obs.code}] ${obs.Msg || obs.msg}`)
+    .join(' | ');
+  const detalleEventos = parsed.events
+    .map((evt: any) => `[${evt.Code || evt.code}] ${evt.Msg || evt.msg}`)
+    .join(' | ');
+  const rawSummary = summarizeUnknownResult(parsed.raw);
+  const detalle = [detalleErrores, detalleObservaciones, detalleEventos]
+    .filter(Boolean)
+    .join(' | ');
+  const errorMessage = detalle
+    ? `Error AFIP (${parsed.resultado || 'sin resultado'}): ${detalle}`
+    : rawSummary
+      ? `Error AFIP: respuesta no reconocida (${parsed.resultado || 'sin resultado'}). Raw: ${rawSummary}`
+      : `Error AFIP: La solicitud fue rechazada por AFIP (Resultado: ${parsed.resultado || 'sin resultado'})`;
+
+  return {
+    errorMessage,
+    debug: {
+      afipResponse: parsed.resultado,
+      errores: detalleErrores,
+      observaciones: detalleObservaciones,
+      eventos: detalleEventos,
+      rawSummary,
+      raw: parsed.raw,
+    },
+  };
+}
+
 async function getUserArcaInstance(req: Request) {
   const { supabase: supabaseUser, user } = await getAuthenticatedUser(req);
 
@@ -295,6 +463,8 @@ async function getUserArcaInstance(req: Request) {
   });
 
   return {
+    supabase: supabaseUser,
+    contribuyenteId: contribuyente.id,
     arca,
     persistTicket: () =>
       persistTicketFromFile({
@@ -358,18 +528,36 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
       return buildErrorResponse('Validacion fallida: fecha debe estar en formato YYYY-MM-DD');
     }
 
-    const { arca, persistTicket } = await getUserArcaInstance(req);
+    const { arca, persistTicket, supabase, contribuyenteId } = await getUserArcaInstance(req);
     const cbteTipo = getCbteTipo(tipo_comprobante);
-    const lastVoucher: any = await arca.electronicBillingService.getLastVoucher(
-      punto_venta,
+    const normalizedTipoComprobante = String(tipo_comprobante).toUpperCase();
+    const cachedLastNumber = await getCachedLastVoucher({
+      supabase,
+      contribuyenteId,
+      puntoVenta: punto_venta,
+      tipoComprobante: normalizedTipoComprobante,
       cbteTipo,
-    );
-    await persistTicket();
+    });
+    logArcaProxy('crear_factura_last_voucher_source', {
+      contribuyenteId,
+      puntoVenta: punto_venta,
+      tipoComprobante: normalizedTipoComprobante,
+      cbteTipo,
+      source: cachedLastNumber === null ? 'arca' : 'cache',
+      cachedLastNumber,
+    });
     const lastNumber =
-      typeof lastVoucher === 'number'
-        ? lastVoucher
-        : lastVoucher?.cbteNro || lastVoucher?.CbteNro || 0;
-    const cbteNro = lastNumber + 1;
+      cachedLastNumber ??
+      (await fetchAndCacheLastVoucher({
+        arca,
+        persistTicket,
+        supabase,
+        contribuyenteId,
+        puntoVenta: punto_venta,
+        tipoComprobante: normalizedTipoComprobante,
+        cbteTipo,
+      }));
+    let cbteNro = lastNumber + 1;
 
     const isFacturaC = String(tipo_comprobante).toUpperCase().includes(' C');
     const ivaPct = iva_porcentaje || 21;
@@ -420,47 +608,90 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
       voucherPayload.FchVtoPago = fechaNum;
     }
 
-    const parsed = extractWsfeResult(
+    let createStartedAt = Date.now();
+    let parsed = extractWsfeResult(
       await arca.electronicBillingService.createVoucher(voucherPayload),
     );
     await persistTicket();
+    logArcaProxy('create_voucher_result', {
+      contribuyenteId,
+      puntoVenta: punto_venta,
+      tipoComprobante: normalizedTipoComprobante,
+      cbteTipo,
+      cbteNro,
+      resultado: parsed.resultado,
+      durationMs: Date.now() - createStartedAt,
+      retry: false,
+    });
 
     if (parsed.resultado !== 'A') {
-      const detalleErrores = parsed.errors
-        .map((err: any) => `[${err.Code || err.code}] ${err.Msg || err.msg}`)
-        .join(' | ');
-      const detalleObservaciones = parsed.observations
-        .map((obs: any) => `[${obs.Code || obs.code}] ${obs.Msg || obs.msg}`)
-        .join(' | ');
-      const detalleEventos = parsed.events
-        .map((evt: any) => `[${evt.Code || evt.code}] ${evt.Msg || evt.msg}`)
-        .join(' | ');
-      const rawSummary = summarizeUnknownResult(parsed.raw);
-      const detalle = [detalleErrores, detalleObservaciones, detalleEventos]
-        .filter(Boolean)
-        .join(' | ');
-      const errorMessage = detalle
-        ? `Error AFIP (${parsed.resultado || 'sin resultado'}): ${detalle}`
-        : rawSummary
-          ? `Error AFIP: respuesta no reconocida (${parsed.resultado || 'sin resultado'}). Raw: ${rawSummary}`
-          : `Error AFIP: La solicitud fue rechazada por AFIP (Resultado: ${parsed.resultado || 'sin resultado'})`;
+      const rejected = getArcaRejectionError(parsed);
+
+      if (isNumberingRejection(parsed, rejected.errorMessage)) {
+        logArcaProxy('numbering_rejection_retry', {
+          contribuyenteId,
+          puntoVenta: punto_venta,
+          tipoComprobante: normalizedTipoComprobante,
+          cbteTipo,
+          attemptedCbteNro: cbteNro,
+          errorMessage: rejected.errorMessage,
+        });
+        const refreshedLastNumber = await fetchAndCacheLastVoucher({
+          arca,
+          persistTicket,
+          supabase,
+          contribuyenteId,
+          puntoVenta: punto_venta,
+          tipoComprobante: normalizedTipoComprobante,
+          cbteTipo,
+        });
+        cbteNro = refreshedLastNumber + 1;
+        voucherPayload.CbteDesde = cbteNro;
+        voucherPayload.CbteHasta = cbteNro;
+        createStartedAt = Date.now();
+        parsed = extractWsfeResult(
+          await arca.electronicBillingService.createVoucher(voucherPayload),
+        );
+        await persistTicket();
+        logArcaProxy('create_voucher_result', {
+          contribuyenteId,
+          puntoVenta: punto_venta,
+          tipoComprobante: normalizedTipoComprobante,
+          cbteTipo,
+          cbteNro,
+          resultado: parsed.resultado,
+          durationMs: Date.now() - createStartedAt,
+          retry: true,
+        });
+      }
+    }
+
+    if (parsed.resultado !== 'A') {
+      const rejected = getArcaRejectionError(parsed);
 
       return buildErrorResponse(
-        errorMessage,
-        {
-          debug: {
-            afipResponse: parsed.resultado,
-            errores: detalleErrores,
-            observaciones: detalleObservaciones,
-            eventos: detalleEventos,
-            rawSummary,
-            raw: parsed.raw,
-          },
-        },
+        rejected.errorMessage,
+        { debug: rejected.debug },
         400,
         'arca_rejected',
       );
     }
+
+    await upsertLastVoucherCache({
+      supabase,
+      contribuyenteId,
+      puntoVenta: punto_venta,
+      tipoComprobante: normalizedTipoComprobante,
+      cbteTipo,
+      ultimoComprobante: Number(parsed.cbteDesde || cbteNro),
+    });
+    logArcaProxy('last_voucher_cache_updated_after_authorization', {
+      contribuyenteId,
+      puntoVenta: punto_venta,
+      tipoComprobante: normalizedTipoComprobante,
+      cbteTipo,
+      ultimoComprobante: Number(parsed.cbteDesde || cbteNro),
+    });
 
     return new Response(
       JSON.stringify({
@@ -698,10 +929,7 @@ async function handleUltimoComprobante(req: Request, body: any): Promise<Respons
       getCbteTipo(tipo_comprobante),
     );
     await persistTicket();
-    const ultimoCbteNro =
-      typeof lastVoucher === 'number'
-        ? lastVoucher
-        : lastVoucher?.cbteNro || lastVoucher?.CbteNro || 0;
+    const ultimoCbteNro = parseLastVoucherNumber(lastVoucher);
 
     return new Response(
       JSON.stringify({ success: true, data: { ultimo_comprobante: ultimoCbteNro } }),
@@ -711,6 +939,88 @@ async function handleUltimoComprobante(req: Request, body: any): Promise<Respons
     return new Response(JSON.stringify({ success: false, error: err.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+  }
+}
+
+/**
+ * Precarga el ultimo numero autorizado para reducir latencia en la emision siguiente.
+ * Si hay cache fresca, evita ARCA; si no, consulta `getLastVoucher` y renueva ticket WSFE.
+ */
+async function handlePrecalentarUltimoComprobante(req: Request, body: any): Promise<Response> {
+  try {
+    const { arca, persistTicket, supabase, contribuyenteId } = await getUserArcaInstance(req);
+    const { punto_venta, tipo_comprobante } = body;
+
+    if (!punto_venta || !Number.isInteger(punto_venta) || punto_venta <= 0) {
+      return buildErrorResponse(
+        'Validacion fallida: punto_venta debe ser un numero entero positivo',
+      );
+    }
+
+    if (!tipo_comprobante || typeof tipo_comprobante !== 'string') {
+      return buildErrorResponse('Validacion fallida: tipo_comprobante es requerido');
+    }
+
+    const cbteTipo = getCbteTipo(tipo_comprobante);
+    const normalizedTipoComprobante = String(tipo_comprobante).toUpperCase();
+    const cachedLastNumber = await getCachedLastVoucher({
+      supabase,
+      contribuyenteId,
+      puntoVenta: punto_venta,
+      tipoComprobante: normalizedTipoComprobante,
+      cbteTipo,
+    });
+
+    if (cachedLastNumber !== null) {
+      logArcaProxy('prefetch_last_voucher_cache_hit', {
+        contribuyenteId,
+        puntoVenta: punto_venta,
+        tipoComprobante: normalizedTipoComprobante,
+        cbteTipo,
+        ultimoComprobante: cachedLastNumber,
+      });
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: { ultimo_comprobante: cachedLastNumber, cache_hit: true },
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    const ultimoComprobante = await fetchAndCacheLastVoucher({
+      arca,
+      persistTicket,
+      supabase,
+      contribuyenteId,
+      puntoVenta: punto_venta,
+      tipoComprobante: normalizedTipoComprobante,
+      cbteTipo,
+    });
+    logArcaProxy('prefetch_last_voucher_cache_miss', {
+      contribuyenteId,
+      puntoVenta: punto_venta,
+      tipoComprobante: normalizedTipoComprobante,
+      cbteTipo,
+      ultimoComprobante,
+    });
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        data: { ultimo_comprobante: ultimoComprobante, cache_hit: false },
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
+  } catch (err: any) {
+    const rawMessage = String(err?.message || '');
+    const detail = mapArcaServerErrorMessage(rawMessage);
+    return buildErrorResponse(
+      `Error del servidor: ${detail}`,
+      { debug: { detalle: err.message } },
+      500,
+      classifyArcaError(rawMessage || detail),
+    );
   }
 }
 
@@ -739,6 +1049,8 @@ Deno.serve(async (req: Request) => {
         return await handleCrearNotaCredito(req, body);
       case 'ultimo-comprobante':
         return await handleUltimoComprobante(req, body);
+      case 'precalentar-ultimo-comprobante':
+        return await handlePrecalentarUltimoComprobante(req, body);
       default:
         return new Response(JSON.stringify({ success: false, error: 'Accion invalida' }), {
           status: 400,

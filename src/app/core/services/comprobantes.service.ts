@@ -4,7 +4,10 @@ import { supabase } from './supabase.service';
 import { Comprobante } from '../types/database.types';
 import {
   ComprobanteListadoItem,
+  ComprobantesListadoOptions,
+  ComprobantesListadoResult,
   ComprobanteMetricRow,
+  ResumenComprobantesPorFecha,
 } from '../types/comprobantes.types';
 
 interface ComprobanteListadoRow extends Comprobante {
@@ -17,64 +20,87 @@ interface ComprobanteListadoRow extends Comprobante {
   providedIn: 'root',
 })
 export class ComprobantesService {
-  async cargarComprobantesPorFecha(
+  async cargarComprobantesListado(
     contribuyenteId: string | null | undefined,
-    fecha: string,
-  ): Promise<ComprobanteListadoItem[]> {
+    options: ComprobantesListadoOptions,
+  ): Promise<ComprobantesListadoResult> {
     if (!contribuyenteId) {
-      return [];
+      return { items: [], hasMore: false };
     }
 
-    const { data: comprobantes, error } = await supabase
+    let query = supabase
       .from('comprobantes')
-      .select(`
+      .select(
+        `
         *,
         comprobante_asociado:comprobante_asociado_id (
           numero_comprobante
         )
-      `)
-      .eq('contribuyente_id', contribuyenteId)
-      .eq('fecha', fecha)
-      .order('created_at', { ascending: false });
+      `,
+      )
+      .eq('contribuyente_id', contribuyenteId);
+
+    if (options.fecha) {
+      query = query.eq('fecha', options.fecha);
+    }
+
+    const { data: comprobantes, error } = await query
+      .order('created_at', { ascending: false })
+      .range(options.offset, options.offset + options.limit);
 
     if (error) {
       throw new Error('No se pudieron cargar los comprobantes');
     }
 
     const comprobantesRows = (comprobantes || []) as ComprobanteListadoRow[];
+    const itemsRows = comprobantesRows.slice(0, options.limit);
     const notasCreditoPorAsociado = await this.cargarNotasCreditoAsociadas(
       contribuyenteId,
-      comprobantesRows,
+      itemsRows,
     );
 
-    return comprobantesRows.map((comprobante) =>
-      this.mapListadoItem(comprobante, notasCreditoPorAsociado),
-    );
+    return {
+      items: itemsRows.map((comprobante) =>
+        this.mapListadoItem(comprobante, notasCreditoPorAsociado),
+      ),
+      hasMore: comprobantesRows.length > options.limit,
+    };
   }
 
-  async cargarUltimaFechaConComprobantes(
+  async cargarResumenComprobantesPorFecha(
     contribuyenteId: string | null | undefined,
-  ): Promise<string | null> {
+    fecha: string,
+  ): Promise<ResumenComprobantesPorFecha> {
     if (!contribuyenteId) {
-      return null;
+      return { cantidad: 0, total: 0 };
     }
 
-    try {
-      const { data, error } = await supabase
-        .from('comprobantes')
-        .select('fecha')
-        .eq('contribuyente_id', contribuyenteId)
-        .order('fecha', { ascending: false })
-        .limit(1);
+    const { data, error } = await supabase
+      .from('comprobantes')
+      .select('total, estado, tipo_comprobante')
+      .eq('contribuyente_id', contribuyenteId)
+      .eq('fecha', fecha);
 
-      if (error) {
-        return null;
-      }
-
-      return data?.[0]?.fecha ?? null;
-    } catch {
-      return null;
+    if (error) {
+      throw new Error('No se pudo cargar el resumen de comprobantes');
     }
+
+    const comprobantes = (data || []) as Pick<
+      Comprobante,
+      'total' | 'estado' | 'tipo_comprobante'
+    >[];
+
+    return {
+      cantidad: comprobantes.length,
+      total: comprobantes
+        .filter((comprobante) => comprobante.estado === 'emitida')
+        .reduce((total, comprobante) => {
+          const monto = Number(comprobante.total ?? 0);
+          return (
+            total + (comprobante.tipo_comprobante.includes('NOTA DE CREDITO') ? -monto : monto)
+          );
+        }, 0),
+    };
   }
 
   async cargarMetricasComprobantes(
@@ -94,10 +120,9 @@ export class ComprobantesService {
       throw new Error('No se pudieron cargar las métricas de comprobantes');
     }
 
-    return ((data || []) as Pick<
-      Comprobante,
-      'fecha' | 'total' | 'estado' | 'tipo_comprobante'
-    >[]).map((comprobante) => ({
+    return (
+      (data || []) as Pick<Comprobante, 'fecha' | 'total' | 'estado' | 'tipo_comprobante'>[]
+    ).map((comprobante) => ({
       fecha: comprobante.fecha,
       total: Number(comprobante.total),
       estado: comprobante.estado || 'emitida',

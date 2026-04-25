@@ -41,6 +41,17 @@ export interface ArcaProxyResponse {
   should_retry?: boolean;
 }
 
+export interface ArcaUltimoComprobanteResponse {
+  success: boolean;
+  data?: {
+    ultimo_comprobante: number;
+    cache_hit?: boolean;
+  };
+  error?: string;
+  error_type?: FacturacionErrorType;
+  should_retry?: boolean;
+}
+
 export type FacturacionErrorType =
   | 'arca_maintenance'
   | 'arca_auth'
@@ -101,6 +112,9 @@ type TipoComprobanteFiscal =
 })
 export class FacturacionService {
   private readonly contribuyenteService = inject(ContribuyenteService);
+  private readonly ultimoComprobantePrefetchTtlMs = 15 * 60 * 1000;
+  private readonly ultimoComprobantePrefetchCache = new Map<string, number>();
+  private readonly ultimoComprobantePrefetchRequests = new Map<string, Promise<void>>();
 
   /**
    * Valida la ventana fiscal permitida antes de emitir el comprobante.
@@ -302,6 +316,42 @@ export class FacturacionService {
     };
   }
 
+  async precalentarUltimoComprobante(
+    tipoComprobante: 'FACTURA A' | 'FACTURA B' | 'FACTURA C',
+  ): Promise<void> {
+    const contribuyente = this.getValidatedConfig();
+    const puntoVenta = Number(contribuyente.punto_venta);
+
+    if (!Number.isInteger(puntoVenta) || puntoVenta <= 0) {
+      return;
+    }
+
+    const cacheKey = `${contribuyente.id}:${puntoVenta}:${tipoComprobante}`;
+    const lastPrefetchAt = this.ultimoComprobantePrefetchCache.get(cacheKey) ?? 0;
+    if (Date.now() - lastPrefetchAt < this.ultimoComprobantePrefetchTtlMs) {
+      return;
+    }
+
+    const pendingRequest = this.ultimoComprobantePrefetchRequests.get(cacheKey);
+    if (pendingRequest) {
+      return pendingRequest;
+    }
+
+    const request = this.llamarPrecalentarUltimoComprobante(puntoVenta, tipoComprobante)
+      .then(() => {
+        this.ultimoComprobantePrefetchCache.set(cacheKey, Date.now());
+      })
+      .catch((error) => {
+        console.debug('No se pudo precalentar ultimo comprobante:', error);
+      })
+      .finally(() => {
+        this.ultimoComprobantePrefetchRequests.delete(cacheKey);
+      });
+
+    this.ultimoComprobantePrefetchRequests.set(cacheKey, request);
+    return request;
+  }
+
   /**
    * Normaliza el payload requerido por `arca-proxy?action=crear-factura`.
    * Devuelve el contrato bruto de backend sin reinterpretar errores.
@@ -382,6 +432,34 @@ export class FacturacionService {
           'No se pudo emitir la factura porque no hay conexion a internet. Verifica la red e intenta nuevamente.',
         ),
       };
+    }
+  }
+
+  private async llamarPrecalentarUltimoComprobante(
+    puntoVenta: number,
+    tipoComprobante: 'FACTURA A' | 'FACTURA B' | 'FACTURA C',
+  ): Promise<void> {
+    const accessToken = await this.getFreshAccessToken();
+    const response = await fetch(
+      `${this.supabaseUrl}/functions/v1/arca-proxy?action=precalentar-ultimo-comprobante`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: getRuntimeConfig().supabase.anonKey,
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          punto_venta: puntoVenta,
+          tipo_comprobante: tipoComprobante,
+        }),
+      },
+    );
+
+    const responseData: ArcaUltimoComprobanteResponse = await response.json();
+
+    if (!response.ok || !responseData.success) {
+      throw new Error(responseData.error || 'No se pudo precalentar ultimo comprobante');
     }
   }
 

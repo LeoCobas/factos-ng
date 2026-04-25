@@ -420,41 +420,6 @@ body {
   font-size: 0.8rem;
 }
 
-.receipt-result-panel__toolbar {
-  margin-top: 1rem;
-}
-
-.receipt-result-panel__toggle {
-  width: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  border-radius: 0.95rem;
-  border: 1px solid rgb(var(--border) / 0.9);
-  background: rgb(var(--muted) / 0.7);
-  color: rgb(var(--foreground));
-  padding: 0.8rem 0.95rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
-}
-
-.receipt-result-panel__toggle:hover {
-  background: rgb(var(--muted) / 0.9);
-  border-color: rgb(var(--primary) / 0.25);
-}
-
-.receipt-result-panel__toggle-icon {
-  width: 1rem;
-  height: 1rem;
-  transition: transform 0.2s ease;
-}
-
-.receipt-result-panel__toggle-icon--open {
-  transform: rotate(180deg);
-}
-
 .receipt-action-grid {
   margin-top: 0.85rem;
   display: grid;

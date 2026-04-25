@@ -71,12 +71,30 @@ CREATE INDEX idx_comprobantes_fecha ON comprobantes(fecha);
 CREATE INDEX idx_comprobantes_contribuyente_fecha ON comprobantes(contribuyente_id, fecha);
 CREATE INDEX idx_comprobantes_asociado ON comprobantes(comprobante_asociado_id);
 
+-- Cache operativa para precalentar FECompUltimoAutorizado/getLastVoucher.
+CREATE TABLE ultimo_comprobante_cache (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  contribuyente_id UUID NOT NULL REFERENCES contribuyentes(id) ON DELETE CASCADE,
+  punto_venta INTEGER NOT NULL CHECK (punto_venta > 0),
+  tipo_comprobante TEXT NOT NULL,
+  cbte_tipo INTEGER NOT NULL CHECK (cbte_tipo > 0),
+  ultimo_comprobante INTEGER NOT NULL CHECK (ultimo_comprobante >= 0),
+  synced_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (contribuyente_id, punto_venta, tipo_comprobante)
+);
+
+CREATE INDEX idx_ultimo_comprobante_cache_fresh
+  ON ultimo_comprobante_cache (contribuyente_id, punto_venta, tipo_comprobante, synced_at DESC);
+
 -- =========================
 -- 3. ROW LEVEL SECURITY
 -- =========================
 
 ALTER TABLE contribuyentes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comprobantes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ultimo_comprobante_cache ENABLE ROW LEVEL SECURITY;
 
 -- Contribuyentes: solo acceder al propio
 CREATE POLICY "contribuyentes_select_own"
@@ -129,6 +147,35 @@ CREATE POLICY "comprobantes_update_own"
 CREATE POLICY "comprobantes_delete_own"
   ON comprobantes FOR DELETE
   USING (
+    contribuyente_id IN (
+      SELECT id FROM contribuyentes WHERE user_id = (select auth.uid())
+    )
+  );
+
+CREATE POLICY "ultimo_comprobante_cache_select_own"
+  ON ultimo_comprobante_cache FOR SELECT
+  USING (
+    contribuyente_id IN (
+      SELECT id FROM contribuyentes WHERE user_id = (select auth.uid())
+    )
+  );
+
+CREATE POLICY "ultimo_comprobante_cache_insert_own"
+  ON ultimo_comprobante_cache FOR INSERT
+  WITH CHECK (
+    contribuyente_id IN (
+      SELECT id FROM contribuyentes WHERE user_id = (select auth.uid())
+    )
+  );
+
+CREATE POLICY "ultimo_comprobante_cache_update_own"
+  ON ultimo_comprobante_cache FOR UPDATE
+  USING (
+    contribuyente_id IN (
+      SELECT id FROM contribuyentes WHERE user_id = (select auth.uid())
+    )
+  )
+  WITH CHECK (
     contribuyente_id IN (
       SELECT id FROM contribuyentes WHERE user_id = (select auth.uid())
     )
@@ -206,4 +253,8 @@ CREATE TRIGGER set_updated_at_contribuyentes
 
 CREATE TRIGGER set_updated_at_comprobantes
   BEFORE UPDATE ON comprobantes
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER set_updated_at_ultimo_comprobante_cache
+  BEFORE UPDATE ON ultimo_comprobante_cache
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
