@@ -190,6 +190,9 @@ describe('FacturarNuevoComponent', () => {
   });
 
   it('recalcula el minimo cuando cambia el cliente y se resuelve otro tipo de factura', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-22T12:00:00-03:00'));
+
     const fixture = TestBed.createComponent(FacturarNuevoComponent);
     const component = fixture.componentInstance;
     const service = TestBed.inject(FacturacionService) as unknown as ReturnType<
@@ -210,32 +213,36 @@ describe('FacturarNuevoComponent', () => {
         tipoComprobante === 'FACTURA A' ? '2026-04-20' : '2026-04-18',
     );
 
-    fixture.detectChanges();
-    await Promise.resolve();
-    expect(component.minFecha()).toBe('2026-04-18');
+    try {
+      fixture.detectChanges();
+      await Promise.resolve();
+      expect(component.minFecha()).toBe('2026-04-18');
 
-    component.clienteSeleccionado.set({
-      cuit: '20111111112',
-      nombre: 'Cliente RI',
-      domicilio: null,
-      condicion_iva: 'IVA Responsable Inscripto',
-      doc_tipo: 80,
-      doc_nro: 20111111112,
-      condicion_iva_normalizada: 'IVA Responsable Inscripto',
-      fiscal_profile: 'responsable-inscripto',
-      fiscal_status_message: 'ok',
-      fiscal_status_reliable: true,
-      fiscal_status_source: 'constancia_inscripcion',
-    });
-    fixture.detectChanges();
-    await Promise.resolve();
+      component.clienteSeleccionado.set({
+        cuit: '20111111112',
+        nombre: 'Cliente RI',
+        domicilio: null,
+        condicion_iva: 'IVA Responsable Inscripto',
+        doc_tipo: 80,
+        doc_nro: 20111111112,
+        condicion_iva_normalizada: 'IVA Responsable Inscripto',
+        fiscal_profile: 'responsable-inscripto',
+        fiscal_status_message: 'ok',
+        fiscal_status_reliable: true,
+        fiscal_status_source: 'constancia_inscripcion',
+      });
+      fixture.detectChanges();
+      await Promise.resolve();
 
-    expect(service.cargarUltimaFechaComprobantePorTipo).toHaveBeenCalledWith(
-      'cont-1',
-      'FACTURA A',
-      1,
-    );
-    expect(component.minFecha()).toBe('2026-04-20');
+      expect(service.cargarUltimaFechaComprobantePorTipo).toHaveBeenCalledWith(
+        'cont-1',
+        'FACTURA A',
+        1,
+      );
+      expect(component.minFecha()).toBe('2026-04-20');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('precalienta otra vez cuando cambia el tipo resuelto con monto cargado', async () => {

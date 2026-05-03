@@ -28,10 +28,6 @@ export const routes: Routes = [
       {
         path: 'totales',
         loadComponent: () => import('./features/totales/totales.component').then(m => m.TotalesComponent)
-      },
-      {
-        path: 'configuracion',
-        loadComponent: () => import('./features/configuracion/configuracion.component').then(m => m.ConfiguracionComponent)
       }
     ]
   },

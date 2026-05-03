@@ -1360,6 +1360,111 @@ input[type="date"].form-input:focus {
   line-height: 1.2;
 }
 
+.config-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 1rem;
+  overflow-y: auto;
+  background: rgb(2 8 23 / 0.58);
+  backdrop-filter: blur(10px);
+}
+
+.config-modal-panel {
+  width: min(100%, 54rem);
+  max-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
+  margin: auto 0;
+  overflow: hidden;
+  border: 1px solid rgb(var(--border) / 0.92);
+  border-radius: 1.15rem;
+  background: rgb(var(--background));
+  color: rgb(var(--foreground));
+  box-shadow: 0 28px 70px rgb(2 8 23 / 0.42);
+}
+
+.config-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0.95rem;
+  border-bottom: 1px solid rgb(var(--border) / 0.86);
+  background: linear-gradient(180deg, rgb(var(--card)), rgb(var(--card) / 0.92));
+}
+
+.config-modal-title-group {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 0.65rem;
+}
+
+.config-modal-title-group h2 {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.config-modal-icon,
+.config-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 999px;
+}
+
+.config-modal-icon {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgb(var(--primary) / 0.18);
+  background: rgb(var(--primary) / 0.12);
+  color: rgb(var(--primary));
+}
+
+.config-modal-close {
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid rgb(var(--border) / 0.9);
+  background: rgb(var(--muted) / 0.46);
+  color: rgb(var(--muted-foreground));
+  transition: all 0.2s ease;
+}
+
+.config-modal-close:hover {
+  color: rgb(var(--foreground));
+  border-color: rgb(var(--primary) / 0.22);
+  background: rgb(var(--muted) / 0.72);
+}
+
+.config-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.95rem;
+}
+
+@media (min-width: 640px) {
+  .config-modal-backdrop {
+    padding: 1.5rem;
+  }
+
+  .config-modal-panel {
+    max-height: calc(100vh - 3rem);
+  }
+
+  .config-modal-header,
+  .config-modal-body {
+    padding: 1.15rem;
+  }
+}
+
 @media (max-width: 380px) {
   .config-back-btn span {
     display: none;

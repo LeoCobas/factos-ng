@@ -3,6 +3,7 @@ import { Router, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
 import { ContribuyenteService } from '../core/services/contribuyente.service';
 import { ThemeService } from '../core/services/theme.service';
+import { ConfiguracionComponent } from '../features/configuracion/configuracion.component';
 
 @Component({
   selector: 'app-main-layout',
@@ -46,7 +47,7 @@ import { ThemeService } from '../core/services/theme.service';
                     <div class="contribuyente-badge">
                       <button
                         type="button"
-                        (click)="irAConfiguracionContribuyente()"
+                        (click)="abrirConfiguracionDesdeContribuyente()"
                         class="contribuyente-badge__main"
                       >
                         <span class="contribuyente-badge__icon">
@@ -82,18 +83,19 @@ import { ThemeService } from '../core/services/theme.service';
                 </div>
               }
 
-              @if (!isConfiguracionRoute()) {
-                <button
-                  (click)="navigate('/configuracion')"
-                  class="header-btn header-btn-idle"
-                >
-                  <svg class="h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                    <circle cx="12" cy="12" r="4"/>
-                  </svg>
-                  <span class="truncate">Configuraci&oacute;n</span>
-                </button>
-              }
+              <button
+                type="button"
+                (click)="abrirConfiguracion()"
+                class="header-btn header-btn-idle"
+                [attr.aria-expanded]="mostrarConfiguracion()"
+                aria-haspopup="dialog"
+              >
+                <svg class="h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                  <circle cx="12" cy="12" r="4"/>
+                </svg>
+                <span class="truncate">Configuraci&oacute;n</span>
+              </button>
             </div>
 
           </div>
@@ -109,7 +111,14 @@ import { ThemeService } from '../core/services/theme.service';
             }
 
             @if (!contribuyenteService.contribuyente()) {
-              <div class="flex items-center gap-2 rounded-xl border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-sm text-destructive cursor-pointer" (click)="navigate('/configuracion')">
+              <div
+                class="flex items-center gap-2 rounded-xl border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-sm text-destructive cursor-pointer"
+                role="button"
+                tabindex="0"
+                (click)="abrirConfiguracion()"
+                (keydown.enter)="abrirConfiguracion()"
+                (keydown.space)="abrirConfiguracion()"
+              >
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                 </svg>
@@ -118,79 +127,53 @@ import { ThemeService } from '../core/services/theme.service';
             }
           }
 
-          @if (isConfiguracionRoute()) {
-            <div class="config-context-bar">
-              <button
-                type="button"
-                (click)="volverDesdeConfiguracion()"
-                class="config-back-btn"
-                aria-label="Volver"
-                title="Volver"
-              >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M19 12H5"></path>
-                  <path d="M12 19l-7-7 7-7"></path>
-                </svg>
-                <span>Volver</span>
-              </button>
+          <div class="nav-strip">
+            <button
+              (click)="navigate('/facturar')"
+              class="nav-button-mobile nav-button-text min-w-0 flex-1"
+              [class.nav-btn-active]="isActive('/facturar')"
+              [class.nav-btn-idle]="!isActive('/facturar')"
+            >
+              <svg class="h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/>
+                <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/>
+                <path d="M12 17.5v-11"/>
+              </svg>
+              <span class="truncate">Facturar</span>
+            </button>
 
-              <div class="config-context-title">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                  <circle cx="12" cy="12" r="4"/>
-                </svg>
-                <span>Configuraci&oacute;n</span>
-              </div>
-            </div>
-          } @else {
-            <div class="nav-strip">
-              <button
-                (click)="navigate('/facturar')"
-                class="nav-button-mobile nav-button-text min-w-0 flex-1"
-                [class.nav-btn-active]="isActive('/facturar')"
-                [class.nav-btn-idle]="!isActive('/facturar')"
-              >
-                <svg class="h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/>
-                  <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/>
-                  <path d="M12 17.5v-11"/>
-                </svg>
-                <span class="truncate">Facturar</span>
-              </button>
+            <button
+              (click)="navigate('/listado')"
+              class="nav-button-mobile nav-button-text min-w-0 flex-1"
+              [class.nav-btn-active]="isActive('/listado')"
+              [class.nav-btn-idle]="!isActive('/listado')"
+            >
+              <svg class="h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12h.01"/>
+                <path d="M3 18h.01"/>
+                <path d="M3 6h.01"/>
+                <path d="M8 12h13"/>
+                <path d="M8 18h13"/>
+                <path d="M8 6h13"/>
+              </svg>
+              <span class="truncate">Listado</span>
+            </button>
 
-              <button
-                (click)="navigate('/listado')"
-                class="nav-button-mobile nav-button-text min-w-0 flex-1"
-                [class.nav-btn-active]="isActive('/listado')"
-                [class.nav-btn-idle]="!isActive('/listado')"
-              >
-                <svg class="h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 12h.01"/>
-                  <path d="M3 18h.01"/>
-                  <path d="M3 6h.01"/>
-                  <path d="M8 12h13"/>
-                  <path d="M8 18h13"/>
-                  <path d="M8 6h13"/>
-                </svg>
-                <span class="truncate">Listado</span>
-              </button>
-
-              <button
-                (click)="navigate('/totales')"
-                class="nav-button-mobile nav-button-text min-w-0 flex-1"
-                [class.nav-btn-active]="isActive('/totales')"
-                [class.nav-btn-idle]="!isActive('/totales')"
-              >
-                <svg class="h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 3v16a2 2 0 0 0 2 2h16"/>
-                  <path d="M18 17V9"/>
-                  <path d="M13 17V5"/>
-                  <path d="M8 17v-3"/>
-                </svg>
-                <span class="truncate">Totales</span>
-              </button>
-            </div>
-          }
+            <button
+              (click)="navigate('/totales')"
+              class="nav-button-mobile nav-button-text min-w-0 flex-1"
+              [class.nav-btn-active]="isActive('/totales')"
+              [class.nav-btn-idle]="!isActive('/totales')"
+            >
+              <svg class="h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 3v16a2 2 0 0 0 2 2h16"/>
+                <path d="M18 17V9"/>
+                <path d="M13 17V5"/>
+                <path d="M8 17v-3"/>
+              </svg>
+              <span class="truncate">Totales</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -199,9 +182,53 @@ import { ThemeService } from '../core/services/theme.service';
           <router-outlet></router-outlet>
         </div>
       </main>
+
+      @if (mostrarConfiguracion()) {
+        <div
+          class="config-modal-backdrop"
+          role="presentation"
+          (click)="cerrarConfiguracion()"
+        >
+          <section
+            class="config-modal-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="config-modal-title"
+            (click)="$event.stopPropagation()"
+          >
+            <header class="config-modal-header">
+              <div class="config-modal-title-group">
+                <span class="config-modal-icon" aria-hidden="true">
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    <circle cx="12" cy="12" r="4"/>
+                  </svg>
+                </span>
+                <h2 id="config-modal-title">Configuraci&oacute;n</h2>
+              </div>
+              <button
+                type="button"
+                (click)="cerrarConfiguracion()"
+                class="config-modal-close"
+                aria-label="Cerrar configuracion"
+                title="Cerrar"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 6 6 18"></path>
+                  <path d="m6 6 12 12"></path>
+                </svg>
+              </button>
+            </header>
+
+            <div class="config-modal-body">
+              <app-configuracion />
+            </div>
+          </section>
+        </div>
+      }
     </div>
   `,
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, ConfiguracionComponent],
 })
 export class MainLayoutComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
@@ -212,9 +239,9 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   readonly logoSrc = computed(() => (this.themeService.isDark() ? '/logob.png' : '/logo.png'));
   readonly mostrarContribuyentePreview = signal(false);
+  readonly mostrarConfiguracion = signal(false);
 
   private contribuyentePreviewTimer: ReturnType<typeof setTimeout> | null = null;
-  private ultimoWorkspacePath = '/facturar';
 
   async ngOnInit() {
     await this.contribuyenteService.cargarContribuyente();
@@ -236,28 +263,22 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     this.ocultarPreviewContribuyente();
   }
 
+  @HostListener('document:keydown.escape')
+  onDocumentEscape(): void {
+    this.cerrarConfiguracion();
+    this.ocultarPreviewContribuyente();
+  }
+
   ngOnDestroy(): void {
     this.clearContribuyentePreviewTimer();
   }
 
   navigate(path: string) {
-    if (path === '/configuracion' && !this.isConfiguracionRoute()) {
-      this.ultimoWorkspacePath = this.router.url;
-    }
-
     this.router.navigate([path]);
   }
 
   isActive(path: string): boolean {
     return this.router.url === path;
-  }
-
-  isConfiguracionRoute(): boolean {
-    return this.router.url.startsWith('/configuracion');
-  }
-
-  volverDesdeConfiguracion(): void {
-    this.navigate(this.ultimoWorkspacePath);
   }
 
   formatCuit(cuit: string): string {
@@ -274,9 +295,18 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     this.mostrarPreviewContribuyente();
   }
 
-  irAConfiguracionContribuyente(): void {
+  abrirConfiguracionDesdeContribuyente(): void {
     this.ocultarPreviewContribuyente();
-    this.navigate('/configuracion');
+    this.abrirConfiguracion();
+  }
+
+  abrirConfiguracion(): void {
+    this.ocultarPreviewContribuyente();
+    this.mostrarConfiguracion.set(true);
+  }
+
+  cerrarConfiguracion(): void {
+    this.mostrarConfiguracion.set(false);
   }
 
   private mostrarPreviewContribuyente(): void {
