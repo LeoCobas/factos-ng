@@ -66,9 +66,10 @@ CREATE TABLE comprobantes (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_comprobantes_contribuyente_id ON comprobantes(contribuyente_id);
-CREATE INDEX idx_comprobantes_fecha ON comprobantes(fecha);
-CREATE INDEX idx_comprobantes_contribuyente_fecha ON comprobantes(contribuyente_id, fecha);
+CREATE INDEX idx_comprobantes_contribuyente_created_at_desc
+  ON comprobantes(contribuyente_id, created_at DESC);
+CREATE INDEX idx_comprobantes_contribuyente_fecha_created_at_desc
+  ON comprobantes(contribuyente_id, fecha DESC, created_at DESC);
 CREATE INDEX idx_comprobantes_asociado ON comprobantes(comprobante_asociado_id);
 
 -- Cache operativa para precalentar FECompUltimoAutorizado/getLastVoucher.
