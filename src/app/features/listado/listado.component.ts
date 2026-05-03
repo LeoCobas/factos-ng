@@ -7,7 +7,11 @@ import { ComprobantesService } from '../../core/services/comprobantes.service';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import { FacturacionService } from '../../core/services/facturacion.service';
 import { PdfService } from '../../core/services/pdf.service';
-import { Comprobante } from '../../core/types/database.types';
+import {
+  ComprobanteListadoItem,
+  NotaCreditoEmitida,
+  ResumenComprobantesPorFecha,
+} from '../../core/types/comprobantes.types';
 import { PdfComprobanteData } from '../../core/types/pdf.types';
 import {
   getFriendlyNetworkErrorMessage,
@@ -26,41 +30,7 @@ import {
 const PAGE_INITIAL_SIZE = 10;
 const PAGE_MORE_SIZE = 10;
 
-interface Factura {
-  id: string;
-  numero_factura: string;
-  fecha: string;
-  monto: number;
-  estado: 'emitida' | 'anulada';
-  cae?: string;
-  vencimiento_cae?: string;
-  tipo_comprobante: string;
-  pdf_url?: string;
-  concepto?: string;
-  punto_venta?: number;
-  cliente_cuit?: string;
-  cliente_nombre?: string;
-  cliente_domicilio?: string;
-  cliente_condicion_iva?: string;
-  cliente_doc_tipo?: number;
-  cliente_doc_nro?: number;
-  created_at?: string;
-  updated_at?: string;
-  factura_anulada?: string;
-  comprobante_asociado_id?: string;
-  nota_credito_anuladora?: string;
-}
-
-interface NotaCreditoEmitida {
-  numero?: string;
-  cae?: string;
-  vencimiento_cae?: string;
-  pdf_url?: string;
-  monto: number;
-  facturaOriginal: string;
-  tipo_comprobante?: string;
-  notaCredito?: Comprobante;
-}
+type Factura = ComprobanteListadoItem;
 
 interface PdfFacturaLike {
   numero_comprobante: string;
@@ -70,11 +40,6 @@ interface PdfFacturaLike {
   fecha: string;
   cae?: string | null;
   vencimiento_cae?: string | null;
-}
-
-interface ResumenDia {
-  cantidad: number;
-  total: number;
 }
 
 @Component({
@@ -165,7 +130,7 @@ interface ResumenDia {
             ></div>
             <p class="text-muted-foreground mt-4">Cargando facturas...</p>
           </div>
-        } @else if (facturasFiltradas().length === 0) {
+        } @else if (facturas().length === 0) {
           <div class="text-center py-8">
             <svg
               class="w-12 h-12 text-muted-foreground mx-auto mb-4"
@@ -184,7 +149,7 @@ interface ResumenDia {
           </div>
         } @else {
           <div class="space-y-2">
-            @for (factura of facturasFiltradas(); track factura.id) {
+            @for (factura of facturas(); track factura.id) {
               <div
                 class="border border-border rounded-lg overflow-hidden transition-all duration-200"
                 [class]="obtenerClaseContenedorFactura(factura)"
@@ -592,7 +557,7 @@ export class ListadoComponent {
   accionesSecundariasFacturaId = signal<string | null>(null);
   anulandoFacturaId = signal<string | null>(null);
   notaCreditoEmitida = signal<NotaCreditoEmitida | null>(null);
-  resumenDia = signal<ResumenDia | null>(null);
+  resumenDia = signal<ResumenComprobantesPorFecha | null>(null);
   mensajeCarga = signal<string | null>(null);
   mensajeAccion = signal<string | null>(null);
   mensajeAccionTipo = signal<'success' | 'warning' | 'error'>('success');
@@ -634,28 +599,6 @@ export class ListadoComponent {
   readonly mensajeEstadoVacio = computed(() =>
     this.modoFechaActivo() ? 'No hay facturas para esta fecha' : 'Todavía no hay facturas emitidas',
   );
-
-  readonly facturasFiltradas = computed(() =>
-    this.facturas().sort((a, b) => {
-      if (a.created_at && b.created_at) {
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      }
-
-      return (
-        this.extraerNumeroFactura(b.numero_factura) - this.extraerNumeroFactura(a.numero_factura)
-      );
-    }),
-  );
-
-  readonly mapaFacturasAnuladas = computed(() => {
-    const mapa = new Map<string, string>();
-    this.facturas().forEach((factura) => {
-      if (this.esNotaCredito(factura) && factura.factura_anulada) {
-        mapa.set(factura.factura_anulada, this.obtenerNumeroSinCeros(factura.numero_factura));
-      }
-    });
-    return mapa;
-  });
 
   readonly notaCreditoPanelTitle = computed(() => {
     const notaCredito = this.notaCreditoEmitida();
@@ -1064,15 +1007,6 @@ export class ListadoComponent {
     await this.cargarFacturasListado({ reset: true });
   }
 
-  extraerNumeroFactura(numeroCompleto: string): number {
-    if (numeroCompleto.includes('-')) {
-      const partes = numeroCompleto.split('-');
-      return parseInt(partes[partes.length - 1], 10);
-    }
-
-    return parseInt(numeroCompleto.replace(/^0+/, '') || '0', 10);
-  }
-
   esNotaCredito(factura: Factura): boolean {
     return factura.tipo_comprobante.includes('NOTA DE CREDITO');
   }
@@ -1088,7 +1022,7 @@ export class ListadoComponent {
       return this.obtenerNumeroSinCeros(factura.nota_credito_anuladora);
     }
 
-    return this.mapaFacturasAnuladas().get(factura.numero_factura) || null;
+    return null;
   }
 
   private async cargarResumenDia(contribuyenteId: string, fecha: string): Promise<void> {

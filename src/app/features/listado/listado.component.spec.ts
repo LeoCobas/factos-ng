@@ -621,13 +621,49 @@ describe('ListadoComponent', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Total del día');
   });
 
-  it('no renderiza el boton de ultimo dia facturado', () => {
+  it('preserva el orden paginado que entrega ComprobantesService', () => {
     const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+
+    component.facturas.set([
+      crearFactura({
+        id: 'factura-2',
+        numero_factura: '0001-00000002',
+        created_at: '2026-04-20T10:00:00Z',
+      }),
+      crearFactura({
+        id: 'factura-1',
+        numero_factura: '0001-00000099',
+        created_at: '2026-04-19T10:00:00Z',
+      }),
+    ]);
+    fixture.detectChanges();
+
+    const invoiceNumbers = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll(
+        '.pl-1.text-\\[0\\.95rem\\].sm\\:text-sm',
+      ),
+    ).map((element) => element.textContent?.trim());
+
+    expect(invoiceNumbers).toEqual(['2', '99']);
+  });
+
+  it('muestra la nota de credito anuladora informada por ComprobantesService', () => {
+    const fixture = TestBed.createComponent(ListadoComponent);
+    const component = fixture.componentInstance;
+
+    component.facturas.set([
+      crearFactura({
+        estado: 'anulada',
+        nota_credito_anuladora: '0001-00000123',
+      }),
+    ]);
+    component.facturaExpandida.set('factura-1');
 
     fixture.detectChanges();
 
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
-      'Ir al último día facturado',
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Anulada por nota de cr\u00e9dito: 123',
     );
   });
 });
