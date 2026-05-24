@@ -1,4 +1,4 @@
-﻿import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -149,7 +149,13 @@ interface PdfFacturaLike {
           </div>
         } @else {
           <div class="space-y-2">
-            @for (factura of facturas(); track factura.id) {
+            @for (factura of facturas(); track factura.id; let idx = $index) {
+              @if (!modoFechaActivo() && (idx === 0 || facturas()[idx - 1].fecha !== factura.fecha)) {
+                <div class="text-[0.78rem] uppercase tracking-wider font-semibold text-muted-foreground pt-3 pb-0 px-1 first:pt-0">
+                  {{ formatearFechaDivider(factura.fecha) }}
+                </div>
+              }
+
               <div
                 class="border border-border rounded-lg overflow-hidden transition-all duration-200"
                 [class]="obtenerClaseContenedorFactura(factura)"
@@ -164,28 +170,28 @@ interface PdfFacturaLike {
                   tabindex="0"
                 >
                   <div
-                    class="grid grid-cols-[3rem_3rem_minmax(0,1fr)_6.4rem_1rem] items-center gap-x-1.5 sm:grid-cols-[3.2rem_3.4rem_minmax(0,1fr)_7.2rem_1rem] sm:gap-x-3"
+                    class="grid grid-cols-[3.2rem_3rem_minmax(0,1fr)_7rem_1rem] items-center gap-x-1.5 sm:grid-cols-[3.5rem_3.4rem_minmax(0,1fr)_8.2rem_1rem] sm:gap-x-3"
                   >
                     <div
-                      class="text-[0.95rem] sm:text-sm font-medium text-foreground min-w-0 justify-self-start text-left"
+                      class="text-[1.05rem] sm:text-[1.1rem] font-semibold text-foreground min-w-0 justify-self-start text-left"
                     >
                       {{ obtenerTipoComprobanteVista(factura) }}
                     </div>
                     <div
-                      class="pl-1 text-[0.95rem] sm:text-sm font-medium min-w-0 justify-self-end text-right text-foreground sm:pl-1.5"
+                      class="pl-1 text-[1.05rem] sm:text-[1.1rem] font-medium min-w-0 justify-self-end text-right text-foreground sm:pl-1.5"
                     >
                       {{ obtenerNumeroSinCeros(factura.numero_factura) }}
                     </div>
                     <div class="min-w-0 w-full justify-self-stretch text-center">
                       <span
-                        class="px-1.5 py-1 rounded text-[0.78rem] sm:text-xs font-medium"
+                        class="px-2 py-1 rounded text-[0.82rem] sm:text-[0.85rem] font-semibold"
                         [class]="obtenerClaseEstado(factura.estado)"
                       >
                         {{ obtenerTextoEstado(factura.estado) }}
                       </span>
                     </div>
                     <div
-                      class="text-right font-semibold text-[0.95rem] sm:text-sm min-w-0 justify-self-end"
+                      class="text-right font-bold text-[1.05rem] sm:text-[1.1rem] min-w-0 justify-self-end"
                       [class]="obtenerClaseMonto(factura)"
                     >
                       {{
@@ -1120,6 +1126,12 @@ export class ListadoComponent {
       currency: 'ARS',
       minimumFractionDigits: 2,
     }).format(monto);
+  }
+
+  formatearFechaDivider(fechaStr: string): string {
+    const fecha = new Date(`${fechaStr}T00:00:00`);
+    const formatted = format(fecha, "EEEE d 'de' MMMM", { locale: es });
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   }
 
   async anularFactura(factura: Factura, event?: Event): Promise<void> {
