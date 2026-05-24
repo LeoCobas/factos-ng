@@ -34,13 +34,13 @@ function convertirGrupo(n: number): string {
 
   // 16-19
   if (resto >= 16 && resto <= 19) {
-    resultado += 'DIECI' + UNIDADES[resto - 10].toLowerCase();
+    resultado += 'DIECI' + UNIDADES[resto - 10];
     return resultado.trim();
   }
 
   // 21-29
   if (resto >= 21 && resto <= 29) {
-    resultado += 'VEINTI' + UNIDADES[resto - 20].toLowerCase();
+    resultado += 'VEINTI' + UNIDADES[resto - 20];
     return resultado.trim();
   }
 
