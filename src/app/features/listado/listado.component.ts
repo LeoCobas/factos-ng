@@ -72,7 +72,7 @@ interface PdfFacturaLike {
       </div>
 
       <div class="card-surface px-2.5 py-3 sm:p-4">
-        <h3 class="form-label mb-4">{{ nombreFechaSeleccionada() }}</h3>
+        <h3 class="text-lg sm:text-xl font-bold text-foreground mb-2">{{ nombreFechaSeleccionada() }}</h3>
 
         @if (mensajeCarga()) {
           <div
@@ -148,10 +148,10 @@ interface PdfFacturaLike {
             <p class="text-muted-foreground">{{ mensajeEstadoVacio() }}</p>
           </div>
         } @else {
-          <div class="space-y-2">
+          <div class="space-y-2 mt-5">
             @for (factura of facturas(); track factura.id; let idx = $index) {
               @if (!modoFechaActivo() && (idx === 0 || facturas()[idx - 1].fecha !== factura.fecha)) {
-                <div class="text-[0.78rem] uppercase tracking-wider font-semibold text-muted-foreground pt-3 pb-0 px-1 first:pt-0">
+                <div class="text-[0.78rem] uppercase tracking-wider font-semibold text-muted-foreground pt-0.5 pb-0 px-1 first:pt-0">
                   {{ formatearFechaDivider(factura.fecha) }}
                 </div>
               }
