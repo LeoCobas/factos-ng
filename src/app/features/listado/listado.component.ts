@@ -546,6 +546,7 @@ export class ListadoComponent {
   private readonly pdfService = inject(PdfService);
   private readonly facturacionService = inject(FacturacionService);
   private readonly contribuyenteService = inject(ContribuyenteService);
+  private cargaId = 0;
 
   readonly accionesComprobante: ComprobanteResultadoAction[] = [
     { id: 'ver', label: 'Ver', title: 'Ver comprobante' },
@@ -940,6 +941,8 @@ export class ListadoComponent {
     const limit = append ? PAGE_MORE_SIZE : PAGE_INITIAL_SIZE;
     const fecha = this.fechaSeleccionada() ?? undefined;
 
+    const currentCargaId = ++this.cargaId;
+
     if (reset) {
       this.facturas.set([]);
       this.hayMasFacturas.set(false);
@@ -966,9 +969,16 @@ export class ListadoComponent {
         !append && fecha ? this.cargarResumenDia(contribuyente.id, fecha) : Promise.resolve(),
       ]);
 
+      if (currentCargaId !== this.cargaId) {
+        return;
+      }
+
       this.facturas.set(append ? [...this.facturas(), ...listado.items] : listado.items);
       this.hayMasFacturas.set(listado.hasMore);
     } catch (error) {
+      if (currentCargaId !== this.cargaId) {
+        return;
+      }
       console.error('Error inesperado al cargar comprobantes:', error);
       if (!append) {
         this.facturas.set([]);
@@ -985,7 +995,7 @@ export class ListadoComponent {
         ),
       );
     } finally {
-      if (!silent) {
+      if (currentCargaId === this.cargaId && !silent) {
         if (append) {
           this.cargandoMas.set(false);
         } else {
@@ -1032,11 +1042,16 @@ export class ListadoComponent {
   }
 
   private async cargarResumenDia(contribuyenteId: string, fecha: string): Promise<void> {
-    const resumen = await this.comprobantesService.cargarResumenComprobantesPorFecha(
-      contribuyenteId,
-      fecha,
-    );
-    this.resumenDia.set(resumen);
+    try {
+      const resumen = await this.comprobantesService.cargarResumenComprobantesPorFecha(
+        contribuyenteId,
+        fecha,
+      );
+      this.resumenDia.set(resumen);
+    } catch (error) {
+      console.error('Error al cargar el resumen del día:', error);
+      this.resumenDia.set(null);
+    }
   }
 
   private clearMensajeAccion(): void {

@@ -188,10 +188,8 @@ describe('ListadoComponent', () => {
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const rowGrid = compiled.querySelector(
-      '.grid.grid-cols-\\[3rem_3rem_minmax\\(0\\2c 1fr\\)_6\\.4rem_1rem\\]',
-    ) as HTMLElement | null;
-    const amountCell = compiled.querySelector('.justify-self-end.text-right') as HTMLElement | null;
+    const rowGrid = compiled.querySelector('div[role="button"] > div.grid') as HTMLElement | null;
+    const amountCell = compiled.querySelector('div[role="button"] > div.grid > div:nth-child(4)') as HTMLElement | null;
 
     expect(rowGrid).not.toBeNull();
     expect(amountCell).not.toBeNull();
@@ -641,7 +639,7 @@ describe('ListadoComponent', () => {
 
     const invoiceNumbers = Array.from(
       (fixture.nativeElement as HTMLElement).querySelectorAll(
-        '.pl-1.text-\\[0\\.95rem\\].sm\\:text-sm',
+        'div[role="button"] > div.grid > div:nth-child(2)',
       ),
     ).map((element) => element.textContent?.trim());
 

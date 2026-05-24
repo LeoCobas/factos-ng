@@ -281,7 +281,7 @@ Deno.serve(async (req: Request) => {
     });
     const persistTicket = () =>
       persistTicketFromFile({
-        db,
+        db: supabase,
         cuit: cuitEmisor,
         production,
       });
