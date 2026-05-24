@@ -62,4 +62,38 @@ describe('FacturaEmitidaPanelComponent', () => {
     expect(compiled.textContent).not.toContain('Ver acciones');
     expect(compiled.textContent).not.toContain('Ocultar acciones');
   });
+
+  it('emite el evento ver al seleccionar la accion de ver', () => {
+    const spy = vi.spyOn(component.ver, 'emit');
+    component.onAction('ver');
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it('emite el evento compartir al seleccionar la accion de compartir', () => {
+    const spy = vi.spyOn(component.compartir, 'emit');
+    component.onAction('compartir');
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it('emite el evento descargar al seleccionar la accion de descargar', () => {
+    const spy = vi.spyOn(component.descargar, 'emit');
+    component.onAction('descargar');
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it('emite el evento imprimir al seleccionar la accion de imprimir', () => {
+    const spy = vi.spyOn(component.imprimir, 'emit');
+    component.onAction('imprimir');
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it('emite el evento volver al solicitar cerrar el panel', () => {
+    fixture.detectChanges();
+    const spy = vi.spyOn(component.volver, 'emit');
+    const compiled = fixture.nativeElement as HTMLElement;
+    const closeButton = compiled.querySelector('.receipt-result-panel__close') as HTMLButtonElement | null;
+    expect(closeButton).not.toBeNull();
+    closeButton?.click();
+    expect(spy).toHaveBeenCalled();
+  });
 });

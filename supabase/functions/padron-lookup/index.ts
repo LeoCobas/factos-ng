@@ -35,6 +35,7 @@ async function persistTicketFromFile(params: {
   db: any;
   cuit: number;
   production: boolean;
+  originalTicket?: any;
 }): Promise<void> {
   try {
     const filePath = getTicketFilePath(params.cuit, PADRON_SERVICE_NAME, params.production);
@@ -42,6 +43,10 @@ async function persistTicketFromFile(params: {
     const ticket = JSON.parse(fileData);
 
     if (!isStoredTicketValid(ticket)) return;
+
+    if (params.originalTicket && JSON.stringify(params.originalTicket) === JSON.stringify(ticket)) {
+      return;
+    }
 
     const { error } = await params.db.rpc('merge_arca_ticket_bucket', {
       p_bucket: 'padron',
@@ -284,6 +289,7 @@ Deno.serve(async (req: Request) => {
         db: supabase,
         cuit: cuitEmisor,
         production,
+        originalTicket: credentials || undefined,
       });
 
     try {

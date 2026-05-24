@@ -42,6 +42,7 @@ async function persistTicketFromFile(params: {
   supabase: any;
   cuit: number;
   production: boolean;
+  originalTicket?: any;
 }): Promise<void> {
   try {
     const filePath = getTicketFilePath(params.cuit, WSFE_SERVICE_NAME, params.production);
@@ -49,6 +50,10 @@ async function persistTicketFromFile(params: {
     const ticket = JSON.parse(fileData);
 
     if (!isStoredTicketValid(ticket)) return;
+
+    if (params.originalTicket && JSON.stringify(params.originalTicket) === JSON.stringify(ticket)) {
+      return;
+    }
 
     const { error } = await params.supabase.rpc('merge_arca_ticket_bucket', {
       p_bucket: 'wsfe',
@@ -471,6 +476,7 @@ async function getUserArcaInstance(req: Request) {
         supabase: supabaseUser,
         cuit,
         production,
+        originalTicket: credentials || undefined,
       }),
   };
 }

@@ -431,7 +431,8 @@ export class FacturarNuevoComponent implements OnDestroy {
 
     effect(() => {
       const tipoComprobante = this.tipoComprobanteResolution().tipo;
-      if (!this.rawMonto()) {
+      const contribuyente = this.contribuyenteService.contribuyente();
+      if (!contribuyente) {
         return;
       }
 
@@ -1180,10 +1181,6 @@ export class FacturarNuevoComponent implements OnDestroy {
     const formattedIntegerPart = Number(integerPart || '0').toLocaleString('es-AR');
 
     if (!hasDecimalSeparator) {
-      return formattedIntegerPart;
-    }
-
-    if (!decimalPart || /^0*$/.test(decimalPart)) {
       return formattedIntegerPart;
     }
 
