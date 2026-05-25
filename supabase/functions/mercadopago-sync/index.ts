@@ -354,6 +354,20 @@ function clampDate(paymentDateStr: string, actividad: string, lastEmittedDateStr
   return formatter.format(effectiveDate);
 }
 
+function getLocalDateStr(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(d);
+  } catch {
+    return dateStr.split('T')[0];
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -512,7 +526,7 @@ Deno.serve(async (req: Request) => {
 
     // Action: Process Batch
     if (action === 'process-batch') {
-      const { facturar, ignorar, payments_data } = await req.json();
+      const { facturar, ignorar, payments_data, combinar_por_dia } = await req.json();
 
       if (!Array.isArray(facturar) || !Array.isArray(ignorar)) {
         return new Response(JSON.stringify({ success: false, error: 'Datos de lote inválidos' }), {
@@ -605,13 +619,6 @@ Deno.serve(async (req: Request) => {
               throw new Error('Certificados ARCA no configurados en el perfil');
             }
 
-            // Sort by date ASC
-            const facturarSorted = [...facturar].sort((a, b) => {
-              const dateA = new Date(payments_data[a]?.date_created || 0).getTime();
-              const dateB = new Date(payments_data[b]?.date_created || 0).getTime();
-              return dateA - dateB;
-            });
-
             const cuitEmisor = parseInt(contribuyente.cuit, 10);
             const production = contribuyente.arca_production === true;
             const credentials = getValidStoredTicket(contribuyente.arca_ticket, 'wsfe');
@@ -640,34 +647,92 @@ Deno.serve(async (req: Request) => {
             const isFacturaC = tipoComprobante === 'FACTURA C';
             const ivaPct = Number(contribuyente.iva_porcentaje) || 21;
 
-            for (const paymentId of facturarSorted) {
-              const pData = payments_data[paymentId];
-              if (!pData) {
-                processedItems++;
-                failedItems++;
-                results.push({
-                  mp_payment_id: paymentId,
-                  status: 'fallido',
-                  error: 'Faltan metadatos del pago en el payload',
-                });
-                await db
-                  .from('mp_batch_jobs')
-                  .update({
-                    processed_items: processedItems,
-                    failed_items: failedItems,
-                    results,
-                  })
-                  .eq('id', job.id);
-                continue;
+            // Maximum amount allowed per invoice (AFIP limit)
+            const maxInvoiceAmount = parseFloat(contribuyente.monto_maximo_factura || '99999999');
+
+            // Sort payments by date ASC
+            const facturarSorted = [...facturar].sort((a, b) => {
+              const dateA = new Date(payments_data[a]?.date_created || 0).getTime();
+              const dateB = new Date(payments_data[b]?.date_created || 0).getTime();
+              return dateA - dateB;
+            });
+
+            // Struct for invoicing batches
+            interface InvoicingBatch {
+              dateStr: string;
+              paymentIds: string[];
+              amount: number;
+            }
+
+            const batches: InvoicingBatch[] = [];
+
+            if (combinar_por_dia) {
+              // Group payments by date
+              const groups: Record<string, string[]> = {};
+              for (const pid of facturarSorted) {
+                const pData = payments_data[pid];
+                if (!pData) continue;
+                const dateStr = getLocalDateStr(pData.date_created);
+                if (!groups[dateStr]) groups[dateStr] = [];
+                groups[dateStr].push(pid);
               }
 
+              // Build batches sequentially, respecting maxInvoiceAmount
+              for (const [dateStr, pids] of Object.entries(groups)) {
+                let currentBatchPids: string[] = [];
+                let currentBatchAmount = 0;
+
+                for (const pid of pids) {
+                  const pData = payments_data[pid];
+                  const amount = parseFloat(String(pData.transaction_amount));
+
+                  if (amount > maxInvoiceAmount) {
+                    // Finalize current active batch if it has items
+                    if (currentBatchPids.length > 0) {
+                      batches.push({ dateStr, paymentIds: currentBatchPids, amount: currentBatchAmount });
+                      currentBatchPids = [];
+                      currentBatchAmount = 0;
+                    }
+                    // This single payment exceeds limit, must be isolated and will be split in invoices later
+                    batches.push({ dateStr, paymentIds: [pid], amount });
+                  } else if (currentBatchAmount + amount > maxInvoiceAmount) {
+                    // Finalize current active batch
+                    batches.push({ dateStr, paymentIds: currentBatchPids, amount: currentBatchAmount });
+                    // Start new batch with current payment
+                    currentBatchPids = [pid];
+                    currentBatchAmount = amount;
+                  } else {
+                    currentBatchPids.push(pid);
+                    currentBatchAmount += amount;
+                  }
+                }
+
+                if (currentBatchPids.length > 0) {
+                  batches.push({ dateStr, paymentIds: currentBatchPids, amount: currentBatchAmount });
+                }
+              }
+            } else {
+              // Not combined: each payment is its own batch
+              for (const pid of facturarSorted) {
+                const pData = payments_data[pid];
+                if (!pData) continue;
+                batches.push({
+                  dateStr: getLocalDateStr(pData.date_created),
+                  paymentIds: [pid],
+                  amount: parseFloat(String(pData.transaction_amount)),
+                });
+              }
+            }
+
+            // Emit invoices sequentially for each batch
+            for (const batch of batches) {
               let itemSuccess = false;
               let itemErrorMsg = '';
-              let generatedComprobanteId: string | null = null;
-              let cbteNroFormatted = '';
+              const generatedComprobanteIds: string[] = [];
+              let lastCbteNroFormatted = '';
 
               try {
-                // Get last emitted invoice of this type to clamp date
+                // Determine invoice date clamped to AFIP rules
                 const { data: lastComprobante } = await db
                   .from('comprobantes')
                   .select('fecha')
@@ -678,14 +743,25 @@ Deno.serve(async (req: Request) => {
                   .maybeSingle();
 
                 const lastEmittedDateStr = lastComprobante?.fecha || undefined;
+                
+                // Use the batch dateStr, clamp to AFIP window
                 const invoiceDateStr = clampDate(
-                  pData.date_created,
+                  batch.dateStr + 'T12:00:00',
                   contribuyente.actividad || 'bienes',
                   lastEmittedDateStr
                 );
 
-                // Get last voucher number
-                const cachedLastNumber = await getCachedLastVoucher({
+                // Sub-invoices calculation (if batch.amount > maxInvoiceAmount, e.g. for a huge single payment)
+                const invoiceAmounts: number[] = [];
+                let remainingAmount = batch.amount;
+                while (remainingAmount > 0) {
+                  const amt = Math.min(remainingAmount, maxInvoiceAmount);
+                  invoiceAmounts.push(parseFloat(amt.toFixed(2)));
+                  remainingAmount -= amt;
+                }
+
+                // Get last voucher number cache
+                let cachedLastNumber = await getCachedLastVoucher({
                   supabase: db,
                   contribuyenteId: contribuyente.id,
                   puntoVenta: contribuyente.punto_venta,
@@ -693,9 +769,8 @@ Deno.serve(async (req: Request) => {
                   cbteTipo,
                 });
 
-                const lastNumber =
-                  cachedLastNumber ??
-                  (await fetchAndCacheLastVoucher({
+                if (cachedLastNumber === null) {
+                  cachedLastNumber = await fetchAndCacheLastVoucher({
                     arca,
                     persistTicket,
                     supabase: db,
@@ -703,178 +778,186 @@ Deno.serve(async (req: Request) => {
                     puntoVenta: contribuyente.punto_venta,
                     tipoComprobante,
                     cbteTipo,
-                  }));
-
-                let cbteNro = lastNumber + 1;
-
-                // Calculate Net and VAT
-                const montoTotal = parseFloat(String(pData.transaction_amount));
-                let impNeto: number;
-                let impIVA: number;
-                let iva: any[] | undefined;
-
-                if (isFacturaC) {
-                  impNeto = montoTotal;
-                  impIVA = 0;
-                  iva = undefined;
-                } else {
-                  impNeto = parseFloat((montoTotal / (1 + ivaPct / 100)).toFixed(2));
-                  impIVA = parseFloat((montoTotal - impNeto).toFixed(2));
-                  iva = [{ Id: getIvaId(ivaPct), BaseImp: impNeto, Importe: impIVA }];
+                  });
                 }
 
-                const fechaNum = parseInt(invoiceDateStr.replace(/-/g, ''), 10);
-                const conceptoNum = contribuyente.concepto === 'servicios' ? 2 : 1;
+                let nextCbteNro = cachedLastNumber + 1;
 
-                const voucherPayload: any = {
-                  CantReg: 1,
-                  PtoVta: contribuyente.punto_venta,
-                  CbteTipo: cbteTipo,
-                  Concepto: conceptoNum,
-                  DocTipo: 99, // Consumidor Final
-                  DocNro: 0,
-                  CondicionIVAReceptorId: 5, // Consumidor Final
-                  CbteDesde: cbteNro,
-                  CbteHasta: cbteNro,
-                  CbteFch: fechaNum,
-                  ImpTotal: montoTotal,
-                  ImpTotConc: 0,
-                  ImpNeto: impNeto,
-                  ImpOpEx: 0,
-                  ImpIVA: impIVA,
-                  ImpTrib: 0,
-                  MonId: 'PES',
-                  MonCotiz: 1,
-                };
+                for (const montoTotal of invoiceAmounts) {
+                  let impNeto: number;
+                  let impIVA: number;
+                  let iva: any[] | undefined;
 
-                if (iva) {
-                  voucherPayload.Iva = iva;
-                }
-
-                if (conceptoNum >= 2) {
-                  voucherPayload.FchServDesde = fechaNum;
-                  voucherPayload.FchServHasta = fechaNum;
-                  voucherPayload.FchVtoPago = fechaNum;
-                }
-
-                let parsed = extractWsfeResult(
-                  await arca.electronicBillingService.createVoucher(voucherPayload)
-                );
-                await persistTicket();
-
-                // Handle numbering rejection retry
-                if (parsed.resultado !== 'A') {
-                  const rejected = getArcaRejectionError(parsed);
-
-                  if (isNumberingRejection(parsed, rejected.errorMessage)) {
-                    const refreshedLastNumber = await fetchAndCacheLastVoucher({
-                      arca,
-                      persistTicket,
-                      supabase: db,
-                      contribuyenteId: contribuyente.id,
-                      puntoVenta: contribuyente.punto_venta,
-                      tipoComprobante,
-                      cbteTipo,
-                    });
-                    cbteNro = refreshedLastNumber + 1;
-                    voucherPayload.CbteDesde = cbteNro;
-                    voucherPayload.CbteHasta = cbteNro;
-
-                    parsed = extractWsfeResult(
-                      await arca.electronicBillingService.createVoucher(voucherPayload)
-                    );
-                    await persistTicket();
+                  if (isFacturaC) {
+                    impNeto = montoTotal;
+                    impIVA = 0;
+                    iva = undefined;
+                  } else {
+                    impNeto = parseFloat((montoTotal / (1 + ivaPct / 100)).toFixed(2));
+                    impIVA = parseFloat((montoTotal - impNeto).toFixed(2));
+                    iva = [{ Id: getIvaId(ivaPct), BaseImp: impNeto, Importe: impIVA }];
                   }
+
+                  const fechaNum = parseInt(invoiceDateStr.replace(/-/g, ''), 10);
+                  const conceptoNum = contribuyente.concepto === 'servicios' ? 2 : 1;
+
+                  const voucherPayload: any = {
+                    CantReg: 1,
+                    PtoVta: contribuyente.punto_venta,
+                    CbteTipo: cbteTipo,
+                    Concepto: conceptoNum,
+                    DocTipo: 99, // Consumidor Final
+                    DocNro: 0,
+                    CondicionIVAReceptorId: 5, // Consumidor Final
+                    CbteDesde: nextCbteNro,
+                    CbteHasta: nextCbteNro,
+                    CbteFch: fechaNum,
+                    ImpTotal: montoTotal,
+                    ImpTotConc: 0,
+                    ImpNeto: impNeto,
+                    ImpOpEx: 0,
+                    ImpIVA: impIVA,
+                    ImpTrib: 0,
+                    MonId: 'PES',
+                    MonCotiz: 1,
+                  };
+
+                  if (iva) {
+                    voucherPayload.Iva = iva;
+                  }
+
+                  if (conceptoNum >= 2) {
+                    voucherPayload.FchServDesde = fechaNum;
+                    voucherPayload.FchServHasta = fechaNum;
+                    voucherPayload.FchVtoPago = fechaNum;
+                  }
+
+                  let parsed = extractWsfeResult(
+                    await arca.electronicBillingService.createVoucher(voucherPayload)
+                  );
+                  await persistTicket();
+
+                  // Handle numbering rejections
+                  if (parsed.resultado !== 'A') {
+                    const rejected = getArcaRejectionError(parsed);
+                    if (isNumberingRejection(parsed, rejected.errorMessage)) {
+                      const refreshedLastNumber = await fetchAndCacheLastVoucher({
+                        arca,
+                        persistTicket,
+                        supabase: db,
+                        contribuyenteId: contribuyente.id,
+                        puntoVenta: contribuyente.punto_venta,
+                        tipoComprobante,
+                        cbteTipo,
+                      });
+                      nextCbteNro = refreshedLastNumber + 1;
+                      voucherPayload.CbteDesde = nextCbteNro;
+                      voucherPayload.CbteHasta = nextCbteNro;
+
+                      parsed = extractWsfeResult(
+                        await arca.electronicBillingService.createVoucher(voucherPayload)
+                      );
+                      await persistTicket();
+                    }
+                  }
+
+                  if (parsed.resultado !== 'A') {
+                    const rejected = getArcaRejectionError(parsed);
+                    throw new Error(rejected.errorMessage);
+                  }
+
+                  // Update last voucher cache
+                  const actualCbteNro = Number(parsed.cbteDesde || nextCbteNro);
+                  await upsertLastVoucherCache({
+                    supabase: db,
+                    contribuyenteId: contribuyente.id,
+                    puntoVenta: contribuyente.punto_venta,
+                    tipoComprobante,
+                    cbteTipo,
+                    ultimoComprobante: actualCbteNro,
+                  });
+
+                  lastCbteNroFormatted = formatNumeroComprobante(contribuyente.punto_venta, actualCbteNro);
+
+                  // Create description: use contribuyente's default description
+                  const invoiceDescription = contribuyente.concepto || 'Venta de servicios';
+
+                  // Insert into comprobantes
+                  const { data: comprobante, error: compErr } = await db
+                    .from('comprobantes')
+                    .insert({
+                      contribuyente_id: contribuyente.id,
+                      tipo_comprobante: tipoComprobante,
+                      numero_comprobante: lastCbteNroFormatted,
+                      punto_venta: contribuyente.punto_venta,
+                      fecha: invoiceDateStr,
+                      total: montoTotal,
+                      cae: parsed.cae,
+                      vencimiento_cae: parsed.caeFchVto,
+                      estado: 'emitida',
+                      concepto: invoiceDescription,
+                      pdf_url: null,
+                      cliente_cuit: null,
+                      cliente_doc_tipo: 99,
+                      cliente_doc_nro: 0,
+                      cliente_nombre: 'Consumidor Final',
+                      cliente_domicilio: null,
+                      cliente_condicion_iva: 'Consumidor Final',
+                    })
+                    .select()
+                    .single();
+
+                  if (compErr) {
+                    throw new Error(`Error al persistir comprobante: ${compErr.message}`);
+                  }
+
+                  generatedComprobanteIds.push(comprobante.id);
+                  nextCbteNro = actualCbteNro + 1;
                 }
 
-                if (parsed.resultado !== 'A') {
-                  const rejected = getArcaRejectionError(parsed);
-                  throw new Error(rejected.errorMessage);
-                }
-
-                // Update last voucher cache
-                const actualCbteNro = Number(parsed.cbteDesde || cbteNro);
-                await upsertLastVoucherCache({
-                  supabase: db,
-                  contribuyenteId: contribuyente.id,
-                  puntoVenta: contribuyente.punto_venta,
-                  tipoComprobante,
-                  cbteTipo,
-                  ultimoComprobante: actualCbteNro,
-                });
-
-                cbteNroFormatted = formatNumeroComprobante(contribuyente.punto_venta, actualCbteNro);
-
-                // Insert into comprobantes
-                const { data: comprobante, error: compErr } = await db
-                  .from('comprobantes')
-                  .insert({
-                    contribuyente_id: contribuyente.id,
-                    tipo_comprobante: tipoComprobante,
-                    numero_comprobante: cbteNroFormatted,
-                    punto_venta: contribuyente.punto_venta,
-                    fecha: invoiceDateStr,
-                    total: montoTotal,
-                    cae: parsed.cae,
-                    vencimiento_cae: parsed.caeFchVto,
-                    estado: 'emitida',
-                    concepto: contribuyente.concepto || 'bienes',
-                    pdf_url: null,
-                    cliente_cuit: null,
-                    cliente_doc_tipo: 99,
-                    cliente_doc_nro: 0,
-                    cliente_nombre: pData.payer_name || 'Consumidor Final',
-                    cliente_domicilio: null,
-                    cliente_condicion_iva: 'Consumidor Final',
-                  })
-                  .select()
-                  .single();
-
-                if (compErr) {
-                  throw new Error(`Error al persistir comprobante en base de datos: ${compErr.message}`);
-                }
-
-                generatedComprobanteId = comprobante.id;
                 itemSuccess = true;
               } catch (itemErr: any) {
                 itemErrorMsg = itemErr.message || 'Error desconocido al emitir comprobante';
               }
 
-              // Update mp_conciliaciones row
-              const conciliacionRow = {
-                contribuyente_id: contribuyente.id,
-                mp_payment_id: paymentId,
-                status: itemSuccess ? 'facturado' : 'fallido',
-                mp_date_created: pData.date_created,
-                mp_transaction_amount: pData.transaction_amount,
-                mp_description: pData.description || null,
-                mp_payer_name: pData.payer_name || null,
-                comprobante_id: generatedComprobanteId,
-                error_message: itemSuccess ? null : itemErrorMsg,
-                batch_job_id: job.id,
-              };
+              // Update mp_conciliaciones rows for all payment IDs in this batch
+              for (const paymentId of batch.paymentIds) {
+                const pData = payments_data[paymentId] || {};
+                const conciliacionRow = {
+                  contribuyente_id: contribuyente.id,
+                  mp_payment_id: paymentId,
+                  status: itemSuccess ? 'facturado' : 'fallido',
+                  mp_date_created: pData.date_created || new Date().toISOString(),
+                  mp_transaction_amount: pData.transaction_amount || 0,
+                  mp_description: pData.description || null,
+                  mp_payer_name: pData.payer_name || 'Consumidor Final',
+                  comprobante_id: itemSuccess ? generatedComprobanteIds[0] : null, // Link to first generated invoice
+                  error_message: itemSuccess ? null : itemErrorMsg,
+                  batch_job_id: job.id,
+                };
 
-              const { error: concErr } = await db.from('mp_conciliaciones').upsert(conciliacionRow, {
-                onConflict: 'contribuyente_id,mp_payment_id',
-              });
+                const { error: concErr } = await db.from('mp_conciliaciones').upsert(conciliacionRow, {
+                  onConflict: 'contribuyente_id,mp_payment_id',
+                });
 
-              if (concErr) {
-                console.error('Error insertando conciliación:', concErr.message);
+                if (concErr) {
+                  console.error('Error insertando conciliación:', concErr.message);
+                }
+
+                results.push({
+                  mp_payment_id: paymentId,
+                  status: itemSuccess ? 'facturado' : 'fallido',
+                  error: itemSuccess ? undefined : itemErrorMsg,
+                  comprobante_numero: itemSuccess ? lastCbteNroFormatted : undefined,
+                });
               }
 
-              processedItems++;
+              processedItems += batch.paymentIds.length;
               if (itemSuccess) {
-                successfulItems++;
+                successfulItems += batch.paymentIds.length;
               } else {
-                failedItems++;
+                failedItems += batch.paymentIds.length;
               }
-
-              results.push({
-                mp_payment_id: paymentId,
-                status: itemSuccess ? 'facturado' : 'fallido',
-                error: itemSuccess ? undefined : itemErrorMsg,
-                comprobante_numero: itemSuccess ? cbteNroFormatted : undefined,
-              });
 
               // Save progress
               await db
