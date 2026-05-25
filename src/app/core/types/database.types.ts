@@ -29,6 +29,7 @@ export interface Database {
           arca_key: string | null;
           arca_production: boolean | null;
           arca_ticket: Json | null;
+          mp_access_token: string | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -51,6 +52,7 @@ export interface Database {
           arca_key?: string | null;
           arca_production?: boolean | null;
           arca_ticket?: Json | null;
+          mp_access_token?: string | null;
           created_at?: string | null;
           updated_at?: string | null;
         };
@@ -73,6 +75,7 @@ export interface Database {
           arca_key?: string | null;
           arca_production?: boolean | null;
           arca_ticket?: Json | null;
+          mp_access_token?: string | null;
           created_at?: string | null;
           updated_at?: string | null;
         };
