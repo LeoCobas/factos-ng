@@ -417,7 +417,7 @@ Deno.serve(async (req: Request) => {
       const limit = 100;
 
       while (hasMore && payments.length < 300) {
-        const mpSearchUrl = `https://api.mercadopago.com/v1/payments/search?status=approved&operation_type=regular&range=date_created&begin_date=${encodeURIComponent(beginDate)}&end_date=${encodeURIComponent(endDate)}&sort=date_created&criteria=asc&limit=${limit}&offset=${offset}`;
+        const mpSearchUrl = `https://api.mercadopago.com/v1/payments/search?status=approved&range=date_created&begin_date=${encodeURIComponent(beginDate)}&end_date=${encodeURIComponent(endDate)}&sort=date_created&criteria=asc&limit=${limit}&offset=${offset}`;
 
         const res = await fetch(mpSearchUrl, {
           headers: {
