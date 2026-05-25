@@ -378,33 +378,44 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                   </button>
                 </div>
               } @else {
-                <div class="flex items-center justify-between w-full">
-                  <div class="text-sm text-muted-foreground">
-                    @if (selectedCount() > 0) {
-                      <span class="font-bold text-foreground">{{ selectedCount() }}</span>
-                      seleccionados para facturar
-                    } @else {
-                      Ningún pago seleccionado
-                    }
+                  <div class="flex items-center justify-between w-full">
+                    <div class="text-sm text-muted-foreground">
+                      @if (selectedCount() > 0) {
+                        <span class="font-bold text-foreground">{{ selectedCount() }}</span>
+                        seleccionados para facturar
+                      } @else {
+                        Ningún pago seleccionado
+                      }
+                    </div>
+                    <div class="flex items-center gap-4">
+                      <label class="flex items-center gap-2 text-xs font-semibold text-muted-foreground select-none cursor-pointer">
+                        <input
+                          type="checkbox"
+                          [checked]="combinarPorDia()"
+                          (change)="combinarPorDia.set(!combinarPorDia())"
+                          class="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                        />
+                        <span>Combinar cobros del mismo día</span>
+                      </label>
+                      <div class="flex items-center gap-3">
+                        <button
+                          type="button"
+                          (click)="cerrar()"
+                          class="btn-secondary rounded-lg px-4 py-2 text-sm font-semibold border border-border"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          (click)="procesarLote()"
+                          [disabled]="payments().length === 0 || selectedCount() === 0"
+                          class="btn-primary rounded-lg px-5 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-primary/10"
+                        >
+                          Procesar Lote
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div class="flex items-center gap-3">
-                    <button
-                      type="button"
-                      (click)="cerrar()"
-                      class="btn-secondary rounded-lg px-4 py-2 text-sm font-semibold border border-border"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="button"
-                      (click)="procesarLote()"
-                      [disabled]="payments().length === 0 || selectedCount() === 0"
-                      class="btn-primary rounded-lg px-5 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-primary/10"
-                    >
-                      Procesar Lote
-                    </button>
-                  </div>
-                </div>
               }
             </div>
           }
@@ -430,6 +441,7 @@ export class MercadopagoImportModalComponent {
   readonly searchError = signal<string | null>(null);
   readonly batchError = signal<string | null>(null);
   readonly showSummary = signal<boolean>(false);
+  readonly combinarPorDia = signal(false);
 
   readonly hasToken = computed(() => this.mercadopagoService.hasMpToken());
   readonly allSelected = computed(
@@ -564,6 +576,7 @@ export class MercadopagoImportModalComponent {
         facturar: facturarList,
         ignorar: ignorarList,
         payments_data: paymentsData,
+        combinar_por_dia: this.combinarPorDia(),
       });
 
       // Subscribe to Realtime progress
