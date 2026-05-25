@@ -24,6 +24,7 @@ export interface MpBatchPayload {
   facturar: string[];
   ignorar: string[];
   payments_data: Record<string, MpPaymentData>;
+  combinar_por_dia?: boolean;
 }
 
 export interface MpPaymentData {
