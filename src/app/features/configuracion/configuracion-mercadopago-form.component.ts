@@ -105,7 +105,7 @@ import type { MensajeEstado } from './configuracion.types';
 
       <button
         type="submit"
-        [disabled]="guardando() || (!tokenControl.value && !tieneToken())"
+        [disabled]="guardando() || tokenControl.invalid"
         [class.btn-loading--active]="guardando()"
         class="btn-primary btn-loading w-full rounded-lg px-4 py-3 font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -132,7 +132,7 @@ export class ConfiguracionMercadopagoFormComponent {
   readonly showToken = signal(false);
 
   onSubmit() {
-    if (this.tokenControl.invalid && !this.tieneToken()) return;
+    if (this.tokenControl.invalid) return;
     this.guardar.emit(this.tokenControl.value || '');
     this.tokenControl.reset('');
   }
