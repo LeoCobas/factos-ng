@@ -374,16 +374,39 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                   </button>
                 </div>
               } @else {
-                <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0 sm:justify-between w-full">
-                  <div class="text-sm text-muted-foreground">
-                    @if (selectedCount() > 0) {
-                      <span class="font-bold text-foreground">{{ selectedCount() }}</span>
-                      seleccionados para facturar
-                    } @else {
-                      Ningún pago seleccionado
-                    }
+                <div class="flex flex-col gap-2.5 w-full">
+                  <!-- Fila 1: Estado y Botones -->
+                  <div class="flex items-center justify-between w-full">
+                    <div class="text-xs sm:text-sm text-muted-foreground">
+                      @if (selectedCount() > 0) {
+                        <span class="font-bold text-foreground">{{ selectedCount() }}</span>
+                        <span class="hidden sm:inline"> seleccionados para facturar</span>
+                        <span class="sm:hidden"> seleccionados</span>
+                      } @else {
+                        Ningún pago seleccionado
+                      }
+                    </div>
+                    <div class="flex items-center gap-2 sm:gap-3">
+                      <button
+                        type="button"
+                        (click)="cerrar()"
+                        class="btn-secondary rounded-lg px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold border border-border"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        (click)="procesarLote()"
+                        [disabled]="payments().length === 0 || selectedCount() === 0"
+                        class="btn-primary rounded-lg px-3.5 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-primary/10"
+                      >
+                        Procesar Lote
+                      </button>
+                    </div>
                   </div>
-                  <div class="flex flex-wrap items-center gap-3">
+
+                  <!-- Fila 2: Checkbox Opciones -->
+                  <div class="flex items-center pt-1 border-t border-border/10 sm:border-t-0 sm:pt-0">
                     <label class="flex items-center gap-2 text-xs font-semibold text-muted-foreground select-none cursor-pointer">
                       <input
                         type="checkbox"
@@ -393,23 +416,6 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                       />
                       <span>Combinar cobros del mismo día</span>
                     </label>
-                    <div class="flex items-center gap-2 sm:gap-3 ml-auto sm:ml-0">
-                      <button
-                        type="button"
-                        (click)="cerrar()"
-                        class="btn-secondary rounded-lg px-3 sm:px-4 py-2 text-sm font-semibold border border-border"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        type="button"
-                        (click)="procesarLote()"
-                        [disabled]="payments().length === 0 || selectedCount() === 0"
-                        class="btn-primary rounded-lg px-4 sm:px-5 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-primary/10"
-                      >
-                        Procesar Lote
-                      </button>
-                    </div>
                   </div>
                 </div>
               }
