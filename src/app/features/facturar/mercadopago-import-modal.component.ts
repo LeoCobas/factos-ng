@@ -414,7 +414,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                         (change)="combinarPorDia.set(!combinarPorDia())"
                         class="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
                       />
-                      <span>Combinar cobros del mismo día</span>
+                      <span>Combinar cobros del día</span>
                     </label>
                   </div>
                 </div>
@@ -457,6 +457,7 @@ export class MercadopagoImportModalComponent {
   });
 
   private realtimeChannel: RealtimeChannel | null = null;
+  private pollingInterval: any = null;
 
   constructor() {
     // Watch for modal opening to set default dates only (no auto-search)
@@ -485,7 +486,7 @@ export class MercadopagoImportModalComponent {
     this.searchError.set(null);
     this.batchError.set(null);
     this.showSummary.set(false);
-    this.cleanupRealtime();
+    this.cleanupRealtimeAndPolling();
   }
 
   async buscarPagos() {
@@ -578,15 +579,19 @@ export class MercadopagoImportModalComponent {
       this.realtimeChannel = this.mercadopagoService.subscribeToBatchJob(
         batchJobId,
         (job: MpBatchJob) => {
+          console.log('Realtime progress update:', job);
           this.batchJob.set(job);
           if (job.status === 'completed' || job.status === 'failed') {
             this.processing.set(false);
             this.showSummary.set(true);
             this.batchCompleted.emit();
-            this.cleanupRealtime();
+            this.cleanupRealtimeAndPolling();
           }
         }
       );
+
+      // Start polling fallback (checks every 2 seconds)
+      this.startPolling(batchJobId);
     } catch (err: any) {
       this.processing.set(false);
       this.batchError.set(err.message || 'Error al procesar el lote.');
@@ -636,15 +641,19 @@ export class MercadopagoImportModalComponent {
       this.realtimeChannel = this.mercadopagoService.subscribeToBatchJob(
         batchJobId,
         (newJob: MpBatchJob) => {
+          console.log('Realtime progress update (retry):', newJob);
           this.batchJob.set(newJob);
           if (newJob.status === 'completed' || newJob.status === 'failed') {
             this.processing.set(false);
             this.showSummary.set(true);
             this.batchCompleted.emit();
-            this.cleanupRealtime();
+            this.cleanupRealtimeAndPolling();
           }
         }
       );
+
+      // Start polling fallback (checks every 2 seconds)
+      this.startPolling(batchJobId);
     } catch (err: any) {
       this.processing.set(false);
       this.batchError.set(err.message || 'Error al reintentar.');
@@ -697,5 +706,42 @@ export class MercadopagoImportModalComponent {
       this.mercadopagoService.unsubscribe(this.realtimeChannel);
       this.realtimeChannel = null;
     }
+  }
+
+  private startPolling(jobId: string) {
+    this.cleanupPolling();
+    this.pollingInterval = setInterval(async () => {
+      try {
+        const job = await this.mercadopagoService.getBatchJob(jobId);
+        if (job) {
+          console.log('Polling progress update:', job);
+          const current = this.batchJob();
+          // Update progress if changed
+          if (!current || current.processed_items !== job.processed_items || current.status !== job.status) {
+            this.batchJob.set(job);
+          }
+          if (job.status === 'completed' || job.status === 'failed') {
+            this.processing.set(false);
+            this.showSummary.set(true);
+            this.batchCompleted.emit();
+            this.cleanupRealtimeAndPolling();
+          }
+        }
+      } catch (err) {
+        console.error('Error in progress polling:', err);
+      }
+    }, 2000);
+  }
+
+  private cleanupPolling() {
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = null;
+    }
+  }
+
+  private cleanupRealtimeAndPolling() {
+    this.cleanupRealtime();
+    this.cleanupPolling();
   }
 }

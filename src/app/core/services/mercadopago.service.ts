@@ -122,6 +122,21 @@ export class MercadopagoService {
     getSupabaseClient().removeChannel(channel);
   }
 
+  /** Get the current status of a batch job. */
+  async getBatchJob(jobId: string): Promise<MpBatchJob | null> {
+    const { data, error } = await supabase
+      .from('mp_batch_jobs')
+      .select('*')
+      .eq('id', jobId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error al obtener estado del lote:', error);
+      return null;
+    }
+    return data as MpBatchJob | null;
+  }
+
   /**
    * Get the default begin_date for the search.
    * = last processed MP date - 2 days, or 7 days ago if none.
