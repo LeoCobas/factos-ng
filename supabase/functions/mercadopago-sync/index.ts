@@ -411,13 +411,25 @@ Deno.serve(async (req: Request) => {
         });
       }
 
+      // Fetch Mercado Pago user profile to get their user ID (collector ID)
+      const meRes = await fetch('https://api.mercadopago.com/users/me', {
+        headers: {
+          Authorization: `Bearer ${contribuyente.mp_access_token}`,
+        },
+      });
+      if (!meRes.ok) {
+        throw new Error('No se pudo obtener el perfil de Mercado Pago');
+      }
+      const meData = await meRes.json();
+      const mpUserId = meData.id;
+
       let payments: any[] = [];
       let offset = 0;
       let hasMore = true;
       const limit = 100;
 
       while (hasMore && payments.length < 300) {
-        const mpSearchUrl = `https://api.mercadopago.com/v1/payments/search?status=approved&range=date_created&begin_date=${encodeURIComponent(beginDate)}&end_date=${encodeURIComponent(endDate)}&sort=date_created&criteria=asc&limit=${limit}&offset=${offset}`;
+        const mpSearchUrl = `https://api.mercadopago.com/v1/payments/search?status=approved&collector.id=${mpUserId}&range=date_created&begin_date=${encodeURIComponent(beginDate)}&end_date=${encodeURIComponent(endDate)}&sort=date_created&criteria=asc&limit=${limit}&offset=${offset}`;
 
         const res = await fetch(mpSearchUrl, {
           headers: {
@@ -462,7 +474,18 @@ Deno.serve(async (req: Request) => {
       const existingSet = new Set((existing || []).map((e: any) => e.mp_payment_id));
 
       const filteredPayments = payments
-        .filter((p) => !existingSet.has(String(p.id)))
+        .filter((p) => {
+          if (existingSet.has(String(p.id))) return false;
+          
+          // Safeguard: only keep payments where the collector is the user (excludes purchases/expenses)
+          if (p.collector_id !== mpUserId) return false;
+          
+          // Exclude ANSES / CUNA
+          const desc = (p.description || '').toLowerCase();
+          if (desc.includes('cuna') || desc.includes('anses')) return false;
+          
+          return true;
+        })
         .map((p) => ({
           id: String(p.id),
           date_created: p.date_created,
