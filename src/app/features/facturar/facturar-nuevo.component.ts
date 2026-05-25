@@ -41,6 +41,7 @@ import {
 import { FacturaClienteLookupSectionComponent } from './factura-cliente-lookup-section.component';
 import { FacturaEmitidaPanelComponent } from './factura-emitida-panel.component';
 import { FacturasRecientesPanelComponent } from './facturas-recientes-panel.component';
+import { MercadopagoImportModalComponent } from './mercadopago-import-modal.component';
 
 interface FacturaFormModel {
   monto: FormControl<number | ''>;
@@ -65,6 +66,7 @@ interface FacturaRecienteView {
     FacturaClienteLookupSectionComponent,
     FacturaEmitidaPanelComponent,
     FacturasRecientesPanelComponent,
+    MercadopagoImportModalComponent,
   ],
   template: `
     <div>
@@ -77,7 +79,19 @@ interface FacturaRecienteView {
             (ngSubmit)="emitirFactura()"
             class="space-y-3.5 sm:space-y-4"
           >
-            <div class="flex items-start justify-end">
+            <div class="flex items-start justify-end gap-2">
+              <button
+                type="button"
+                (click)="mpModalOpen.set(true)"
+                class="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/35 px-2.5 py-1.5 text-[0.72rem] font-semibold tracking-[0.08em] text-muted-foreground transition-all hover:border-primary/30 hover:bg-muted/55 hover:text-foreground sm:px-3 sm:text-xs"
+              >
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <rect x="2" y="5" width="20" height="14" rx="2" stroke-width="1.8" />
+                  <line x1="2" y1="10" x2="22" y2="10" stroke-width="1.8" />
+                  <path d="M6 14h2" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
+                <span>MP</span>
+              </button>
               <button
                 type="button"
                 (click)="toggleCliente()"
@@ -289,6 +303,11 @@ interface FacturaRecienteView {
           </div>
         </div>
       }
+
+      <app-mercadopago-import-modal
+        [(isOpen)]="mpModalOpen"
+        (batchCompleted)="onMpBatchCompleted()"
+      />
     </div>
   `,
 })
@@ -306,6 +325,7 @@ export class FacturarNuevoComponent implements OnDestroy {
   readonly mensaje = signal<string | null>(null);
   readonly esExito = signal(false);
   readonly facturaEmitida = signal<Comprobante | null>(null);
+  readonly mpModalOpen = signal(false);
 
   readonly pdfViewing = signal<Comprobante | null>(null);
   readonly pdfViewingConfig = signal<PdfViewerConfig | null>(null);
@@ -594,6 +614,10 @@ export class FacturarNuevoComponent implements OnDestroy {
     this.montoExcedidoConfirmado.set(montoPendiente);
     this.cancelarConfirmacionMonto();
     await this.emitirFactura();
+  }
+
+  onMpBatchCompleted(): void {
+    void this.cargarFacturasRecientes();
   }
 
   async cargarFacturasRecientes(): Promise<void> {
