@@ -1,6 +1,6 @@
 import { FormControl } from '@angular/forms';
 
-export type TabId = 'facturacion' | 'certificado' | 'cuenta';
+export type TabId = 'facturacion' | 'certificado' | 'mercadopago' | 'cuenta';
 export type Actividad = 'bienes' | 'servicios';
 
 export interface MensajeEstado {

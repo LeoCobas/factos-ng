@@ -17,6 +17,7 @@ import {
 import { ConfiguracionFacturacionFormComponent } from './configuracion-facturacion-form.component';
 import { ConfiguracionCertificadoFormComponent } from './configuracion-certificado-form.component';
 import { ConfiguracionCuentaFormComponent } from './configuracion-cuenta-form.component';
+import { ConfiguracionMercadopagoFormComponent } from './configuracion-mercadopago-form.component';
 import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.util';
 
 @Component({
@@ -52,6 +53,20 @@ import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.u
             [class.config-tab-active]="tabActiva() === 'certificado'"
             [class.config-tab-inactive]="tabActiva() !== 'certificado'">
             <span class="config-tab-wordmark" aria-hidden="true"></span>
+          </button>
+          <button
+            type="button"
+            (click)="tabActiva.set('mercadopago')"
+            class="config-tab"
+            title="Mercado Pago"
+            aria-label="Mercado Pago"
+            [class.config-tab-active]="tabActiva() === 'mercadopago'"
+            [class.config-tab-inactive]="tabActiva() !== 'mercadopago'">
+            <svg class="config-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <rect x="2" y="5" width="20" height="14" rx="2" stroke-width="1.8" />
+              <line x1="2" y1="10" x2="22" y2="10" stroke-width="1.8" />
+              <path d="M6 14h2" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
           </button>
           <button
             type="button"
@@ -108,6 +123,15 @@ import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.u
           />
         }
 
+        @if (tabActiva() === 'mercadopago') {
+          <app-configuracion-mercadopago-form
+            [tieneToken]="tieneMpToken()"
+            [guardando]="guardandoMercadoPago()"
+            [mensaje]="mensaje()"
+            (guardar)="guardarMpToken($event)"
+          />
+        }
+
         @if (tabActiva() === 'cuenta') {
           <app-configuracion-cuenta-form
             [form]="accountForm"
@@ -129,6 +153,7 @@ import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.u
     ConfiguracionFacturacionFormComponent,
     ConfiguracionCertificadoFormComponent,
     ConfiguracionCuentaFormComponent,
+    ConfiguracionMercadopagoFormComponent,
   ],
   standalone: true
 })
@@ -146,6 +171,12 @@ export class ConfiguracionComponent implements OnInit {
   );
   readonly guardandoCertificado = computed(
     () => this.guardando() && this.tabActiva() === 'certificado',
+  );
+  readonly guardandoMercadoPago = computed(
+    () => this.guardando() && this.tabActiva() === 'mercadopago',
+  );
+  readonly tieneMpToken = computed(
+    () => !!this.contribuyenteService.contribuyente()?.mp_access_token,
   );
   readonly guardandoEmail = signal(false);
   readonly guardandoPassword = signal(false);
@@ -430,6 +461,53 @@ export class ConfiguracionComponent implements OnInit {
       }
     } catch {
       this.mostrarMensaje('Error inesperado.', 'error');
+    } finally {
+      this.guardando.set(false);
+    }
+  }
+
+  // ==================== MERCADO PAGO ====================
+  async guardarMpToken(token: string) {
+    this.guardando.set(true);
+    this.mensaje.set(null);
+
+    try {
+      let contribuyente = this.contribuyenteService.contribuyente();
+      if (!contribuyente) {
+        if (this.facturacionForm.invalid) {
+          this.mostrarMensaje(
+            'Completá los datos obligatorios en Facturación (CUIT, razón social, punto de venta, concepto) o tocá "Guardar Datos de Facturación" antes de guardar el token.',
+            'error',
+          );
+          return;
+        }
+        const createPayload = this.buildCreateContribuyentePayload();
+        const created = await this.contribuyenteService.crearContribuyente(createPayload);
+        if (!created.success) {
+          this.mostrarMensaje(created.error || 'No se pudo crear el perfil de contribuyente.', 'error');
+          return;
+        }
+        contribuyente = this.contribuyenteService.contribuyente();
+      }
+      if (!contribuyente) {
+        this.mostrarMensaje('No se pudo cargar el contribuyente.', 'error');
+        return;
+      }
+
+      const result = await this.contribuyenteService.actualizarContribuyente({
+        mp_access_token: token || null,
+      });
+
+      if (result.success) {
+        this.mostrarMensaje(
+          token ? '✔ Token de Mercado Pago guardado correctamente.' : '✔ Mercado Pago desconectado.',
+          'success',
+        );
+      } else {
+        this.mostrarMensaje(result.error || 'Error al guardar el token.', 'error');
+      }
+    } catch {
+      this.mostrarMensaje('Error inesperado al guardar.', 'error');
     } finally {
       this.guardando.set(false);
     }
