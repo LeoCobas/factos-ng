@@ -14,12 +14,12 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
     @if (isOpen()) {
       <!-- Backdrop -->
       <div
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in"
+        class="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in"
         (click)="closeOnBackdrop()"
       >
         <!-- Modal Card -->
         <div
-          class="relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-card border border-border shadow-2xl rounded-2xl overflow-hidden transition-all scale-100 duration-300"
+          class="relative w-full sm:max-w-4xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col bg-card border-0 sm:border border-border shadow-2xl sm:rounded-2xl overflow-hidden transition-all scale-100 duration-300"
           (click)="$event.stopPropagation()"
         >
           <!-- Header -->
@@ -52,7 +52,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
           </div>
 
           <!-- Body -->
-          <div class="flex-1 overflow-y-auto p-6 space-y-6">
+          <div class="flex-1 overflow-y-auto px-3 py-4 sm:p-6 space-y-6">
             <!-- Checking Config -->
             @if (!hasToken()) {
               <div class="flex flex-col items-center justify-center py-10 text-center space-y-4">
@@ -151,11 +151,10 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                         <table class="w-full text-left border-collapse">
                           <thead class="sticky top-0 bg-muted/80 backdrop-blur-sm border-b border-border/80 text-xs font-semibold text-muted-foreground">
                             <tr>
-                              <th class="p-3 w-12 text-center"></th>
-                              <th class="p-3">Fecha</th>
-                              <th class="p-3">Concepto / Descripción</th>
-                              <th class="p-3">Cliente</th>
-                              <th class="p-3 text-right">Monto</th>
+                              <th class="p-2 sm:p-3 w-10 text-center"></th>
+                              <th class="p-2 sm:p-3">Fecha</th>
+                              <th class="p-2 sm:p-3">Concepto / Descripción</th>
+                              <th class="p-2 sm:p-3 text-right">Monto</th>
                             </tr>
                           </thead>
                           <tbody class="divide-y divide-border/40 text-sm">
@@ -164,7 +163,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                                 class="hover:bg-muted/10 transition-colors cursor-pointer"
                                 (click)="togglePayment(p.id)"
                               >
-                                <td class="p-3 text-center" (click)="$event.stopPropagation()">
+                                <td class="p-2 sm:p-3 text-center" (click)="$event.stopPropagation()">
                                   <input
                                     type="checkbox"
                                     [checked]="selectedIds().has(p.id)"
@@ -172,16 +171,13 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                                     class="rounded border-border text-primary focus:ring-primary h-4 w-4"
                                   />
                                 </td>
-                                <td class="p-3 whitespace-nowrap text-muted-foreground">
+                                <td class="p-2 sm:p-3 whitespace-nowrap text-muted-foreground text-xs sm:text-sm">
                                   {{ formatDateTime(p.date_created) }}
                                 </td>
-                                <td class="p-3 font-medium text-foreground max-w-[240px] truncate" [title]="p.description || ''">
+                                <td class="p-2 sm:p-3 font-medium text-foreground max-w-[160px] sm:max-w-[240px] truncate text-xs sm:text-sm" [title]="p.description || ''">
                                   {{ p.description || 'Sin descripción' }}
                                 </td>
-                                <td class="p-3 text-muted-foreground whitespace-nowrap">
-                                  {{ formatPayerName(p.payer) }}
-                                </td>
-                                <td class="p-3 text-right font-bold text-foreground whitespace-nowrap">
+                                <td class="p-2 sm:p-3 text-right font-bold text-foreground whitespace-nowrap text-xs sm:text-sm">
                                   $ {{ p.transaction_amount | number:'1.2-2' }}
                                 </td>
                               </tr>
@@ -352,9 +348,9 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 
           <!-- Footer Actions -->
           @if (hasToken() && !processing()) {
-            <div class="flex items-center justify-between px-6 py-4 border-t border-border/60 bg-muted/10">
+            <div class="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-t border-border/60 bg-muted/10">
               @if (showSummary()) {
-                <div class="flex items-center gap-3 w-full justify-between">
+                <div class="flex flex-wrap items-center gap-3 w-full justify-between">
                   @if (batchJob() && batchJob()!.failed_items > 0) {
                     <button
                       type="button"
@@ -378,7 +374,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                   </button>
                 </div>
               } @else {
-                <div class="flex items-center justify-between w-full">
+                <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0 sm:justify-between w-full">
                   <div class="text-sm text-muted-foreground">
                     @if (selectedCount() > 0) {
                       <span class="font-bold text-foreground">{{ selectedCount() }}</span>
@@ -387,7 +383,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                       Ningún pago seleccionado
                     }
                   </div>
-                  <div class="flex items-center gap-4">
+                  <div class="flex flex-wrap items-center gap-3">
                     <label class="flex items-center gap-2 text-xs font-semibold text-muted-foreground select-none cursor-pointer">
                       <input
                         type="checkbox"
@@ -397,11 +393,11 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                       />
                       <span>Combinar cobros del mismo día</span>
                     </label>
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 sm:gap-3 ml-auto sm:ml-0">
                       <button
                         type="button"
                         (click)="cerrar()"
-                        class="btn-secondary rounded-lg px-4 py-2 text-sm font-semibold border border-border"
+                        class="btn-secondary rounded-lg px-3 sm:px-4 py-2 text-sm font-semibold border border-border"
                       >
                         Cancelar
                       </button>
@@ -409,7 +405,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                         type="button"
                         (click)="procesarLote()"
                         [disabled]="payments().length === 0 || selectedCount() === 0"
-                        class="btn-primary rounded-lg px-5 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-primary/10"
+                        class="btn-primary rounded-lg px-4 sm:px-5 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-primary/10"
                       >
                         Procesar Lote
                       </button>
@@ -457,25 +453,18 @@ export class MercadopagoImportModalComponent {
   private realtimeChannel: RealtimeChannel | null = null;
 
   constructor() {
-    // Watch for modal opening to load default dates and perform initial search
+    // Watch for modal opening to set default dates only (no auto-search)
     effect(async () => {
       if (this.isOpen()) {
         this.resetState();
-        this.loading.set(true);
         try {
           const begin = await this.mercadopagoService.getDefaultBeginDate();
           const end = this.mercadopagoService.getDefaultEndDate();
           this.beginDate.set(begin);
           this.endDate.set(end);
-
-          if (this.mercadopagoService.hasMpToken()) {
-            await this.buscarPagos();
-          }
         } catch (err: any) {
           console.error('Error al inicializar modal MP:', err);
           this.searchError.set(err.message || 'Error al conectar con el servidor.');
-        } finally {
-          this.loading.set(false);
         }
       }
     }, { allowSignalWrites: true });
