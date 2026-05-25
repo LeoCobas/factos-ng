@@ -64,7 +64,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                 <div class="space-y-1">
                   <h4 class="text-base font-semibold">Mercado Pago no está configurado</h4>
                   <p class="text-sm text-muted-foreground max-w-md">
-                    Necesitás agregar tu Access Token en la sección de Configuración para poder importar tus pagos.
+                    Necesitás agregar tu Access Token en la sección de Configuración para poder importar tus cobros.
                   </p>
                 </div>
                 <button
@@ -110,7 +110,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                       <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                       </svg>
-                      <span>Buscar Pagos</span>
+                      <span>Buscar Cobros</span>
                     }
                   </button>
                 </div>
@@ -131,12 +131,12 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                     <svg class="h-12 w-12 text-muted-foreground/50 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0V9a2 2 0 00-2-2H6a2 2 0 00-2 2v4h16z" />
                     </svg>
-                    <p class="text-sm">No se encontraron pagos aprobados pendientes de facturar en este rango de fechas.</p>
+                    <p class="text-sm">No se encontraron cobros aprobados pendientes de facturar en este rango de fechas.</p>
                   </div>
                 } @else if (payments().length > 0) {
                   <div class="space-y-3">
                     <div class="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>Mostrando {{ payments().length }} pagos encontrados</span>
+                      <span>Mostrando {{ payments().length }} cobros encontrados</span>
                       <button
                         type="button"
                         (click)="toggleSelectAll()"
@@ -311,7 +311,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                               ></span>
                               <div class="min-w-0">
                                 <p class="font-medium text-foreground truncate">
-                                  Pago #{{ item.mp_payment_id }}
+                                  Cobro #{{ item.mp_payment_id }}
                                 </p>
                                 @if (item.error) {
                                   <p class="text-xs text-red-500 truncate" [title]="item.error">
@@ -383,7 +383,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                         <span class="hidden sm:inline"> seleccionados para facturar</span>
                         <span class="sm:hidden"> seleccionados</span>
                       } @else {
-                        Ningún pago seleccionado
+                        Ningún cobro seleccionado
                       }
                     </div>
                     <div class="flex items-center gap-2 sm:gap-3">
@@ -406,7 +406,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                   </div>
 
                   <!-- Fila 2: Checkbox Opciones -->
-                  <div class="flex items-center pt-1 border-t border-border/10 sm:border-t-0 sm:pt-0">
+                  <div class="flex items-center pt-1">
                     <label class="flex items-center gap-2 text-xs font-semibold text-muted-foreground select-none cursor-pointer">
                       <input
                         type="checkbox"
