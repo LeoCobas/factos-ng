@@ -100,6 +100,7 @@ describe('ConfiguracionComponent', () => {
       arca_key: 'KEY',
       arca_production: false,
       arca_ticket: null,
+      mp_access_token: null,
       created_at: null,
       updated_at: null,
     });
