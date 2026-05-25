@@ -3,6 +3,7 @@ import { Router, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
 import { ContribuyenteService } from '../core/services/contribuyente.service';
 import { ThemeService } from '../core/services/theme.service';
+import { UiService } from '../core/services/ui.service';
 import { ConfiguracionComponent } from '../features/configuracion/configuracion.component';
 
 @Component({
@@ -87,7 +88,7 @@ import { ConfiguracionComponent } from '../features/configuracion/configuracion.
                 type="button"
                 (click)="abrirConfiguracion()"
                 class="header-btn header-btn-idle"
-                [attr.aria-expanded]="mostrarConfiguracion()"
+                [attr.aria-expanded]="uiService.mostrarConfiguracion()"
                 aria-haspopup="dialog"
               >
                 <svg class="h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -183,7 +184,7 @@ import { ConfiguracionComponent } from '../features/configuracion/configuracion.
         </div>
       </main>
 
-      @if (mostrarConfiguracion()) {
+      @if (uiService.mostrarConfiguracion()) {
         <div
           class="config-modal-backdrop"
           role="presentation"
@@ -236,10 +237,10 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   private readonly contribuyentePreviewTrigger = viewChild<ElementRef<HTMLElement>>('contribuyentePreviewTrigger');
   readonly contribuyenteService = inject(ContribuyenteService);
   readonly themeService = inject(ThemeService);
+  readonly uiService = inject(UiService);
 
   readonly logoSrc = computed(() => (this.themeService.isDark() ? '/logob.png' : '/logo.png'));
   readonly mostrarContribuyentePreview = signal(false);
-  readonly mostrarConfiguracion = signal(false);
 
   private contribuyentePreviewTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -302,11 +303,12 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   abrirConfiguracion(): void {
     this.ocultarPreviewContribuyente();
-    this.mostrarConfiguracion.set(true);
+    this.uiService.abrirConfiguracion();
   }
 
   cerrarConfiguracion(): void {
-    this.mostrarConfiguracion.set(false);
+    this.uiService.cerrarConfiguracion();
+    this.uiService.configuracionTabActiva.set(null);
   }
 
   private mostrarPreviewContribuyente(): void {

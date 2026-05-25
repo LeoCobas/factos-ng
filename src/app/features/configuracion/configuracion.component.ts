@@ -1,7 +1,8 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, effect, inject, OnInit, signal } from '@angular/core';
 import { FormGroup, ReactiveFormsModule, Validators, NonNullableFormBuilder } from '@angular/forms';
 import { ContribuyenteService } from '../../core/services/contribuyente.service';
 import type { CreateContribuyentePayload } from '../../core/services/contribuyente.service';
+import { UiService } from '../../core/services/ui.service';
 import { ThemeService, ThemeMode } from '../../core/services/theme.service';
 import { getRuntimeConfig } from '../../core/config/runtime-config';
 import { supabase } from '../../core/services/supabase.service';
@@ -161,6 +162,7 @@ export class ConfiguracionComponent implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   readonly themeService = inject(ThemeService);
   readonly contribuyenteService = inject(ContribuyenteService);
+  private readonly uiService = inject(UiService);
 
   readonly tabActiva = signal<TabId>('facturacion');
   readonly cargando = signal(false);
@@ -199,6 +201,13 @@ export class ConfiguracionComponent implements OnInit {
   readonly accountForm: FormGroup<AccountFormModel>;
 
   constructor() {
+    effect(() => {
+      const tab = this.uiService.configuracionTabActiva();
+      if (tab) {
+        this.tabActiva.set(tab);
+      }
+    });
+
     this.facturacionForm = this.fb.group({
       cuit: this.fb.control('', [Validators.required, Validators.pattern(/^[0-9]{11}$/)]),
       razon_social: this.fb.control('', Validators.required),

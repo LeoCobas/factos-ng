@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, model, output, signal } from '@ang
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MercadopagoService } from '../../core/services/mercadopago.service';
+import { UiService } from '../../core/services/ui.service';
 import type { MpPayment, MpBatchJob } from '../../core/types/mercadopago.types';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -417,6 +418,7 @@ export class MercadopagoImportModalComponent {
   readonly batchCompleted = output<void>();
 
   private readonly mercadopagoService = inject(MercadopagoService);
+  private readonly uiService = inject(UiService);
 
   readonly payments = signal<MpPayment[]>([]);
   readonly selectedIds = signal<Set<string>>(new Set());
@@ -654,9 +656,7 @@ export class MercadopagoImportModalComponent {
 
   irAConfig() {
     this.cerrar();
-    // In factos-ng, routing is handled simply or by parent state.
-    // We can emit or let it close, but the user can navigate to Configuración tab easily.
-    // If there's a simple way to go to Config, let's just close and the user can navigate.
+    this.uiService.abrirConfiguracion('mercadopago');
   }
 
   formatDateTime(dateStr: string): string {
