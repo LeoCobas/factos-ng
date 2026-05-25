@@ -1,5 +1,5 @@
 import { Component, input, output, signal } from '@angular/core';
-import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import type { MensajeEstado } from './configuracion.types';
 
 @Component({
@@ -7,7 +7,7 @@ import type { MensajeEstado } from './configuracion.types';
   standalone: true,
   imports: [ReactiveFormsModule],
   template: `
-    <form (ngSubmit)="onSubmit()" class="space-y-5">
+    <form [formGroup]="formGroup" (ngSubmit)="onSubmit()" class="space-y-5">
       <div class="card-surface">
         <div class="card-header">
           <div class="flex items-start gap-3">
@@ -34,7 +34,7 @@ import type { MensajeEstado } from './configuracion.types';
             <div class="relative flex items-center gap-2">
               <input
                 [type]="showToken() ? 'text' : 'password'"
-                [formControl]="tokenControl"
+                formControlName="token"
                 id="mp-token-input"
                 class="form-input pr-10"
                 [placeholder]="tieneToken() ? '••••••••••••••••••••••••••••••••' : 'APP_USR-...'"
@@ -105,7 +105,7 @@ import type { MensajeEstado } from './configuracion.types';
 
       <button
         type="submit"
-        [disabled]="guardando() || tokenControl.invalid"
+        [disabled]="guardando() || formGroup.invalid"
         [class.btn-loading--active]="guardando()"
         class="btn-primary btn-loading w-full rounded-lg px-4 py-3 font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -128,19 +128,24 @@ export class ConfiguracionMercadopagoFormComponent {
 
   readonly guardar = output<string>();
 
-  readonly tokenControl = new FormControl('', Validators.required);
+  readonly formGroup = new FormGroup({
+    token: new FormControl('', Validators.required),
+  });
   readonly showToken = signal(false);
 
   onSubmit() {
-    if (this.tokenControl.invalid) return;
-    this.guardar.emit(this.tokenControl.value || '');
-    this.tokenControl.reset('');
+    if (this.formGroup.invalid) {
+      return;
+    }
+    const tokenVal = this.formGroup.controls.token.value || '';
+    this.guardar.emit(tokenVal);
+    this.formGroup.reset({ token: '' });
   }
 
   onDisconnect() {
     if (confirm('¿Estás seguro de que querés desconectar Mercado Pago?')) {
       this.guardar.emit('');
-      this.tokenControl.reset('');
+      this.formGroup.reset({ token: '' });
     }
   }
 }
