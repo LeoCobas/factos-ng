@@ -321,40 +321,52 @@ function formatNumeroComprobante(ptoVta: number, cbteNro: number): string {
 }
 
 function clampDate(paymentDateStr: string, actividad: string, lastEmittedDateStr?: string): string {
-  const paymentDate = new Date(paymentDateStr);
-  const today = new Date();
-  const maxDaysBack = actividad === 'servicios' ? 10 : 5;
-
-  const earliestAllowed = new Date();
-  earliestAllowed.setDate(today.getDate() - maxDaysBack);
-  earliestAllowed.setHours(0, 0, 0, 0);
-
-  let effectiveDate = paymentDate;
-  if (effectiveDate < earliestAllowed) {
-    effectiveDate = earliestAllowed;
-  }
-
-  if (lastEmittedDateStr) {
-    const lastEmittedDate = new Date(
-      lastEmittedDateStr.includes('T') ? lastEmittedDateStr : `${lastEmittedDateStr}T12:00:00`
-    );
-    if (effectiveDate < lastEmittedDate) {
-      effectiveDate = lastEmittedDate;
-    }
-  }
-
-  if (effectiveDate > today) {
-    effectiveDate = today;
-  }
-
-  const formatter = new Intl.DateTimeFormat('en-CA', {
+  // Get current date string in Buenos Aires
+  const arTodayStr = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Argentina/Buenos_Aires',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
+  }).format(new Date());
+
+  // Parse dates as UTC "YYYY-MM-DDT12:00:00Z" to act as Argentina time safely
+  const paymentDateOnly = paymentDateStr.split('T')[0];
+  const paymentDateUTC = new Date(`${paymentDateOnly}T12:00:00Z`);
+  const todayUTC = new Date(`${arTodayStr}T12:00:00Z`);
+
+  const maxDaysBack = actividad === 'servicios' ? 10 : 5;
+  const earliestAllowedUTC = new Date(todayUTC.getTime());
+  earliestAllowedUTC.setUTCDate(todayUTC.getUTCDate() - maxDaysBack);
+  earliestAllowedUTC.setUTCHours(0, 0, 0, 0); // 00:00:00 UTC (representing Buenos Aires 00:00:00)
+
+  let effectiveDateUTC = paymentDateUTC;
+  if (effectiveDateUTC < earliestAllowedUTC) {
+    effectiveDateUTC = earliestAllowedUTC;
+  }
+
+  if (lastEmittedDateStr) {
+    const lastEmittedDateOnly = lastEmittedDateStr.split('T')[0];
+    const lastEmittedDateUTC = new Date(`${lastEmittedDateOnly}T12:00:00Z`);
+    if (effectiveDateUTC < lastEmittedDateUTC) {
+      effectiveDateUTC = lastEmittedDateUTC;
+    }
+  }
+
+  const todayMaxUTC = new Date(`${arTodayStr}T23:59:59Z`);
+  if (effectiveDateUTC > todayMaxUTC) {
+    effectiveDateUTC = todayMaxUTC;
+  }
+
+  // Format from UTC directly
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'UTC',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   });
-  return formatter.format(effectiveDate);
+  return formatter.format(effectiveDateUTC);
 }
+
 
 function getLocalDateStr(dateStr: string | null | undefined): string {
   if (!dateStr) {
