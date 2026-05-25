@@ -124,12 +124,12 @@ export class MercadopagoService {
 
   /**
    * Get the default begin_date for the search.
-   * = last processed MP date - 2 days, or 30 days ago if none.
+   * = last processed MP date - 2 days, or 7 days ago if none.
    */
   async getDefaultBeginDate(): Promise<string> {
     const contribuyente = this.contribuyenteService.contribuyente();
     if (!contribuyente) {
-      return this.daysAgo(30);
+      return this.daysAgo(7);
     }
 
     const { data, error } = await supabase
@@ -141,7 +141,7 @@ export class MercadopagoService {
       .maybeSingle();
 
     if (error || !data?.mp_date_created) {
-      return this.daysAgo(30);
+      return this.daysAgo(7);
     }
 
     const lastDate = new Date(data.mp_date_created);
