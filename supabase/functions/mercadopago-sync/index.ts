@@ -335,7 +335,9 @@ function clampDate(paymentDateStr: string, actividad: string, lastEmittedDateStr
   }
 
   if (lastEmittedDateStr) {
-    const lastEmittedDate = new Date(lastEmittedDateStr);
+    const lastEmittedDate = new Date(
+      lastEmittedDateStr.includes('T') ? lastEmittedDateStr : `${lastEmittedDateStr}T12:00:00`
+    );
     if (effectiveDate < lastEmittedDate) {
       effectiveDate = lastEmittedDate;
     }
@@ -354,7 +356,10 @@ function clampDate(paymentDateStr: string, actividad: string, lastEmittedDateStr
   return formatter.format(effectiveDate);
 }
 
-function getLocalDateStr(dateStr: string): string {
+function getLocalDateStr(dateStr: string | null | undefined): string {
+  if (!dateStr) {
+    return new Date().toISOString().split('T')[0];
+  }
   try {
     const d = new Date(dateStr);
     return new Intl.DateTimeFormat('en-CA', {
@@ -364,7 +369,9 @@ function getLocalDateStr(dateStr: string): string {
       day: '2-digit',
     }).format(d);
   } catch {
-    return dateStr.split('T')[0];
+    return typeof dateStr === 'string'
+      ? dateStr.split('T')[0]
+      : new Date().toISOString().split('T')[0];
   }
 }
 
@@ -648,7 +655,8 @@ Deno.serve(async (req: Request) => {
             const ivaPct = Number(contribuyente.iva_porcentaje) || 21;
 
             // Maximum amount allowed per invoice (AFIP limit)
-            const maxInvoiceAmount = parseFloat(contribuyente.monto_maximo_factura || '99999999');
+            const rawMax = parseFloat(contribuyente.monto_maximo_factura || '99999999');
+            const maxInvoiceAmount = rawMax > 0 ? rawMax : 99999999;
 
             // Sort payments by date ASC
             const facturarSorted = [...facturar].sort((a, b) => {
@@ -730,6 +738,7 @@ Deno.serve(async (req: Request) => {
               let itemErrorMsg = '';
               const generatedComprobanteIds: string[] = [];
               let lastCbteNroFormatted = '';
+              let firstCbteNroFormatted = '';
 
               try {
                 // Determine invoice date clamped to AFIP rules
@@ -878,6 +887,9 @@ Deno.serve(async (req: Request) => {
                   });
 
                   lastCbteNroFormatted = formatNumeroComprobante(contribuyente.punto_venta, actualCbteNro);
+                  if (!firstCbteNroFormatted) {
+                    firstCbteNroFormatted = lastCbteNroFormatted;
+                  }
 
                   // Create description: use contribuyente's default description
                   const invoiceDescription = contribuyente.concepto || 'Venta de servicios';
@@ -900,7 +912,9 @@ Deno.serve(async (req: Request) => {
                       cliente_cuit: null,
                       cliente_doc_tipo: 99,
                       cliente_doc_nro: 0,
-                      cliente_nombre: 'Consumidor Final',
+                      cliente_nombre: batch.paymentIds.length === 1
+                        ? (payments_data[batch.paymentIds[0]]?.payer_name || 'Consumidor Final')
+                        : 'Consumidor Final',
                       cliente_domicilio: null,
                       cliente_condicion_iva: 'Consumidor Final',
                     })
@@ -920,10 +934,10 @@ Deno.serve(async (req: Request) => {
                 itemErrorMsg = itemErr.message || 'Error desconocido al emitir comprobante';
               }
 
-              // Update mp_conciliaciones rows for all payment IDs in this batch
-              for (const paymentId of batch.paymentIds) {
+              // Update mp_conciliaciones rows for all payment IDs in this batch using a single upsert
+              const conciliacionRows = batch.paymentIds.map((paymentId) => {
                 const pData = payments_data[paymentId] || {};
-                const conciliacionRow = {
+                return {
                   contribuyente_id: contribuyente.id,
                   mp_payment_id: paymentId,
                   status: itemSuccess ? 'facturado' : 'fallido',
@@ -931,24 +945,26 @@ Deno.serve(async (req: Request) => {
                   mp_transaction_amount: pData.transaction_amount || 0,
                   mp_description: pData.description || null,
                   mp_payer_name: pData.payer_name || 'Consumidor Final',
-                  comprobante_id: itemSuccess ? generatedComprobanteIds[0] : null, // Link to first generated invoice
+                  comprobante_id: itemSuccess ? generatedComprobanteIds[0] : null,
                   error_message: itemSuccess ? null : itemErrorMsg,
                   batch_job_id: job.id,
                 };
+              });
 
-                const { error: concErr } = await db.from('mp_conciliaciones').upsert(conciliacionRow, {
-                  onConflict: 'contribuyente_id,mp_payment_id',
-                });
+              const { error: concErr } = await db.from('mp_conciliaciones').upsert(conciliacionRows, {
+                onConflict: 'contribuyente_id,mp_payment_id',
+              });
 
-                if (concErr) {
-                  console.error('Error insertando conciliación:', concErr.message);
-                }
+              if (concErr) {
+                console.error('Error insertando conciliaciones en lote:', concErr.message);
+              }
 
+              for (const paymentId of batch.paymentIds) {
                 results.push({
                   mp_payment_id: paymentId,
                   status: itemSuccess ? 'facturado' : 'fallido',
                   error: itemSuccess ? undefined : itemErrorMsg,
-                  comprobante_numero: itemSuccess ? lastCbteNroFormatted : undefined,
+                  comprobante_numero: itemSuccess ? firstCbteNroFormatted : undefined,
                 });
               }
 
