@@ -227,3 +227,78 @@ Ademas, si cambian certificados o entorno ARCA desde configuracion, la app limpi
 5. `main-layout.component.ts` usa `/logo.png` o `/logob.png` segun el tema activo.
 6. `public/manifest.webmanifest` usa iconos `icons/factos-icon-*.png`.
 7. `netlify.toml` fija headers para evitar que una app instalada retenga iconos anteriores.
+
+## 14. Registro y Onboarding
+
+### Flujo real de Registro
+
+1. El usuario accede a `/register`.
+2. Completa el formulario reactivo tipado (`email`, `password`, `confirmPassword`).
+3. El componente llama a `AuthService.signUp(email, password)`.
+4. Si la creación del usuario es exitosa en Supabase Auth, se muestra una pantalla de confirmación informando que debe validar su correo electrónico.
+5. Una vez que el usuario hace clic en el enlace del correo de confirmación, Supabase dispara un evento `SIGNED_IN`.
+6. Al ingresar a la aplicación, los guards detectan que la sesión está iniciada pero el perfil de contribuyente no está completo (faltan datos fiscales o los certificados `arca_cert` y `arca_key`).
+7. El `authGuard` bloquea el acceso a las pantallas principales y redirige automáticamente al usuario a `/onboarding`.
+
+### Flujo real del Asistente de Onboarding
+
+1. El usuario es recibido en `/onboarding` y pasa por un asistente de 4 pasos controlado mediante señales de estado en `OnboardingComponent`:
+2. **Paso 1: Datos Fiscales**
+   - El usuario ingresa su CUIT.
+   - Presiona "Buscar CUIT". El componente llama a `/padron-lookup`.
+   - Dado que el usuario no tiene certificados configurados todavía, la Edge Function detecta la ausencia de credenciales en la base de datos y utiliza las variables de entorno del sistema (`SYSTEM_ARCA_CERT`, `SYSTEM_ARCA_KEY`, etc.) como fallback para consultar el Padrón de AFIP/ARCA.
+   - Se recuperan y autocompletan la Razón Social, Domicilio y Condición IVA.
+3. **Paso 2: Generar Clave y CSR**
+   - El usuario presiona "Generar Clave y Solicitud (CSR)".
+   - La aplicación llama al endpoint `/generate-csr` de Supabase Edge Functions.
+   - La función genera de forma asíncrona un par de claves RSA de 2048 bits usando `node-forge`.
+   - Devuelve la clave privada y la solicitud de firma de certificado (CSR) PEM al frontend.
+   - El frontend descarga automáticamente el archivo `.csr` (por ejemplo, `factos-request.csr`) al equipo local del usuario y mantiene la clave privada en memoria del componente.
+4. **Paso 3: Instrucciones ARCA**
+   - Se muestra una guía visual explicativa que orienta al usuario sobre cómo ingresar a la web de AFIP/ARCA, subir el CSR para obtener su certificado `.crt`, y delegar el servicio de Facturación Electrónica (`wsfe`) y Consulta de Constancia de Inscripción (`padron`) a la nueva relación.
+5. **Paso 4: Subir Certificado**
+   - El usuario selecciona y sube su archivo de certificado `.crt`.
+   - Presiona "Guardar y Empezar a Facturar".
+   - Se invoca `ContribuyenteService.crearContribuyente()` enviando en un único payload transaccional:
+     - Datos fiscales (Paso 1).
+     - La clave privada temporal que estaba en la memoria del componente (Paso 2).
+     - El contenido del certificado `.crt` subido (Paso 4).
+   - Supabase guarda el registro. La aplicación ejecuta `cargarContribuyente()` para actualizar las señales reactivas del estado global y redirige al usuario a la página de inicio `/`.
+
+## 15. Facturación en lote de Mercado Pago
+
+### Configuración del token
+
+1. En la pantalla de Configuración, pestaña "Mercado Pago", el usuario ingresa su Access Token de Mercado Pago (generado desde el panel de desarrolladores de MP).
+2. Al guardar, este se persiste de forma segura en la columna `mp_access_token` de la tabla `contribuyentes`.
+
+### Flujo de importación y facturación en lote
+
+1. Desde `/facturar`, el usuario hace clic en el botón de Mercado Pago al lado del buscador de CUIT.
+2. Se abre el componente `MercadopagoImportModalComponent`.
+3. Al inicializarse, el modal calcula un rango de fechas por defecto:
+   - Fecha de fin: el día actual a las 23:59:59.
+   - Fecha de inicio: si hay facturas de Mercado Pago previas en `mp_conciliaciones`, se toma la fecha de la última conciliación menos 2 días (`getDefaultBeginDate`). Si no hay historial, por defecto se toman 7 días hacia atrás.
+4. El usuario puede modificar el rango y hacer clic en "Buscar Pagos".
+5. Se invoca a la Edge Function `mercadopago-sync?action=search&begin_date=...&end_date=...`.
+6. La función:
+   - Recupera el `mp_access_token` del contribuyente.
+   - Consulta la API de Mercado Pago (`/v1/payments/search`) buscando cobros con estado `approved`.
+   - Consulta `mp_conciliaciones` para identificar cuáles de esos cobros ya fueron procesados (`facturado`, `ignorado` o `fallido`) por este contribuyente.
+   - Filtra y descarta los cobros ya existentes, devolviendo únicamente los pendientes de facturar.
+7. El frontend renderiza la lista de pagos con sus datos básicos (Fecha, Monto, Descripción, Pagador). Todos quedan seleccionados de forma predeterminada.
+8. El usuario cuenta con la opción "Combinar cobros del mismo día". Si la activa, los cobros del mismo día calendario se agruparán en una sola factura "Consumidor Final" (sumando sus montos).
+9. Al presionar "Procesar Lote", el frontend envía una petición `POST` a `/mercadopago-sync?action=process-batch` con la lista de IDs a facturar y la lista a ignorar.
+10. La Edge Function inicia el procesamiento:
+    - Crea un registro en `mp_batch_jobs` con estado `processing` y la cantidad total de elementos.
+    - Los pagos marcados para omitir se insertan directamente en `mp_conciliaciones` con estado `ignorado`.
+    - Ordena los cobros a facturar cronológicamente en forma ascendente (para garantizar que las fechas enviadas a ARCA sean monótonas crecientes).
+    - Inicia un bucle secuencial resiliente para facturar uno por uno:
+      - Determina la fecha de la factura en base al cobro de MP, aplicándole un clamping para asegurar que caiga dentro de la ventana fiscal de ARCA (bienes 5 días, servicios 10 días hacia atrás) y que no sea anterior a la última factura emitida por el contribuyente.
+      - Solicita el CAE a ARCA SDK (`createVoucher`) emitiendo una factura a Consumidor Final (tipo B o C según la condición fiscal del emisor).
+      - En caso de éxito, registra la factura en `comprobantes` e inserta la conciliación en `mp_conciliaciones` con estado `facturado` y el enlace al comprobante.
+      - En caso de fallo, inserta la conciliación con estado `fallido` y el mensaje de error de ARCA.
+      - Actualiza el registro de `mp_batch_jobs` en base a los contadores de progreso actualizados y añade el resultado detallado al campo JSONB `results`.
+11. Durante todo este proceso, el frontend está suscrito via Supabase Realtime a los cambios en la tabla `mp_batch_jobs` para el ID del lote en curso. Actualiza en tiempo real la barra de progreso, los contadores de éxitos/errores y el listado de resultados.
+12. Al finalizar, si quedaron cobros con estado `fallido`, el modal permite al usuario revisarlos y presionar el botón "Reintentar fallidas" para volver a iniciar un lote únicamente con esos elementos.
+
