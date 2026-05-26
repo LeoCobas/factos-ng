@@ -6,40 +6,45 @@ FACTOS-NG es una SPA Angular 21 que usa Supabase como backend operativo y delega
 
 El flujo base actual es:
 
-1. el usuario se autentica con Supabase Auth
+1. el usuario se registra (`/register`) o se autentica (`/login`) con Supabase Auth
 2. la app inicializa el estado de sesion antes de resolver guards
-3. la app carga un unico `contribuyente` por usuario
-4. la UI puede consultar constancia de inscripcion de un CUIT
-5. la app clasifica la condicion fiscal del cliente
-6. resuelve automaticamente si corresponde `FACTURA A`, `B` o `C`
-7. valida ventana fiscal, monto maximo configurado y monotonia de fecha por tipo/punto de venta
-8. emite o anula comprobantes mediante `arca-proxy`
-9. persiste el resultado autorizado en `comprobantes`
-10. genera tickets PDF en el cliente con `pdfmake`
-11. visualiza e imprime PDFs con PDF.js local
+3. si el usuario no tiene perfil de `contribuyente` o le faltan certificados ARCA, el guard lo fuerza al asistente de `/onboarding`
+4. en el onboarding, el usuario valida sus datos fiscales, genera un par de claves y CSR (mediante la Edge Function `generate-csr`), y sube su certificado `.crt` obtenido en ARCA
+5. una vez configurado el `contribuyente`, se habilita la emisión individual de facturas, o la importación en lote de cobros de Mercado Pago
+6. para emitir, se puede consultar la constancia de inscripción de un CUIT cliente (usando `padron-lookup` con fallback si es necesario)
+7. la app clasifica la condición fiscal del cliente y resuelve si corresponde `FACTURA A`, `B` o `C`
+8. valida ventana fiscal (bienes/servicios), monto máximo configurado y monotonía de fecha por tipo/punto de venta
+9. emite comprobantes individuales via `arca-proxy` o lotes completos via `mercadopago-sync`
+10. persiste el resultado autorizado en `comprobantes` (y opcionalmente vincula el cobro en `mp_conciliaciones`)
+11. genera tickets PDF en el cliente con `pdfmake`
+12. visualiza e imprime PDFs con PDF.js local
 
 ## Capas
 
 ### Frontend
 
-- `src/app/app.routes.ts`: define `login` como ruta publica y el resto bajo guards basados en `UrlTree`.
+- `src/app/app.routes.ts`: define `/login` y `/register` como rutas públicas y el resto bajo guards basados en `UrlTree`. Redirige a `/onboarding` si no tiene perfil.
 - `src/app/layouts/main-layout.component.ts`: layout autenticado, navegacion principal y carga inicial del contribuyente.
-- `src/app/features/*`: pantallas funcionales.
-- `src/app/core/services/*`: integracion con Supabase, auth, facturacion, comprobantes, PDFs y tema.
+- `src/app/features/*`: pantallas funcionales (incluyendo `/auth/register` y `/onboarding`).
+- `src/app/core/services/*`: servicios principales. Agrega `MercadopagoService` para búsquedas, retries y sincronización por Realtime.
 - `src/app/core/config/*`: carga de configuracion runtime del cliente.
-- `src/app/core/types/*`: contratos compartidos para formularios, comprobantes y PDF.
+- `src/app/core/types/*`: contratos compartidos para formularios, comprobantes, PDF y Mercado Pago.
 - `src/app/core/utils/*`: reglas fiscales, normalizacion de datos y manejo de tickets ARCA.
 - `src/app/shared/components/ui/*`: componentes de UI y visor PDF.
 
 ### Backend operativo
 
-- Supabase Auth para sesion y usuario.
-- Supabase Postgres para:
-  - `contribuyentes`
+- Supabase Auth para sesion y usuario (soporta autoregistro).
+- Supabase Postgres para persistencia de datos:
+  - `contribuyentes` (almacena el `mp_access_token` del emisor)
   - `comprobantes`
+  - `mp_conciliaciones` (registra el mapeo de cobros MP y su estado de facturación)
+  - `mp_batch_jobs` (lotes de facturación y progreso reactivo)
 - Edge Functions:
   - `arca-proxy`: emision, nota de credito y consulta del ultimo comprobante
-  - `padron-lookup`: consulta de constancia de inscripcion y clasificacion fiscal basica
+  - `padron-lookup`: consulta de constancia de inscripcion con fallback a credenciales de sistema si el contribuyente no tiene certificados
+  - `generate-csr`: generación de claves RSA de 2048-bit y archivo CSR en Deno
+  - `mercadopago-sync`: búsqueda en la API de Mercado Pago y facturación secuencial resiliente del lote
 - Runtime config cliente:
   - `public/app-config.json` con URL y `anonKey` Supabase
   - generado por `scripts/generate-runtime-config.mjs` antes de los comandos npm principales
@@ -65,6 +70,20 @@ Esa separacion esta implementada en `src/app/core/utils/arca-ticket.util.ts`.
 - `auth.guard.ts` y guard de invitado: devuelven `UrlTree` en vez de navegar imperativamente.
 - el guard protegido espera a que la inicializacion auth termine antes de decidir acceso o redireccion.
 - `login.component.ts`: formulario de acceso con reactive forms tipados, sin acceso manual al DOM.
+- `register.component.ts`: formulario de autoregistro con confirmación de contraseñas y pantalla de validación de correo pendiente.
+
+### Onboarding
+
+- `onboarding.component.ts`: asistente multi-paso (Wizard) para usuarios recién registrados sin contribuyente configurado:
+  - **Paso 1 (Datos Fiscales)**: Ingreso de CUIT con lookup autocompletado desde `/padron-lookup` (vía credenciales del sistema).
+  - **Paso 2 (Generar CSR)**: Generación de par de claves en Deno y descarga del archivo `.csr` para ARCA.
+  - **Paso 3 (Instrucciones)**: Guía visual para delegar servicios en el portal de AFIP/ARCA.
+  - **Paso 4 (Subir Certificado)**: Subida de archivo `.crt` que persiste todos los datos fiscales, la clave privada generada y el certificado en una única transacción.
+
+### Integración Mercado Pago
+
+- `configuracion-mercadopago-form.component.ts`: formulario para guardar el `mp_access_token` del usuario de forma encriptada/segura en su contribuyente.
+- `mercadopago-import-modal.component.ts`: modal responsivo (pantalla completa en mobile) para importar cobros en un rango de fechas. Permite seleccionar cobros, combinar cobros del mismo día, e iniciar el lote de facturación mostrando progreso reactivo mediante una barra y contadores enlazados a Supabase Realtime.
 
 ### Configuracion
 
@@ -155,6 +174,7 @@ Campos relevantes usados por frontend y Edge Functions:
 - defaults de emision: `concepto`, `actividad`, `iva_porcentaje`, `punto_venta`
 - guardrail local de emision: `monto_maximo_factura`
 - credenciales y estado ARCA: `arca_cert`, `arca_key`, `arca_production`, `arca_ticket`
+- credenciales Mercado Pago: `mp_access_token`
 - configuracion cliente Supabase: `public/app-config.json`
 
 ### `comprobantes`
@@ -170,6 +190,27 @@ Ademas de los campos clasicos del comprobante, hoy almacena datos del receptor:
 - `cliente_domicilio`
 - `cliente_condicion_iva`
 - `comprobante_asociado_id`
+
+### `mp_conciliaciones`
+
+Evita la duplicación de facturas al asociar cobros de Mercado Pago con los comprobantes emitidos.
+
+- `contribuyente_id`: referencia al contribuyente emisor.
+- `mp_payment_id`: identificador único del cobro en Mercado Pago (clave única junto a `contribuyente_id`).
+- `status`: estado de la conciliación (`facturado`, `ignorado`, `fallido`).
+- `mp_date_created`, `mp_transaction_amount`, `mp_description`, `mp_payer_name`: snapshot del cobro en el momento de la importación.
+- `comprobante_id`: referencia opcional al comprobante generado en la tabla `comprobantes`.
+- `error_message`: descripción del error en caso de que falle la facturación de ese cobro.
+- `batch_job_id`: referencia al lote que procesó este cobro.
+
+### `mp_batch_jobs`
+
+Controla las ejecuciones en lote e informa al frontend del progreso.
+
+- `contribuyente_id`: referencia al emisor.
+- `status`: estado actual del lote (`pending`, `processing`, `completed`, `failed`).
+- `total_items`, `processed_items`, `successful_items`, `failed_items`, `ignored_items`: contadores cuantitativos del progreso.
+- `results`: JSONB con el detalle por cobro procesado (incluyendo ID de pago, estado, error o número de comprobante).
 
 ## Observaciones de arquitectura
 
