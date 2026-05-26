@@ -22,7 +22,10 @@ export class ContribuyenteService {
 
   constructor() {}
 
-  async cargarContribuyente(): Promise<void> {
+  async cargarContribuyente(force = false): Promise<void> {
+    if (this.inicializado() && !force) {
+      return;
+    }
     this.cargando.set(true);
     this.errorCarga.set(null);
 
