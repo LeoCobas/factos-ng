@@ -246,55 +246,55 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!contribuyente) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error:
-            'No tenes perfil de contribuyente. En Facturacion toca Guardar Datos de Facturacion al menos una vez y luego vuelve a buscar la constancia.',
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+    let cert = contribuyente?.arca_cert;
+    let key = contribuyente?.arca_key;
+    let cuitEmisor = contribuyente ? parseInt(contribuyente.cuit, 10) : null;
+    let production = contribuyente?.arca_production === true;
+    let credentials = contribuyente ? getValidStoredTicket(contribuyente.arca_ticket) : null;
+
+    const isFallbackMode = !cert || !key || !cuitEmisor;
+    if (isFallbackMode) {
+      cert = Deno.env.get('SYSTEM_ARCA_CERT');
+      key = Deno.env.get('SYSTEM_ARCA_KEY');
+      const systemCuit = Deno.env.get('SYSTEM_ARCA_CUIT');
+      cuitEmisor = systemCuit ? parseInt(systemCuit, 10) : null;
+      production = Deno.env.get('SYSTEM_ARCA_PRODUCTION') === 'true';
+      credentials = null;
+
+      if (!cert || !key || !cuitEmisor) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Servidor no configurado para consultas de onboarding (faltan credenciales de sistema).',
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
-    if (
-      !String(contribuyente.arca_cert || '').trim() ||
-      !String(contribuyente.arca_key || '').trim()
-    ) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error:
-            'Faltan el certificado (.crt) o la clave (.key). Guardalos en Certificado ARCA y toca Guardar antes de consultar la constancia.',
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
-    const cuitEmisor = parseInt(contribuyente.cuit, 10);
-    const production = contribuyente.arca_production === true;
-    const credentials = getValidStoredTicket(contribuyente.arca_ticket);
     const arca = new Arca({
-      key: contribuyente.arca_key,
-      cert: contribuyente.arca_cert,
-      cuit: cuitEmisor,
+      key: key!,
+      cert: cert!,
+      cuit: cuitEmisor!,
       production,
       credentials: credentials || undefined,
       handleTicket: true,
       useHttpsAgent: false,
       ticketPath: ARCA_TICKET_PATH,
     });
-    const persistTicket = () =>
-      persistTicketFromFile({
+    const persistTicket = async () => {
+      if (isFallbackMode) return;
+      await persistTicketFromFile({
         db: supabase,
-        cuit: cuitEmisor,
+        cuit: cuitEmisor!,
         production,
         originalTicket: credentials || undefined,
       });
+    };
 
     try {
       const normalizedCuit = parseInt(String(cuit), 10);
-      const arcaEnvironment = getArcaEnvironmentLabel(contribuyente.arca_production === true);
+      const arcaEnvironment = getArcaEnvironmentLabel(production);
 
       let personaObj: Record<string, unknown> | null = null;
       try {
