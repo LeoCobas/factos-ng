@@ -718,6 +718,9 @@ Deno.serve(async (req: Request) => {
               }
             }
 
+            // Sort batches chronologically (oldest to newest)
+            batches.sort((a, b) => a.dateStr.localeCompare(b.dateStr));
+
             // Emit invoices sequentially for each batch
             for (const batch of batches) {
               let itemSuccess = false;
@@ -786,7 +789,7 @@ Deno.serve(async (req: Request) => {
                 }
 
                 const fechaNum = parseInt(invoiceDateStr.replace(/-/g, ''), 10);
-                const conceptoNum = contribuyente.concepto === 'servicios' ? 2 : 1;
+                const conceptoNum = contribuyente.actividad === 'servicios' ? 2 : 1;
 
                 const voucherPayload: any = {
                   CantReg: 1,
