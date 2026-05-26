@@ -113,3 +113,11 @@ Con eso alcanza para:
 - ubicar modulos y responsabilidades
 - seguir los flujos criticos
 - identificar deuda documental y tecnica sin inflar el repositorio
+
+## Sectores Documentados en Mayo 2026
+
+- **Registro y Onboarding**: Autocompletado, flujo del asistente paso a paso, guardias de ruta y generación de CSR/clave privada. Documentado en [Arquitectura](./arquitectura.md#onboarding), [Flujos clave](./flujos-clave.md#14-registro-y-onboarding) y [Contratos de backend](./backend-operational-contracts.md#generate-csr).
+- **Padrón Lookup Fallback**: Integración con credenciales del sistema si no existe perfil de contribuyente. Documentado en [Contratos de backend](./backend-operational-contracts.md#padron-lookup).
+- **Facturación en Lote de Mercado Pago**: Sincronización, ordenamiento cronológico, clamping de fechas, combinación por día y monitoreo reactivo con Realtime. Documentado en [Arquitectura](./arquitectura.md#integracion-mercado-pago), [Flujos clave](./flujos-clave.md#15-facturacion-en-lote-de-mercado-pago) y [Contratos de backend](./backend-operational-contracts.md#mercadopago-sync).
+- **Actualización de Dependencias**: Subida de dependencias principales (v2.106 de Supabase-js, etc.) y compatibilidad de TypeScript 5.9.x. Documentado en [README.md](../README.md#stack-real).
+
