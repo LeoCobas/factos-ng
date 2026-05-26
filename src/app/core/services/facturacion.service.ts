@@ -744,7 +744,7 @@ export class FacturacionService {
       throw new Error('No se pudieron cargar las facturas recientes');
     }
 
-    return (data || []).map((factura) => ({
+    return (data || []).map((factura: any) => ({
       id: factura.id,
       fecha: factura.fecha,
       tipo_comprobante: factura.tipo_comprobante,

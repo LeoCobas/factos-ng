@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 import { getRuntimeConfig } from '../config/runtime-config';
 import { Database } from '../types/database.types';
@@ -28,7 +28,7 @@ const lockFreeStorage = {
   },
 };
 
-let client: ReturnType<typeof createSupabaseClient> | null = null;
+let client: SupabaseClient<Database> | null = null;
 
 function createSupabaseClient() {
   const config = getRuntimeConfig();
@@ -54,7 +54,7 @@ function createSupabaseClient() {
   });
 }
 
-export function getSupabaseClient() {
+export function getSupabaseClient(): SupabaseClient<Database> {
   if (!client) {
     client = createSupabaseClient();
   }
@@ -66,7 +66,7 @@ export const supabase = {
   get auth() {
     return getSupabaseClient().auth;
   },
-  from(...args: Parameters<ReturnType<typeof createSupabaseClient>['from']>) {
-    return getSupabaseClient().from(...args);
+  from(relation: string) {
+    return getSupabaseClient().from(relation);
   },
-};
+} as any;

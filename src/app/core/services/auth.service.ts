@@ -164,7 +164,7 @@ export class AuthService {
         loading: false,
       });
 
-      supabase.auth.onAuthStateChange((event, nextSession) => {
+      supabase.auth.onAuthStateChange((event: AuthChangeEvent, nextSession: Session | null) => {
         this.authState.set({
           user: nextSession?.user ?? null,
           session: nextSession,

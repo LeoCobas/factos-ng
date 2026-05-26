@@ -190,6 +190,8 @@ export interface Database {
         };
       };
     };
+    Views: {};
+    Functions: {};
   };
 }
 
