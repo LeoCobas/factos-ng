@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/services/auth.service';
 import { ThemeService } from '../../core/services/theme.service';
@@ -13,7 +13,7 @@ interface LoginFormModel {
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, RouterLink],
   template: `
     <div
       class="min-h-screen flex items-center justify-center bg-background px-4 py-8 sm:px-6 lg:px-8"
@@ -79,6 +79,13 @@ interface LoginFormModel {
                 </span>
               </button>
             </form>
+
+            <div class="mt-4 text-center">
+              <p class="text-sm text-muted-foreground">
+                ¿No tenés una cuenta? 
+                <a routerLink="/register" class="text-primary font-medium hover:underline">Registrate</a>
+              </p>
+            </div>
           </div>
         </div>
       </div>
