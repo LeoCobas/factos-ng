@@ -75,7 +75,7 @@ import { supabase } from '../../core/services/supabase.service';
                     <input type="text" formControlName="cuit" class="form-input" placeholder="20123456789" />
                     <button
                       type="button"
-                      [disabled]="buscandoCuit() || fiscalForm.controls.cuit.invalid"
+                      [disabled]="buscandoCuit() || fiscalForm.controls['cuit'].invalid"
                       (click)="buscarCuit()"
                       class="btn-primary rounded-lg px-4 text-sm font-semibold"
                     >
@@ -86,7 +86,7 @@ import { supabase } from '../../core/services/supabase.service';
                       }
                     </button>
                   </div>
-                  @if (fiscalForm.controls.cuit.touched && fiscalForm.controls.cuit.invalid) {
+                  @if (fiscalForm.controls['cuit'].touched && fiscalForm.controls['cuit'].invalid) {
                     <p class="text-xs text-destructive mt-1">Ingresá un CUIT válido de 11 dígitos</p>
                   }
                 </div>
