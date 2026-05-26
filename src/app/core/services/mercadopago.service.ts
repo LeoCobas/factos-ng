@@ -139,12 +139,14 @@ export class MercadopagoService {
 
   /**
    * Get the default begin_date for the search.
-   * = last processed MP date - 2 days, or 7 days ago if none.
+   * = last processed MP date - 2 days, or 5/10 days ago if none depending on activity.
    */
   async getDefaultBeginDate(): Promise<string> {
     const contribuyente = this.contribuyenteService.contribuyente();
+    const defaultDays = contribuyente?.actividad === 'servicios' ? 10 : 5;
+    
     if (!contribuyente) {
-      return this.daysAgo(7);
+      return this.daysAgo(defaultDays);
     }
 
     const { data, error } = await supabase
@@ -156,7 +158,7 @@ export class MercadopagoService {
       .maybeSingle();
 
     if (error || !data?.mp_date_created) {
-      return this.daysAgo(7);
+      return this.daysAgo(defaultDays);
     }
 
     const lastDate = new Date(data.mp_date_created);
