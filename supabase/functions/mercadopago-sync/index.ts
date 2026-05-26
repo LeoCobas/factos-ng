@@ -662,8 +662,9 @@ Deno.serve(async (req: Request) => {
                 originalTicket: credentials || undefined,
               });
 
+            const emisorCondicion = (contribuyente.condicion_iva || '').toLowerCase();
             const tipoComprobante =
-              contribuyente.condicion_iva === 'Monotributo' ? 'FACTURA C' : 'FACTURA B';
+              emisorCondicion.includes('monotrib') ? 'FACTURA C' : 'FACTURA B';
             const cbteTipo = getCbteTipo(tipoComprobante);
             const isFacturaC = tipoComprobante === 'FACTURA C';
             const ivaPct = Number(contribuyente.iva_porcentaje) || 21;
