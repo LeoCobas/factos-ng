@@ -77,7 +77,7 @@
     "prettier": "^3.8.3",
     "supabase": "^2.101.0",
     "tailwindcss": "^4.3.0",
-    "typescript": "^6.0.3",
+    "typescript": "~5.9.3",
     "vitest": "^4.1.7"
   }
 }
