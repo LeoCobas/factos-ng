@@ -7,7 +7,7 @@ No es un proyecto open source listo para reutilizar, exponer publicamente ni des
 ## Estado actual
 
 - Uso previsto: operacion personal o controlada.
-- Estado funcional: autenticacion, configuracion del contribuyente, gestion de certificados ARCA, emision de facturas A/B/C, anulacion con nota de credito, consulta de constancia de inscripcion, generacion local de PDF e instalacion PWA.
+- Estado funcional: autenticacion, registro y onboarding de usuarios, configuracion del contribuyente, gestion de certificados ARCA, emision de facturas A/B/C, integracion con Mercado Pago para facturacion en lote, anulacion con nota de credito, consulta de constancia de inscripcion, generacion local de PDF e instalacion PWA.
 - Estado tecnico: base alineada con Angular 21, guards sin navegacion imperativa, formularios reactivos tipados en flujos principales, responsabilidades mejor separadas entre componentes y servicios.
 - Estado documental: este README y `docs/` reflejan el codigo vigente en `src/` y `supabase/`.
 
@@ -16,15 +16,16 @@ No es un proyecto open source listo para reutilizar, exponer publicamente ni des
 - Angular 21 con standalone components, signals para estado UI local y reactive forms tipados en los flujos principales
 - Supabase:
   - Auth
-  - Postgres con `contribuyentes` y `comprobantes`
-  - Edge Functions `arca-proxy` y `padron-lookup`
-- `@arcasdk/core@0.3.6` en las Edge Functions
+  - Postgres con `contribuyentes` (con `mp_access_token`), `comprobantes`, `mp_conciliaciones` y `mp_batch_jobs` (suscripción Realtime activa)
+  - Edge Functions `arca-proxy`, `padron-lookup` (con fallback de sistema), y `generate-csr` / `mercadopago-sync`
+- `@arcasdk/core@0.3.6` en las Edge Functions `arca-proxy` y `padron-lookup`
 - Tailwind CSS 4
 - `pdfmake` para generar tickets PDF localmente
 - PDF.js empaquetado localmente con worker servido desde `/assets/pdfjs`
 - PWA con manifest, service worker Angular, iconos Factos y cache headers especificos para iconos instalables
 - ESLint 9 + `angular-eslint`
 - Vitest para componentes, servicios y reglas de negocio
+- TypeScript 5.9.x (para compatibilidad de dependencias de build de Angular)
 
 ## Estructura relevante
 
@@ -50,6 +51,8 @@ supabase/
   functions/
     arca-proxy/
     padron-lookup/
+    generate-csr/
+    mercadopago-sync/
   schema.sql
 docs/
   arquitectura.md
@@ -61,9 +64,10 @@ docs/
 
 ## Modulos principales
 
-- `auth`: login por email/password con Supabase Auth.
-- `configuracion`: alta o edicion del contribuyente, monto maximo por factura, carga de certificados ARCA, consulta de constancia de inscripcion por CUIT, cambio de email/password y tema.
-- `facturar`: emision de comprobantes con lookup opcional de CUIT cliente, resolucion automatica de `FACTURA A`, `B` o `C`, confirmacion si se supera el monto maximo, panel de resultado emitido y bloque de facturas recientes.
+- `auth`: login y registro (`/register`) por email/password con Supabase Auth, y redirección a onboarding si el perfil no está configurado.
+- `onboarding`: asistente paso a paso (`/onboarding`) para el alta de datos fiscales con lookup (fallback en `padron-lookup`), generación de clave privada y CSR via `generate-csr`, instrucciones del portal ARCA y subida final del certificado `.crt`.
+- `configuracion`: alta o edicion del contribuyente, monto maximo por factura, configuración del token de acceso a Mercado Pago, carga de certificados ARCA, consulta de constancia de inscripcion por CUIT, cambio de email/password y tema.
+- `facturar`: emision de comprobantes individuales con lookup de CUIT o en lote desde Mercado Pago (vía modal de importación, con filtrado de ya conciliados, combinación por día y monitoreo Realtime), resolucion automatica de `FACTURA A`, `B` o `C`, confirmacion por monto maximo, panel de resultado y facturas recientes.
 - `listado`: consulta comprobantes por fecha, visualizacion, descarga, compartido, impresion y anulacion con nota de credito.
 - `totales`: resumen de importes y cantidades por periodo.
 - `core/services/auth.service.ts`: fuente unica de verdad del estado de sesion e inicializacion de auth.
@@ -73,7 +77,18 @@ docs/
 - `core/services/pdfjs-loader.service.ts`: carga PDF.js desde dependencia local y fija el worker local comun para visor e impresion.
 - `core/services/theme.service.ts`: persiste `light`, `dark` o `auto`, aplica clases globales y actualiza `meta[name="theme-color"]`.
 
-## Refactors aplicados en esta etapa
+## Refactors y Nuevas Funcionalidades aplicadas en esta etapa
+
+- Registro y Onboarding de usuarios:
+  - Formulario de registro en `/register` con validaciones robustas y pantalla de email pendiente.
+  - Guard de perfil completo (`authGuard` + `ContribuyenteService`) para asegurar que usuarios sin certificado/datos fiscales sean redirigidos a `/onboarding`.
+  - Asistente de 4 pasos para autocompletar CUIT, descargar CSR auto-generado con RSA 2048 en la Edge Function `/generate-csr`, y subir el certificado final.
+- Integración y Facturación por Lotes de Mercado Pago:
+  - Almacenamiento seguro de `mp_access_token` por contribuyente.
+  - Sincronización robusta en la Edge Function `/mercadopago-sync` para buscar cobros, excluir los previamente facturados, y procesar en lote.
+  - Reglas de negocio: ordenamiento cronológico ascendente de lotes y clamping de fechas de los cobros a la ventana fiscal permitida por ARCA.
+  - Interfaz de importación modal optimizada para mobile, con opción para combinar cobros del mismo día en una sola factura Consumidor Final.
+  - Monitoreo en tiempo real del progreso de facturación por lotes mediante Supabase Realtime sobre la tabla `mp_batch_jobs`.
 
 - Auth y routing:
   - guards que devuelven `boolean | UrlTree`
@@ -105,11 +120,13 @@ docs/
 
 ## Flujos cubiertos
 
-- Auth con Supabase y guards de ruta.
-- Configuracion del emisor y certificados ARCA en `contribuyentes`.
-- Consulta de constancia de inscripcion por CUIT usando `padron-lookup`.
+- Auth con Supabase, registro y redirección del onboarding.
+- Flujo de Onboarding completo con generación de CSR y clave privada.
+- Configuracion del emisor, certificados ARCA, y token de Mercado Pago.
+- Búsqueda e importación de cobros de Mercado Pago en lote con filtrado de conciliados y combinación diaria.
+- Consulta de constancia de inscripcion por CUIT usando `padron-lookup` (con o sin certificados de contribuyente).
 - Clasificacion fiscal del cliente y resolucion del tipo de comprobante.
-- Emision y anulacion via `arca-proxy`.
+- Emision y anulacion via `arca-proxy` y procesamiento por lotes via `mercadopago-sync`.
 - Generacion de PDF local con `pdfmake`.
 - Visualizacion e impresion con PDF.js local.
 - Validacion de ventana fiscal y monotonia de fechas por tipo de comprobante.
