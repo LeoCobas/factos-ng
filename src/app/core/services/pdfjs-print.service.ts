@@ -164,11 +164,13 @@ export class PdfJsPrintService {
   }
 
   private openDirectPrintWindow(imageDataUrl: string, _width: number, _height: number): void {
-    const printWindow = window.open('', '_blank');
-
-    if (!printWindow) {
-      throw new Error('No se pudo abrir la ventana de impresion');
-    }
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '-9999px';
+    iframe.style.bottom = '-9999px';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -226,21 +228,31 @@ export class PdfJsPrintService {
         <div class="print-container">
           <img src="${imageDataUrl}" alt="Factura" class="print-image" />
         </div>
-        <script>
-          window.onload = function() {
-            setTimeout(function() {
-              window.print();
-              setTimeout(function() {
-                window.close();
-              }, 1000);
-            }, 500);
-          };
-        </script>
       </body>
       </html>
     `;
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document || iframe.contentDocument;
+    if (doc) {
+      doc.open();
+      doc.write(htmlContent);
+      doc.close();
+
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch (err) {
+          console.warn('Error imprimiendo iframe:', err);
+        }
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        }, 60000);
+      }, 300);
+    }
   }
 }
