@@ -117,12 +117,13 @@ import { supabase } from '../../core/services/supabase.service';
                       <input type="number" formControlName="punto_venta" class="form-input" placeholder="4" />
                     </div>
                     <div>
-                      <label class="form-label">Concepto Facturado</label>
-                      <select formControlName="concepto" class="form-select">
-                        <option value="Servicios profesionales">Servicios profesionales</option>
-                        <option value="Venta de bienes">Venta de bienes</option>
-                        <option value="Productos y Servicios">Productos y Servicios</option>
-                      </select>
+                      <label class="form-label">Concepto a Facturar</label>
+                      <input
+                        type="text"
+                        formControlName="concepto"
+                        class="form-input"
+                        placeholder="Honorarios Profesionales"
+                      />
                     </div>
                     <div>
                       <label class="form-label">Actividad principal</label>
