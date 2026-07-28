@@ -321,7 +321,7 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
 
     try {
       const page = await this.pdfDocument.getPage(1);
-      const viewport = page.getViewport({ scale: 2.0, rotation: 0 });
+      const viewport = page.getViewport({ scale: 3.0, rotation: 0 });
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
 
@@ -343,7 +343,7 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  private openDirectPrintWindow(imageDataUrl: string, width: number, _height: number): void {
+  private openDirectPrintWindow(imageDataUrl: string, _width: number, _height: number): void {
     const printWindow = window.open('', '_blank');
 
     if (!printWindow) {
@@ -359,19 +359,24 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Imprimir Factura</title>
         <style>
-          @page { margin: 5mm; size: auto; }
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
+          @page {
+            margin: 0;
+            size: auto;
+          }
+          * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+          }
+          html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
             background: white;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
           }
           .print-container {
             width: 100%;
-            max-width: ${Math.min(width * 0.5, 400)}px;
+            margin: 0 auto;
             text-align: center;
           }
           .print-image {
@@ -381,7 +386,17 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
             margin: 0 auto;
           }
           @media print {
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 100% !important;
+            }
+            .print-container {
+              width: 100% !important;
+              max-width: 100% !important;
+            }
             .print-image {
+              width: 100% !important;
               max-width: 100% !important;
               page-break-inside: avoid;
             }

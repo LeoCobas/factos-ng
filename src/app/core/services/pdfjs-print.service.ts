@@ -24,6 +24,59 @@ export class PdfJsPrintService {
   }
 
   /**
+   * Imprime el PDF utilizando el motor vectorial nativo del navegador (PDFium en Chrome)
+   * mediante un iframe invisible. Esto evita convertir la pagina a imagen PNG y
+   * previene cualquier tipo de borrosidad o rasterizado ("efecto masticado") en la impresora termica.
+   */
+  async printPdfVector(url: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '-9999px';
+      iframe.style.bottom = '-9999px';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.src = url;
+
+      let resolved = false;
+      const cleanup = () => {
+        if (!resolved) {
+          resolved = true;
+          setTimeout(() => {
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
+          }, 2000);
+        }
+      };
+
+      iframe.onload = () => {
+        try {
+          if (iframe.contentWindow) {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+            cleanup();
+            resolve(true);
+            return;
+          }
+        } catch (err) {
+          console.warn('Fallback a impresion direct window:', err);
+        }
+        cleanup();
+        resolve(false);
+      };
+
+      iframe.onerror = () => {
+        cleanup();
+        resolve(false);
+      };
+
+      document.body.appendChild(iframe);
+    });
+  }
+
+  /**
    * Imprime la primera página del PDF generado localmente usando PDF.js cargado desde el bundle.
    * No depende de CDN y reutiliza el mismo worker local que el visor.
    */
@@ -53,7 +106,7 @@ export class PdfJsPrintService {
     page: any,
   ): Promise<{ imageDataUrl: string; width: number; height: number }> {
     const viewport = page.getViewport({
-      scale: 2.0,
+      scale: 3.0,
       rotation: 0,
     });
 
@@ -79,7 +132,7 @@ export class PdfJsPrintService {
     };
   }
 
-  private openDirectPrintWindow(imageDataUrl: string, width: number, _height: number): void {
+  private openDirectPrintWindow(imageDataUrl: string, _width: number, _height: number): void {
     const printWindow = window.open('', '_blank');
 
     if (!printWindow) {
@@ -94,19 +147,24 @@ export class PdfJsPrintService {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Imprimir Factura</title>
         <style>
-          @page { margin: 5mm; size: auto; }
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
+          @page {
+            margin: 0;
+            size: auto;
+          }
+          * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+          }
+          html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
             background: white;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
           }
           .print-container {
             width: 100%;
-            max-width: ${Math.min(width * 0.5, 400)}px;
+            margin: 0 auto;
             text-align: center;
           }
           .print-image {
@@ -116,7 +174,17 @@ export class PdfJsPrintService {
             margin: 0 auto;
           }
           @media print {
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 100% !important;
+            }
+            .print-container {
+              width: 100% !important;
+              max-width: 100% !important;
+            }
             .print-image {
+              width: 100% !important;
               max-width: 100% !important;
               page-break-inside: avoid;
             }

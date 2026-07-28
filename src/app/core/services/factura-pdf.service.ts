@@ -29,8 +29,8 @@ interface PdfMakeRuntime {
   providedIn: 'root',
 })
 export class FacturaPdfService {
-  private readonly pageWidth = 226;
-  private readonly pageMargins: [number, number, number, number] = [8, 10, 8, 10];
+  private readonly pageWidth = 200;
+  private readonly pageMargins: [number, number, number, number] = [0, 0, 0, 0];
   private pdfMakePromise: Promise<PdfMakeRuntime> | null = null;
 
   async generarFacturaPdf(
@@ -158,7 +158,8 @@ export class FacturaPdfService {
         text: `ORIGINAL - ${tipo} (COD. ${codigoTipo.toString().padStart(2, '0')})`,
         alignment: 'center',
         bold: true,
-        fontSize: 7,
+        fontSize: 8.5,
+        color: '#000000',
         margin: [0, 0, 0, 4],
       },
       this.crearSeparador(),
@@ -170,13 +171,16 @@ export class FacturaPdfService {
           text: contribuyente.nombre_fantasia.toUpperCase(),
           alignment: 'center',
           bold: true,
-          fontSize: 11,
+          fontSize: 12,
+          color: '#000000',
           margin: [0, 1, 0, 2],
         },
         {
           text: `Razón social: ${contribuyente.razon_social}`,
           alignment: 'center',
-          fontSize: 7,
+          bold: true,
+          fontSize: 8,
+          color: '#000000',
         },
       );
     } else {
@@ -184,7 +188,8 @@ export class FacturaPdfService {
         text: contribuyente.razon_social.toUpperCase(),
         alignment: 'center',
         bold: true,
-        fontSize: 10,
+        fontSize: 11,
+        color: '#000000',
         margin: [0, 1, 0, 2],
       });
     }
@@ -193,7 +198,9 @@ export class FacturaPdfService {
       headerContent.push({
         text: `Domicilio: ${contribuyente.domicilio}`,
         alignment: 'center',
-        fontSize: 7,
+        bold: true,
+        fontSize: 7.5,
+        color: '#000000',
       });
     }
 
@@ -201,17 +208,23 @@ export class FacturaPdfService {
       {
         text: `Cond. frente al IVA: ${condicionIva}`,
         alignment: 'center',
-        fontSize: 7,
+        bold: true,
+        fontSize: 7.5,
+        color: '#000000',
       },
       {
         text: `CUIT: ${this.formatearCuit(contribuyente.cuit)}`,
         alignment: 'center',
-        fontSize: 7,
+        bold: true,
+        fontSize: 8.5,
+        color: '#000000',
       },
       {
         text: `Ingresos Brutos: ${iibb}${inicioAct ? ` - Inicio act.: ${inicioAct}` : ''}`,
         alignment: 'center',
-        fontSize: 6.5,
+        bold: true,
+        fontSize: 7.5,
+        color: '#000000',
       },
       this.crearSeparador(),
     );
@@ -220,12 +233,15 @@ export class FacturaPdfService {
       {
         text: `${tipo}  Nro.: ${numero}`,
         bold: true,
-        fontSize: 8.5,
+        fontSize: 10,
+        color: '#000000',
         margin: [0, 0, 0, 2],
       },
       {
         text: `Fecha: ${fechaFormat}`,
-        fontSize: 7,
+        bold: true,
+        fontSize: 8.5,
+        color: '#000000',
       },
       this.crearSeparador(),
     ];
@@ -234,25 +250,34 @@ export class FacturaPdfService {
       {
         text: clienteNombre,
         bold: true,
-        fontSize: 8,
+        fontSize: 9.5,
         alignment: 'center',
+        color: '#000000',
         margin: [0, 0, 0, 2],
       },
       {
         text: `CUIT/DOC: ${comprobante.cliente_cuit || clienteDocData.docNro || '-'}`,
-        fontSize: 7,
+        bold: true,
+        fontSize: 7.5,
+        color: '#000000',
       },
       {
         text: `Cond. frente al IVA: ${clienteCondicionIva}`,
-        fontSize: 7,
+        bold: true,
+        fontSize: 7.5,
+        color: '#000000',
       },
       {
         text: `Domicilio: ${clienteDomicilio}`,
-        fontSize: 7,
+        bold: true,
+        fontSize: 7.5,
+        color: '#000000',
       },
       {
         text: 'Cond. venta: Contado',
-        fontSize: 7,
+        bold: true,
+        fontSize: 7.5,
+        color: '#000000',
       },
       this.crearSeparador(),
     ];
@@ -263,15 +288,17 @@ export class FacturaPdfService {
           widths: ['*', 'auto'],
           body: [
             [
-              { text: 'Concepto', bold: true, fontSize: 7 },
-              { text: 'Subtotal', bold: true, alignment: 'right' as const, fontSize: 7 },
+              { text: 'Concepto', bold: true, fontSize: 8, color: '#000000' },
+              { text: 'Subtotal', bold: true, alignment: 'right' as const, fontSize: 8, color: '#000000' },
             ],
             [
-              { text: comprobante.concepto || contribuyente.concepto || 'Varios', fontSize: 7 },
+              { text: comprobante.concepto || contribuyente.concepto || 'Varios', bold: true, fontSize: 8, color: '#000000' },
               {
                 text: `$ ${this.formatearMoneda(importe)}`,
                 alignment: 'right' as const,
-                fontSize: 7,
+                bold: true,
+                fontSize: 8,
+                color: '#000000',
               },
             ],
           ],
@@ -283,12 +310,13 @@ export class FacturaPdfService {
     const totalContent: Content[] = [
       {
         columns: [
-          { text: 'TOTAL:', bold: true, fontSize: 11 },
+          { text: 'TOTAL:', bold: true, fontSize: 13, color: '#000000' },
           {
             text: `$ ${this.formatearMoneda(importe)}`,
             bold: true,
-            fontSize: 11,
+            fontSize: 13,
             alignment: 'right',
+            color: '#000000',
           },
         ],
         margin: [0, 6, 0, 2],
@@ -297,40 +325,45 @@ export class FacturaPdfService {
     ];
 
     const arcaContent: Content[] = [
-      { text: `CAE N°: ${comprobante.cae || 'N/D'}`, fontSize: 7, alignment: 'center' },
+      { text: `CAE N°: ${comprobante.cae || 'N/D'}`, fontSize: 8, bold: true, alignment: 'center', color: '#000000' },
       {
         text: `Fecha vencimiento CAE: ${
           this.formatearFechaArg(comprobante.vencimiento_cae) || 'N/D'
         }`,
-        fontSize: 7,
+        fontSize: 8,
+        bold: true,
         alignment: 'center',
+        color: '#000000',
       },
       {
         qr: qrUrl,
         fit: 85,
         alignment: 'center' as const,
-        margin: [0, 8, 0, 4],
+        margin: [0, 6, 0, 4],
       } as Content,
       {
         text: 'ARCA',
         alignment: 'center',
         bold: true,
-        fontSize: 10,
+        fontSize: 11,
+        color: '#000000',
       },
       {
         text: 'Comprobante autorizado',
         alignment: 'center',
         bold: true,
         italics: true,
-        fontSize: 7,
+        fontSize: 8,
+        color: '#000000',
         margin: [0, 0, 0, 4],
       },
       {
         text:
           'Esta Administración Federal no se responsabiliza por los datos ingresados en el detalle de la operación.',
         alignment: 'center',
-        fontSize: 5.5,
-        color: '#666666',
+        bold: true,
+        fontSize: 6,
+        color: '#000000',
       },
     ];
 
@@ -338,8 +371,9 @@ export class FacturaPdfService {
       pageSize: { width: this.pageWidth, height: 'auto' },
       pageMargins: this.pageMargins,
       defaultStyle: {
-        fontSize: 7,
+        fontSize: 8,
         font: defaultFont,
+        color: '#000000',
       },
       content: [
         ...headerContent,
@@ -362,8 +396,8 @@ export class FacturaPdfService {
           y1: 0,
           x2: usableWidth,
           y2: 0,
-          lineWidth: 0.6,
-          lineColor: '#b5b5b5',
+          lineWidth: 0.8,
+          lineColor: '#000000',
         },
       ],
       margin: [0, 6, 0, 6],
