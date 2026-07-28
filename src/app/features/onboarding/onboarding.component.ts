@@ -197,7 +197,7 @@ import { supabase } from '../../core/services/supabase.service';
                   <p class="text-xs text-muted-foreground">Debés asociar el nuevo Alias a estos servicios en ARCA:</p>
                   <ol class="list-decimal pl-5 text-sm space-y-2 text-muted-foreground">
                     <li>Entrá a <strong>"Administrador de Relaciones de Clave Fiscal"</strong>.</li>
-                    <li>Hacé clic en <strong>"Nueva Relación"</strong> -> Buscar -> Logo ARCA -> <strong>"Servicios Interactivos"</strong>.</li>
+                    <li>Hacé clic en <strong>"Nueva Relación"</strong> -> Buscar -> Logo ARCA -> <strong>"Web Services"</strong>.</li>
                     <li>Asociá el Alias a <strong>Facturación Electrónica</strong> (wsfe).</li>
                     <li>Hacé el mismo proceso y asocialo a <strong>Consulta de Constancia de Inscripción</strong> (padron).</li>
                   </ol>
