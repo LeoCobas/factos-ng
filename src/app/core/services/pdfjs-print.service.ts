@@ -24,11 +24,41 @@ export class PdfJsPrintService {
   }
 
   /**
-   * Imprime el PDF utilizando el motor vectorial nativo del navegador (PDFium en Chrome)
+   * Convierte URLs tipo blob: a data:application/pdf;base64,... para evitar
+   * los bloqueos de seguridad de Chromium en iframe al hacer print() silencioso.
+   */
+  private async resolveToDataUrl(url: string): Promise<string> {
+    if (!url || url.startsWith('data:')) {
+      return url;
+    }
+
+    if (url.startsWith('blob:')) {
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch (err) {
+        console.warn('Error convirtiendo blob a dataUrl:', err);
+        return url;
+      }
+    }
+
+    return url;
+  }
+
+  /**
+   * Imprime el PDF utilizando el motor vectorial nativo del navegador (PDFium en Chrome/Edge)
    * mediante un iframe invisible. Esto evita convertir la pagina a imagen PNG y
    * previene cualquier tipo de borrosidad o rasterizado ("efecto masticado") en la impresora termica.
    */
   async printPdfVector(url: string): Promise<boolean> {
+    const dataUrl = await this.resolveToDataUrl(url);
+
     return new Promise((resolve) => {
       const iframe = document.createElement('iframe');
       iframe.style.position = 'fixed';
@@ -37,7 +67,6 @@ export class PdfJsPrintService {
       iframe.style.width = '0';
       iframe.style.height = '0';
       iframe.style.border = '0';
-      iframe.src = url;
 
       let resolved = false;
       const cleanup = () => {
@@ -73,6 +102,7 @@ export class PdfJsPrintService {
         resolve(false);
       };
 
+      iframe.src = dataUrl;
       document.body.appendChild(iframe);
     });
   }
