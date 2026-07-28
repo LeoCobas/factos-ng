@@ -43,11 +43,12 @@ export class PdfJsPrintService {
       const cleanup = () => {
         if (!resolved) {
           resolved = true;
+          // Retener el iframe 60s en el DOM para asegurar que el spooler de Windows termine de enviar los vectores nativos a la impresora termica sin abortar el trabajo
           setTimeout(() => {
             if (document.body.contains(iframe)) {
               document.body.removeChild(iframe);
             }
-          }, 2000);
+          }, 60000);
         }
       };
 

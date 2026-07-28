@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 
 import { PdfjsLoaderService, type PdfJsModule } from '../../../core/services/pdfjs-loader.service';
+import { PdfJsPrintService } from '../../../core/services/pdfjs-print.service';
 
 export interface PdfViewerConfig {
   url: string;
@@ -177,6 +178,7 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
   @ViewChild('pdfCanvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
 
   private readonly pdfjsLoader = inject(PdfjsLoaderService);
+  private readonly pdfJsPrintService = inject(PdfJsPrintService);
 
   config = input.required<PdfViewerConfig>();
   closeRequested = output<void>();
@@ -315,11 +317,16 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
   }
 
   async printFirstPage(): Promise<void> {
-    if (!this.pdfDocument) {
-      return;
-    }
-
     try {
+      const vectorSuccess = await this.pdfJsPrintService.printPdfVector(this.config().url);
+      if (vectorSuccess) {
+        return;
+      }
+
+      if (!this.pdfDocument) {
+        return;
+      }
+
       const page = await this.pdfDocument.getPage(1);
       const viewport = page.getViewport({ scale: 3.0, rotation: 0 });
       const canvas = document.createElement('canvas');
