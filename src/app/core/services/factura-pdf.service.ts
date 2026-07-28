@@ -30,7 +30,7 @@ interface PdfMakeRuntime {
 })
 export class FacturaPdfService {
   private readonly pageWidth = 200;
-  private readonly pageMargins: [number, number, number, number] = [0, 0, 0, 0];
+  private readonly pageMargins: [number, number, number, number] = [2, 5, 2, 5];
   private pdfMakePromise: Promise<PdfMakeRuntime> | null = null;
 
   async generarFacturaPdf(

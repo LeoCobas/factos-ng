@@ -51,14 +51,7 @@ export class PdfJsPrintService {
     return url;
   }
 
-  /**
-   * Imprime el PDF utilizando el motor vectorial nativo del navegador (PDFium en Chrome/Edge)
-   * mediante un iframe invisible. Esto evita convertir la pagina a imagen PNG y
-   * previene cualquier tipo de borrosidad o rasterizado ("efecto masticado") en la impresora termica.
-   */
   async printPdfVector(url: string): Promise<boolean> {
-    const dataUrl = await this.resolveToDataUrl(url);
-
     return new Promise((resolve) => {
       const iframe = document.createElement('iframe');
       iframe.style.position = 'fixed';
@@ -67,6 +60,7 @@ export class PdfJsPrintService {
       iframe.style.width = '0';
       iframe.style.height = '0';
       iframe.style.border = '0';
+      iframe.src = url;
 
       let resolved = false;
       const cleanup = () => {
@@ -102,7 +96,6 @@ export class PdfJsPrintService {
         resolve(false);
       };
 
-      iframe.src = dataUrl;
       document.body.appendChild(iframe);
     });
   }
