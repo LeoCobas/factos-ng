@@ -2,8 +2,11 @@
   publish = "dist/factos-ng/browser"
   command = "npm run netlify:build"
 
+[[plugins]]
+  package = "@netlify/angular-runtime"
+
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "22"
   # Optional overrides for runtime-config generation.
   # If omitted, the build falls back to the current Supabase project defaults in scripts/generate-runtime-config.mjs.
   # SUPABASE_URL = "https://your-project.supabase.co"
