@@ -154,11 +154,6 @@ export class PdfService {
     const asset = await this.createPdfAsset(factura);
 
     try {
-      const vectorSuccess = await this.pdfJsPrintService.printPdfVector(asset.blobUrl);
-      if (vectorSuccess) {
-        return;
-      }
-
       await this.pdfJsPrintService.printPdfDirect({
         url: asset.blobUrl,
         filename: asset.info.filename,

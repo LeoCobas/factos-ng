@@ -318,118 +318,14 @@ export class PdfViewerComponent implements AfterViewInit, OnDestroy {
 
   async printFirstPage(): Promise<void> {
     try {
-      const vectorSuccess = await this.pdfJsPrintService.printPdfVector(this.config().url);
-      if (vectorSuccess) {
-        return;
-      }
-
-      if (!this.pdfDocument) {
-        return;
-      }
-
-      const page = await this.pdfDocument.getPage(1);
-      const viewport = page.getViewport({ scale: 3.0, rotation: 0 });
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-
-      if (!context) {
-        throw new Error('No se pudo obtener el contexto del canvas');
-      }
-
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-
-      await page.render({
-        canvasContext: context,
-        viewport,
-      }).promise;
-
-      this.openDirectPrintWindow(canvas.toDataURL('image/png', 1.0), viewport.width, viewport.height);
+      await this.pdfJsPrintService.printPdfDirect({
+        url: this.config().url,
+        filename: this.config().filename,
+        title: this.config().title,
+      });
     } catch {
       this.error.set('No se pudo preparar la impresión del PDF.');
     }
-  }
-
-  private openDirectPrintWindow(imageDataUrl: string, _width: number, _height: number): void {
-    const printWindow = window.open('', '_blank');
-
-    if (!printWindow) {
-      this.error.set('No se pudo abrir la ventana de impresión.');
-      return;
-    }
-
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Imprimir Factura</title>
-        <style>
-          @page {
-            margin: 0;
-            size: auto;
-          }
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            background: white;
-          }
-          .print-container {
-            width: 100%;
-            margin: 0 auto;
-            text-align: center;
-          }
-          .print-image {
-            width: 100%;
-            height: auto;
-            display: block;
-            margin: 0 auto;
-          }
-          @media print {
-            html, body {
-              margin: 0 !important;
-              padding: 0 !important;
-              width: 100% !important;
-            }
-            .print-container {
-              width: 100% !important;
-              max-width: 100% !important;
-            }
-            .print-image {
-              width: 100% !important;
-              max-width: 100% !important;
-              page-break-inside: avoid;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="print-container">
-          <img src="${imageDataUrl}" alt="Factura" class="print-image" />
-        </div>
-        <script>
-          window.onload = function() {
-            setTimeout(function() {
-              window.print();
-              setTimeout(function() {
-                window.close();
-              }, 1000);
-            }, 500);
-          };
-        </script>
-      </body>
-      </html>
-    `;
-
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
   }
 
   private cleanup(): void {
