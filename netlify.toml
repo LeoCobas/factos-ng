@@ -2,9 +2,6 @@
   publish = "dist/factos-ng/browser"
   command = "npm run netlify:build"
 
-[[plugins]]
-  package = "@netlify/angular-runtime"
-
 [build.environment]
   NODE_VERSION = "22"
   # Optional overrides for runtime-config generation.
