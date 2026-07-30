@@ -124,4 +124,11 @@ describe('MercadopagoImportModalComponent', () => {
     expect(amountCells[0].classList.contains('dark:text-amber-400')).toBe(true);
     expect(amountCells[1].classList.contains('text-amber-700')).toBe(false);
   });
+
+  it('formatea las fechas de forma compacta en 24h (DD/MM/YY, HH:mm)', () => {
+    const fixture = TestBed.createComponent(MercadopagoImportModalComponent);
+    const component = fixture.componentInstance;
+    const formatted = component.formatDateTime('2026-07-20T13:06:00');
+    expect(formatted).toBe('20/07/26, 13:06');
+  });
 });

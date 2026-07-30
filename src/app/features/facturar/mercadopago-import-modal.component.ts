@@ -171,14 +171,14 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                                     class="h-4 w-4 rounded border border-input bg-card dark:bg-zinc-900 text-primary focus:ring-primary accent-primary cursor-pointer"
                                   />
                                 </td>
-                                <td class="p-2 sm:p-3 whitespace-nowrap text-muted-foreground text-xs sm:text-sm">
+                                <td class="p-2 sm:p-3 whitespace-nowrap text-muted-foreground text-xs">
                                   {{ formatDateTime(p.date_created) }}
                                 </td>
                                 <td class="p-2 sm:p-3 font-medium text-foreground max-w-[160px] sm:max-w-[240px] truncate text-xs sm:text-sm" [title]="p.description || ''">
                                   {{ p.description || 'Sin descripción' }}
                                 </td>
                                 <td
-                                  class="p-2 sm:p-3 text-right font-bold whitespace-nowrap text-xs sm:text-sm"
+                                  class="p-2 sm:p-3 text-right font-bold whitespace-nowrap text-sm sm:text-base"
                                   [class.text-amber-700]="p.transaction_amount >= 100000"
                                   [class.dark:text-amber-400]="p.transaction_amount >= 100000"
                                   [class.text-foreground]="p.transaction_amount < 100000"
@@ -691,13 +691,13 @@ export class MercadopagoImportModalComponent {
     if (!dateStr) return '';
     try {
       const date = new Date(dateStr);
-      return new Intl.DateTimeFormat('es-AR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(date);
+      if (isNaN(date.getTime())) return dateStr;
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = String(date.getFullYear()).slice(-2);
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${day}/${month}/${year}, ${hours}:${minutes}`;
     } catch {
       return dateStr;
     }
