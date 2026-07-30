@@ -72,6 +72,7 @@ describe('MercadopagoImportModalComponent', () => {
     const host = fixture.nativeElement as HTMLElement;
     const title = host.querySelector('h3');
     const summary = host.querySelector('.selection-summary');
+    const tableHead = host.querySelector('thead');
 
     expect(title?.textContent?.trim()).toBe('Importar desde Mercado Pago');
     expect(title?.classList.contains('text-[17px]')).toBe(true);
@@ -87,6 +88,9 @@ describe('MercadopagoImportModalComponent', () => {
     expect(host.textContent).not.toContain('Mostrando 1 cobros encontrados');
     expect(host.textContent).not.toContain('Deseleccionar todos');
     expect(host.textContent).not.toContain('Procesar Lote');
+    expect(tableHead?.classList.contains('z-10')).toBe(true);
+    expect(tableHead?.classList.contains('bg-muted')).toBe(true);
+    expect(tableHead?.classList.contains('backdrop-blur-sm')).toBe(false);
   });
 
   it('destaca montos mayores o iguales a $ 100.000 con clase de color ámbar', () => {
@@ -116,7 +120,8 @@ describe('MercadopagoImportModalComponent', () => {
       (fixture.nativeElement as HTMLElement).querySelectorAll('tbody td:last-child'),
     );
 
-    expect(amountCells[0].classList.contains('text-amber-500')).toBe(true);
-    expect(amountCells[1].classList.contains('text-amber-500')).toBe(false);
+    expect(amountCells[0].classList.contains('text-amber-700')).toBe(true);
+    expect(amountCells[0].classList.contains('dark:text-amber-400')).toBe(true);
+    expect(amountCells[1].classList.contains('text-amber-700')).toBe(false);
   });
 });

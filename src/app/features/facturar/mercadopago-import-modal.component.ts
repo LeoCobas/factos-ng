@@ -149,12 +149,12 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                     <div class="border border-border/60 rounded-xl overflow-hidden bg-card">
                       <div class="overflow-x-auto max-h-[58vh]">
                         <table class="w-full text-left border-collapse">
-                          <thead class="sticky top-0 bg-muted/80 backdrop-blur-sm border-b border-border/80 text-xs font-semibold text-muted-foreground">
+                          <thead class="sticky top-0 z-10 bg-muted border-b border-border/80 text-xs font-semibold text-muted-foreground">
                             <tr>
-                              <th class="p-2 sm:p-3 w-10 text-center"></th>
+                              <th class="p-2 sm:p-3 w-10 text-center rounded-tl-xl"></th>
                               <th class="p-2 sm:p-3">Fecha</th>
                               <th class="p-2 sm:p-3">Concepto</th>
-                              <th class="p-2 sm:p-3 text-right">Monto</th>
+                              <th class="p-2 sm:p-3 text-right rounded-tr-xl">Monto</th>
                             </tr>
                           </thead>
                           <tbody class="divide-y divide-border/40 text-sm">
@@ -168,7 +168,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                                     type="checkbox"
                                     [checked]="selectedIds().has(p.id)"
                                     (change)="togglePayment(p.id)"
-                                    class="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                                    class="h-4 w-4 rounded border border-input bg-card dark:bg-zinc-900 text-primary focus:ring-primary accent-primary cursor-pointer"
                                   />
                                 </td>
                                 <td class="p-2 sm:p-3 whitespace-nowrap text-muted-foreground text-xs sm:text-sm">
@@ -179,7 +179,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                                 </td>
                                 <td
                                   class="p-2 sm:p-3 text-right font-bold whitespace-nowrap text-xs sm:text-sm"
-                                  [class.text-amber-500]="p.transaction_amount >= 100000"
+                                  [class.text-amber-700]="p.transaction_amount >= 100000"
                                   [class.dark:text-amber-400]="p.transaction_amount >= 100000"
                                   [class.text-foreground]="p.transaction_amount < 100000"
                                 >
@@ -416,7 +416,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                         type="checkbox"
                         [checked]="combinarPorDia()"
                         (change)="combinarPorDia.set(!combinarPorDia())"
-                        class="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                        class="h-4 w-4 rounded border border-input bg-card dark:bg-zinc-900 text-primary focus:ring-primary accent-primary cursor-pointer"
                       />
                       <span>Combinar cobros del día</span>
                     </label>
