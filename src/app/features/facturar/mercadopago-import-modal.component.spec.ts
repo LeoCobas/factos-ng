@@ -73,6 +73,9 @@ describe('MercadopagoImportModalComponent', () => {
     const title = host.querySelector('h3');
     const summary = host.querySelector('.selection-summary');
     const tableHead = host.querySelector('thead');
+    const summaryRow = host.querySelector('.selection-summary-row');
+    const actionsRow = host.querySelector('.selection-actions-row');
+    const checkboxes = Array.from(host.querySelectorAll('input[type="checkbox"]'));
 
     expect(title?.textContent?.trim()).toBe('Importar desde Mercado Pago');
     expect(title?.classList.contains('text-[17px]')).toBe(true);
@@ -81,7 +84,11 @@ describe('MercadopagoImportModalComponent', () => {
     expect(host.textContent).not.toContain('Concepto / Descripción');
     expect(summary?.textContent).toContain('1 cobros seleccionados');
     expect(summary?.textContent).toContain('Total $ 6.350.835,01');
-    expect(summary?.querySelectorAll(':scope > span')).toHaveLength(2);
+    expect(summary?.querySelectorAll(':scope > span')).toHaveLength(3);
+    expect(summary?.classList.contains('items-center')).toBe(true);
+    expect(summary?.classList.contains('whitespace-nowrap')).toBe(true);
+    expect(summary?.classList.contains('flex-col')).toBe(false);
+    expect(summaryRow?.querySelector('.selection-summary')).toBe(summary);
     expect(host.textContent).toContain('Encontrados 1 cobros');
     expect(host.textContent).toContain('Borrar Selección');
     expect(host.textContent).toContain('Facturar Lote');
@@ -91,6 +98,14 @@ describe('MercadopagoImportModalComponent', () => {
     expect(tableHead?.classList.contains('z-10')).toBe(true);
     expect(tableHead?.classList.contains('bg-muted')).toBe(true);
     expect(tableHead?.classList.contains('backdrop-blur-sm')).toBe(false);
+    expect(actionsRow?.querySelector('input[type="checkbox"]')).not.toBeNull();
+    expect(actionsRow?.querySelector('button.btn-primary')?.textContent).toContain('Facturar Lote');
+    expect(actionsRow?.querySelector('label span')?.classList.contains('min-w-0')).toBe(true);
+    expect(summaryRow && actionsRow && (summaryRow.compareDocumentPosition(actionsRow) & Node.DOCUMENT_POSITION_FOLLOWING)).toBeTruthy();
+    expect(checkboxes).toHaveLength(2);
+    expect(checkboxes.every((checkbox) => checkbox.classList.contains('bg-card'))).toBe(true);
+    expect(checkboxes.every((checkbox) => checkbox.classList.contains('border-border'))).toBe(true);
+    expect(checkboxes.every((checkbox) => !checkbox.classList.contains('dark:bg-zinc-900'))).toBe(true);
   });
 
   it('destaca montos mayores o iguales a $ 100.000 con clase de color ámbar', () => {

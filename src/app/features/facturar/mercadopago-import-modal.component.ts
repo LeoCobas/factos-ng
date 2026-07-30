@@ -168,7 +168,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                                     type="checkbox"
                                     [checked]="selectedIds().has(p.id)"
                                     (change)="togglePayment(p.id)"
-                                    class="h-4 w-4 rounded border border-input bg-card dark:bg-zinc-900 text-primary focus:ring-primary accent-primary cursor-pointer"
+                                    class="h-4 w-4 rounded border border-border bg-card text-primary focus:ring-primary accent-primary cursor-pointer"
                                   />
                                 </td>
                                 <td class="p-2 sm:p-3 whitespace-nowrap text-muted-foreground text-xs">
@@ -380,17 +380,31 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                 </div>
               } @else {
                 <div class="flex flex-col gap-2.5 w-full">
-                  <!-- Fila 1: Estado y Botones -->
-                  <div class="flex items-center justify-between w-full">
-                    <div class="selection-summary flex min-w-0 flex-col text-xs leading-tight text-muted-foreground sm:text-sm">
+                  <!-- Fila 1: Resumen justo debajo de la tabla -->
+                  <div class="selection-summary-row flex w-full items-center">
+                    <div class="selection-summary flex min-w-0 items-center gap-2 whitespace-nowrap text-xs leading-tight text-muted-foreground sm:text-sm">
                       @if (selectedCount() > 0) {
                         <span class="font-bold text-foreground">{{ selectedCount() }} cobros seleccionados</span>
+                        <span class="text-muted-foreground font-bold">·</span>
                         <span class="font-semibold text-foreground">Total $ {{ selectedTotal() | number:'1.2-2' }}</span>
                       } @else {
                         Ningún cobro seleccionado
                       }
                     </div>
-                    <div class="flex items-center gap-2 sm:gap-3">
+                  </div>
+
+                  <!-- Fila 2: Checkbox y acciones -->
+                  <div class="selection-actions-row flex min-w-0 w-full items-center justify-between gap-3">
+                    <label class="flex min-w-0 items-center gap-2 text-xs font-semibold text-muted-foreground select-none cursor-pointer">
+                      <input
+                        type="checkbox"
+                        [checked]="combinarPorDia()"
+                        (change)="combinarPorDia.set(!combinarPorDia())"
+                        class="h-4 w-4 shrink-0 rounded border border-border bg-card text-primary focus:ring-primary accent-primary cursor-pointer"
+                      />
+                      <span class="min-w-0 leading-tight">Combinar cobros del día</span>
+                    </label>
+                    <div class="flex shrink-0 items-center gap-2 sm:gap-3">
                       <button
                         type="button"
                         (click)="cerrar()"
@@ -407,19 +421,6 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                         Facturar Lote
                       </button>
                     </div>
-                  </div>
-
-                  <!-- Fila 2: Checkbox Opciones -->
-                  <div class="flex items-center pt-1">
-                    <label class="flex items-center gap-2 text-xs font-semibold text-muted-foreground select-none cursor-pointer">
-                      <input
-                        type="checkbox"
-                        [checked]="combinarPorDia()"
-                        (change)="combinarPorDia.set(!combinarPorDia())"
-                        class="h-4 w-4 rounded border border-input bg-card dark:bg-zinc-900 text-primary focus:ring-primary accent-primary cursor-pointer"
-                      />
-                      <span>Combinar cobros del día</span>
-                    </label>
                   </div>
                 </div>
               }
