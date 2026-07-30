@@ -23,7 +23,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
           (click)="$event.stopPropagation()"
         >
           <!-- Header -->
-          <div class="flex items-center justify-between px-6 py-4 border-b border-border/60 bg-muted/20">
+          <div class="flex items-center justify-between px-6 py-4">
             <div class="flex items-center gap-3">
               <div class="p-2 bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-lg">
                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -348,7 +348,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 
           <!-- Footer Actions -->
           @if (hasToken() && !processing()) {
-            <div class="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-t border-border/60 bg-muted/10">
+            <div class="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4">
               @if (showSummary()) {
                 <div class="flex flex-wrap items-center gap-3 w-full justify-between">
                   @if (batchJob() && batchJob()!.failed_items > 0) {
@@ -382,6 +382,9 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                         <span class="font-bold text-foreground">{{ selectedCount() }}</span>
                         <span class="hidden sm:inline"> seleccionados para facturar</span>
                         <span class="sm:hidden"> seleccionados</span>
+                        <span class="font-semibold text-foreground ml-1.5 sm:ml-2">
+                          (Total: $ {{ selectedTotal() | number:'1.2-2' }})
+                        </span>
                       } @else {
                         Ningún cobro seleccionado
                       }
@@ -450,6 +453,12 @@ export class MercadopagoImportModalComponent {
     () => this.payments().length > 0 && this.selectedIds().size === this.payments().length
   );
   readonly selectedCount = computed(() => this.selectedIds().size);
+  readonly selectedTotal = computed(() => {
+    const ids = this.selectedIds();
+    return this.payments()
+      .filter((p) => ids.has(p.id))
+      .reduce((sum, p) => sum + p.transaction_amount, 0);
+  });
   readonly progressPercent = computed(() => {
     const job = this.batchJob();
     if (!job || job.total_items === 0) return 0;

@@ -8,7 +8,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   providedIn: 'root',
 })
 export class UpdateService {
-  private readonly swUpdate = inject(SwUpdate);
+  private readonly swUpdate = inject(SwUpdate, { optional: true });
   private readonly destroyRef = inject(DestroyRef);
 
   /**
@@ -21,7 +21,7 @@ export class UpdateService {
   }
 
   private init(): void {
-    if (!this.swUpdate.isEnabled) {
+    if (!this.swUpdate || !this.swUpdate.isEnabled) {
       return;
     }
 
@@ -58,7 +58,7 @@ export class UpdateService {
    * Consulta a Netlify / Service Worker si existe una actualización pendiente.
    */
   async checkForUpdate(): Promise<void> {
-    if (!this.swUpdate.isEnabled) return;
+    if (!this.swUpdate || !this.swUpdate.isEnabled) return;
     try {
       await this.swUpdate.checkForUpdate();
     } catch (error) {
@@ -70,7 +70,7 @@ export class UpdateService {
    * Activa la nueva versión y recarga la página.
    */
   async activateUpdate(): Promise<void> {
-    if (!this.swUpdate.isEnabled) {
+    if (!this.swUpdate || !this.swUpdate.isEnabled) {
       window.location.reload();
       return;
     }
