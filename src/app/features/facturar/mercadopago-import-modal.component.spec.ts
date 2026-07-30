@@ -88,4 +88,35 @@ describe('MercadopagoImportModalComponent', () => {
     expect(host.textContent).not.toContain('Deseleccionar todos');
     expect(host.textContent).not.toContain('Procesar Lote');
   });
+
+  it('destaca montos mayores o iguales a $ 100.000 con clase de color ámbar', () => {
+    const fixture = TestBed.createComponent(MercadopagoImportModalComponent);
+    const component = fixture.componentInstance;
+    const paymentHigh: MpPayment = {
+      id: 'p-high',
+      date_created: '2026-07-29T12:00:00Z',
+      transaction_amount: 150000,
+      description: 'Pago grande',
+      payer: { first_name: null, last_name: null },
+    };
+    const paymentNormal: MpPayment = {
+      id: 'p-normal',
+      date_created: '2026-07-29T12:00:00Z',
+      transaction_amount: 50000,
+      description: 'Pago comun',
+      payer: { first_name: null, last_name: null },
+    };
+
+    fixture.componentRef.setInput('isOpen', true);
+    fixture.detectChanges();
+    component.payments.set([paymentHigh, paymentNormal]);
+    fixture.detectChanges();
+
+    const amountCells = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('tbody td:last-child'),
+    );
+
+    expect(amountCells[0].classList.contains('text-amber-500')).toBe(true);
+    expect(amountCells[1].classList.contains('text-amber-500')).toBe(false);
+  });
 });

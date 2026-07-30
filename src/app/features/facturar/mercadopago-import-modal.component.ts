@@ -19,7 +19,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
       >
         <!-- Modal Card -->
         <div
-          class="relative w-full sm:max-w-4xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col bg-card border-0 sm:border border-border shadow-2xl sm:rounded-2xl overflow-hidden transition-all scale-100 duration-300"
+          class="relative w-full sm:max-w-5xl h-full sm:h-auto sm:max-h-[94vh] flex flex-col bg-card border-0 sm:border border-border shadow-2xl sm:rounded-2xl overflow-hidden transition-all scale-100 duration-300"
           (click)="$event.stopPropagation()"
         >
           <!-- Header -->
@@ -147,7 +147,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                     </div>
 
                     <div class="border border-border/60 rounded-xl overflow-hidden bg-card">
-                      <div class="overflow-x-auto max-h-[40vh]">
+                      <div class="overflow-x-auto max-h-[58vh]">
                         <table class="w-full text-left border-collapse">
                           <thead class="sticky top-0 bg-muted/80 backdrop-blur-sm border-b border-border/80 text-xs font-semibold text-muted-foreground">
                             <tr>
@@ -177,7 +177,12 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                                 <td class="p-2 sm:p-3 font-medium text-foreground max-w-[160px] sm:max-w-[240px] truncate text-xs sm:text-sm" [title]="p.description || ''">
                                   {{ p.description || 'Sin descripción' }}
                                 </td>
-                                <td class="p-2 sm:p-3 text-right font-bold text-foreground whitespace-nowrap text-xs sm:text-sm">
+                                <td
+                                  class="p-2 sm:p-3 text-right font-bold whitespace-nowrap text-xs sm:text-sm"
+                                  [class.text-amber-500]="p.transaction_amount >= 100000"
+                                  [class.dark:text-amber-400]="p.transaction_amount >= 100000"
+                                  [class.text-foreground]="p.transaction_amount < 100000"
+                                >
                                   $ {{ p.transaction_amount | number:'1.2-2' }}
                                 </td>
                               </tr>
