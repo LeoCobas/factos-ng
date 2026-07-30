@@ -33,8 +33,8 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                 </svg>
               </div>
               <div>
-                <h3 class="text-lg font-bold text-foreground">Importar desde Mercado Pago</h3>
-                <p class="text-xs text-muted-foreground">Facturación por lotes a Consumidor Final</p>
+                <h3 class="text-[17px] font-bold text-foreground">Importar desde Mercado Pago</h3>
+                <p class="text-xs text-muted-foreground">Seleccione el rango de fechas.</p>
               </div>
             </div>
             @if (!processing()) {
@@ -79,22 +79,22 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
               <!-- Date Picker & Search -->
               @if (!processing() && !showSummary()) {
                 <div class="grid grid-cols-1 sm:grid-cols-3 items-end gap-4 p-4 rounded-xl bg-muted/30 border border-border/40">
-                  <div class="form-field">
-                    <label class="form-label text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Fecha Desde</label>
+                  <div class="date-range-field flex items-center gap-3">
+                    <label class="form-label mb-0 whitespace-nowrap text-xs font-semibold text-muted-foreground uppercase tracking-wider">Desde</label>
                     <input
                       type="datetime-local"
                       [ngModel]="beginDate()"
                       (ngModelChange)="beginDate.set($event)"
-                      class="form-input text-sm"
+                      class="form-input min-w-0 flex-1 text-sm"
                     />
                   </div>
-                  <div class="form-field">
-                    <label class="form-label text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Fecha Hasta</label>
+                  <div class="date-range-field flex items-center gap-3">
+                    <label class="form-label mb-0 whitespace-nowrap text-xs font-semibold text-muted-foreground uppercase tracking-wider">Hasta</label>
                     <input
                       type="datetime-local"
                       [ngModel]="endDate()"
                       (ngModelChange)="endDate.set($event)"
-                      class="form-input text-sm"
+                      class="form-input min-w-0 flex-1 text-sm"
                     />
                   </div>
                   <button
@@ -136,13 +136,13 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                 } @else if (payments().length > 0) {
                   <div class="space-y-3">
                     <div class="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>Mostrando {{ payments().length }} cobros encontrados</span>
+                      <span>Encontrados {{ payments().length }} cobros</span>
                       <button
                         type="button"
                         (click)="toggleSelectAll()"
                         class="text-primary hover:underline font-semibold"
                       >
-                        {{ allSelected() ? 'Deseleccionar todos' : 'Seleccionar todos' }}
+                        {{ allSelected() ? 'Borrar Selección' : 'Seleccionar todos' }}
                       </button>
                     </div>
 
@@ -153,7 +153,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                             <tr>
                               <th class="p-2 sm:p-3 w-10 text-center"></th>
                               <th class="p-2 sm:p-3">Fecha</th>
-                              <th class="p-2 sm:p-3">Concepto / Descripción</th>
+                              <th class="p-2 sm:p-3">Concepto</th>
                               <th class="p-2 sm:p-3 text-right">Monto</th>
                             </tr>
                           </thead>
@@ -377,14 +377,10 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                 <div class="flex flex-col gap-2.5 w-full">
                   <!-- Fila 1: Estado y Botones -->
                   <div class="flex items-center justify-between w-full">
-                    <div class="text-xs sm:text-sm text-muted-foreground">
+                    <div class="selection-summary flex min-w-0 flex-col text-xs leading-tight text-muted-foreground sm:text-sm">
                       @if (selectedCount() > 0) {
-                        <span class="font-bold text-foreground">{{ selectedCount() }}</span>
-                        <span class="hidden sm:inline"> seleccionados para facturar</span>
-                        <span class="sm:hidden"> seleccionados</span>
-                        <span class="font-semibold text-foreground ml-1.5 sm:ml-2">
-                          (Total: $ {{ selectedTotal() | number:'1.2-2' }})
-                        </span>
+                        <span class="font-bold text-foreground">{{ selectedCount() }} cobros seleccionados</span>
+                        <span class="font-semibold text-foreground">Total $ {{ selectedTotal() | number:'1.2-2' }}</span>
                       } @else {
                         Ningún cobro seleccionado
                       }
@@ -403,7 +399,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                         [disabled]="payments().length === 0 || selectedCount() === 0"
                         class="btn-primary rounded-lg px-3.5 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-primary/10"
                       >
-                        Procesar Lote
+                        Facturar Lote
                       </button>
                     </div>
                   </div>
