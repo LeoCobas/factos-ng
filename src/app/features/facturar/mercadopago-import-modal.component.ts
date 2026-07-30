@@ -52,7 +52,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
           </div>
 
           <!-- Body -->
-          <div class="flex-1 overflow-y-auto px-3 py-4 sm:p-6 space-y-6">
+          <div class="flex-1 overflow-y-auto px-3 py-4 sm:p-6 space-y-4">
             <!-- Checking Config -->
             @if (!hasToken()) {
               <div class="flex flex-col items-center justify-center py-10 text-center space-y-4">
@@ -189,6 +189,19 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                             }
                           </tbody>
                         </table>
+                      </div>
+                    </div>
+
+                    <!-- Resumen justo debajo de la tabla -->
+                    <div class="selection-summary-row flex w-full items-center pt-0.5">
+                      <div class="selection-summary flex min-w-0 items-center gap-2 whitespace-nowrap text-xs leading-tight text-muted-foreground sm:text-sm">
+                        @if (selectedCount() > 0) {
+                          <span class="font-bold text-foreground">{{ selectedCount() }} cobros seleccionados</span>
+                          <span class="text-muted-foreground font-bold">·</span>
+                          <span class="font-semibold text-foreground">Total $ {{ selectedTotal() | number:'1.2-2' }}</span>
+                        } @else {
+                          Ningún cobro seleccionado
+                        }
                       </div>
                     </div>
                   </div>
@@ -379,22 +392,8 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                   </button>
                 </div>
               } @else {
-                <div class="flex flex-col gap-2.5 w-full">
-                  <!-- Fila 1: Resumen justo debajo de la tabla -->
-                  <div class="selection-summary-row flex w-full items-center">
-                    <div class="selection-summary flex min-w-0 items-center gap-2 whitespace-nowrap text-xs leading-tight text-muted-foreground sm:text-sm">
-                      @if (selectedCount() > 0) {
-                        <span class="font-bold text-foreground">{{ selectedCount() }} cobros seleccionados</span>
-                        <span class="text-muted-foreground font-bold">·</span>
-                        <span class="font-semibold text-foreground">Total $ {{ selectedTotal() | number:'1.2-2' }}</span>
-                      } @else {
-                        Ningún cobro seleccionado
-                      }
-                    </div>
-                  </div>
-
-                  <!-- Fila 2: Checkbox y acciones -->
-                  <div class="selection-actions-row flex min-w-0 w-full items-center justify-between gap-3">
+                <!-- Fila 2: Checkbox y acciones -->
+                <div class="selection-actions-row flex min-w-0 w-full items-center justify-between gap-3">
                     <label class="flex min-w-0 items-center gap-2 text-xs font-semibold text-muted-foreground select-none cursor-pointer">
                       <input
                         type="checkbox"
@@ -422,7 +421,6 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
                       </button>
                     </div>
                   </div>
-                </div>
               }
             </div>
           }
