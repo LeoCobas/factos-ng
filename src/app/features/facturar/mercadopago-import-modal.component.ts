@@ -79,22 +79,22 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
               <!-- Date Picker & Search -->
               @if (!processing() && !showSummary()) {
                 <div class="grid grid-cols-1 sm:grid-cols-3 items-end gap-4 p-4 rounded-xl bg-muted/30 border border-border/40">
-                  <div class="date-range-field flex items-center gap-3">
+                  <div class="date-range-field flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-3">
                     <label class="form-label mb-0 whitespace-nowrap text-xs font-semibold text-muted-foreground uppercase tracking-wider">Desde</label>
                     <input
                       type="datetime-local"
                       [ngModel]="beginDate()"
                       (ngModelChange)="beginDate.set($event)"
-                      class="form-input min-w-0 flex-1 text-sm"
+                      class="form-input min-w-0 w-full flex-1 text-sm"
                     />
                   </div>
-                  <div class="date-range-field flex items-center gap-3">
+                  <div class="date-range-field flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-3">
                     <label class="form-label mb-0 whitespace-nowrap text-xs font-semibold text-muted-foreground uppercase tracking-wider">Hasta</label>
                     <input
                       type="datetime-local"
                       [ngModel]="endDate()"
                       (ngModelChange)="endDate.set($event)"
-                      class="form-input min-w-0 flex-1 text-sm"
+                      class="form-input min-w-0 w-full flex-1 text-sm"
                     />
                   </div>
                   <button
