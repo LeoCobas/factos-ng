@@ -113,8 +113,11 @@ type TipoComprobanteFiscal =
 export class FacturacionService {
   private readonly contribuyenteService = inject(ContribuyenteService);
   private readonly ultimoComprobantePrefetchTtlMs = 15 * 60 * 1000;
+  private readonly ultimoComprobantePrefetchLeaseMs = 30 * 1000;
   private readonly ultimoComprobantePrefetchCache = new Map<string, number>();
   private readonly ultimoComprobantePrefetchRequests = new Map<string, Promise<void>>();
+  private readonly ultimaFechaCacheTtlMs = 15 * 60 * 1000;
+  private readonly ultimaFechaCache = new Map<string, { fecha: string | null; syncedAt: number }>();
 
   /**
    * Valida la ventana fiscal permitida antes de emitir el comprobante.
@@ -306,6 +309,13 @@ export class FacturacionService {
       throw new Error('No se pudo guardar el comprobante en la base de datos');
     }
 
+    this.updateUltimaFechaCache(
+      contribuyente.id,
+      tipoComprobante,
+      contribuyente.punto_venta,
+      this.fechaDDMMYYYYtoISO(facturaData.fecha),
+    );
+
     return {
       success: true,
       comprobante: {
@@ -332,16 +342,30 @@ export class FacturacionService {
       return;
     }
 
+    const sharedState = this.readSharedPrefetchState(cacheKey);
+    if (
+      sharedState &&
+      Date.now() - sharedState.at <
+        (sharedState.status === 'fresh'
+          ? this.ultimoComprobantePrefetchTtlMs
+          : this.ultimoComprobantePrefetchLeaseMs)
+    ) {
+      return;
+    }
+
     const pendingRequest = this.ultimoComprobantePrefetchRequests.get(cacheKey);
     if (pendingRequest) {
       return pendingRequest;
     }
 
+    this.writeSharedPrefetchState(cacheKey, { status: 'pending', at: Date.now() });
     const request = this.llamarPrecalentarUltimoComprobante(puntoVenta, tipoComprobante)
       .then(() => {
         this.ultimoComprobantePrefetchCache.set(cacheKey, Date.now());
+        this.writeSharedPrefetchState(cacheKey, { status: 'fresh', at: Date.now() });
       })
       .catch((error) => {
+        this.clearSharedPrefetchState(cacheKey);
         console.debug('No se pudo precalentar ultimo comprobante:', error);
       })
       .finally(() => {
@@ -350,6 +374,68 @@ export class FacturacionService {
 
     this.ultimoComprobantePrefetchRequests.set(cacheKey, request);
     return request;
+  }
+
+  private readSharedPrefetchState(
+    cacheKey: string,
+  ): { status: 'pending' | 'fresh'; at: number } | null {
+    try {
+      const raw = globalThis.sessionStorage?.getItem(`factos:arca-prefetch:${cacheKey}`);
+      if (!raw) return null;
+
+      const parsed = JSON.parse(raw);
+      if (
+        (parsed?.status === 'pending' || parsed?.status === 'fresh') &&
+        Number.isFinite(parsed?.at)
+      ) {
+        return parsed;
+      }
+    } catch {
+      // In-memory dedupe remains available when browser storage is unavailable.
+    }
+
+    return null;
+  }
+
+  private writeSharedPrefetchState(
+    cacheKey: string,
+    state: { status: 'pending' | 'fresh'; at: number },
+  ): void {
+    try {
+      globalThis.sessionStorage?.setItem(`factos:arca-prefetch:${cacheKey}`, JSON.stringify(state));
+    } catch {
+      // Prefetch must remain best-effort.
+    }
+  }
+
+  private clearSharedPrefetchState(cacheKey: string): void {
+    try {
+      globalThis.sessionStorage?.removeItem(`factos:arca-prefetch:${cacheKey}`);
+    } catch {
+      // Prefetch must remain best-effort.
+    }
+  }
+
+  private getUltimaFechaCacheKey(
+    contribuyenteId: string,
+    tipoComprobante: TipoComprobanteFiscal | string,
+    puntoVenta?: number | null,
+  ): string {
+    return `${contribuyenteId}:${Number(puntoVenta) || 0}:${tipoComprobante}`;
+  }
+
+  private updateUltimaFechaCache(
+    contribuyenteId: string,
+    tipoComprobante: TipoComprobanteFiscal | string,
+    puntoVenta: number | null,
+    fecha: string,
+  ): void {
+    const cacheKey = this.getUltimaFechaCacheKey(contribuyenteId, tipoComprobante, puntoVenta);
+    const current = this.ultimaFechaCache.get(cacheKey)?.fecha;
+    this.ultimaFechaCache.set(cacheKey, {
+      fecha: !current || fecha > current ? fecha : current,
+      syncedAt: Date.now(),
+    });
   }
 
   /**
@@ -687,6 +773,12 @@ export class FacturacionService {
     tipoComprobante: TipoComprobanteFiscal | string,
     puntoVenta?: number | null,
   ): Promise<string | null> {
+    const cacheKey = this.getUltimaFechaCacheKey(contribuyenteId, tipoComprobante, puntoVenta);
+    const cached = this.ultimaFechaCache.get(cacheKey);
+    if (cached && Date.now() - cached.syncedAt < this.ultimaFechaCacheTtlMs) {
+      return cached.fecha;
+    }
+
     let query = supabase
       .from('comprobantes')
       .select('fecha')
@@ -708,7 +800,9 @@ export class FacturacionService {
       throw new Error('No se pudo consultar la ultima fecha emitida para el tipo de comprobante');
     }
 
-    return data?.fecha ?? null;
+    const fecha = data?.fecha ?? null;
+    this.ultimaFechaCache.set(cacheKey, { fecha, syncedAt: Date.now() });
+    return fecha;
   }
 
   async validarFechaNoAnteriorAUltimoTipo(params: {

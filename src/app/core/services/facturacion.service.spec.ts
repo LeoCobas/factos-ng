@@ -47,6 +47,7 @@ describe('FacturacionService', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-22T12:00:00-03:00'));
     vi.clearAllMocks();
+    sessionStorage.clear();
 
     TestBed.configureTestingModule({
       providers: [
@@ -193,6 +194,77 @@ describe('FacturacionService', () => {
     expect(prefetchSpy).toHaveBeenCalledTimes(2);
     expect(prefetchSpy).toHaveBeenCalledWith(1, 'FACTURA C');
     expect(prefetchSpy).toHaveBeenCalledWith(1, 'FACTURA B');
+  });
+
+  it('deduplica prefetches en curso entre distintas instancias del servicio', async () => {
+    const firstService = TestBed.inject(FacturacionService);
+    const secondService = TestBed.runInInjectionContext(() => new FacturacionService());
+    let resolveRequest!: () => void;
+    const request = new Promise<void>((resolve) => {
+      resolveRequest = resolve;
+    });
+    const firstSpy = vi
+      .spyOn(firstService as any, 'llamarPrecalentarUltimoComprobante')
+      .mockReturnValue(request);
+    const secondSpy = vi
+      .spyOn(secondService as any, 'llamarPrecalentarUltimoComprobante')
+      .mockResolvedValue(undefined);
+
+    const first = firstService.precalentarUltimoComprobante('FACTURA C');
+    const second = secondService.precalentarUltimoComprobante('FACTURA C');
+
+    expect(firstSpy).toHaveBeenCalledTimes(1);
+    expect(secondSpy).not.toHaveBeenCalled();
+
+    resolveRequest();
+    await Promise.all([first, second]);
+  });
+
+  it('reutiliza la ultima fecha consultada mientras el cache local esta vigente', async () => {
+    const service = TestBed.inject(FacturacionService);
+    const query = createUltimaFechaQuery('2026-04-21');
+    const fromSpy = vi.spyOn(supabase, 'from').mockReturnValue(query as never);
+
+    const first = await service.cargarUltimaFechaComprobantePorTipo('cont-1', 'FACTURA C', 1);
+    const second = await service.cargarUltimaFechaComprobantePorTipo('cont-1', 'FACTURA C', 1);
+
+    expect(first).toBe('2026-04-21');
+    expect(second).toBe('2026-04-21');
+    expect(fromSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('renueva la ultima fecha cuando vence el cache local', async () => {
+    const service = TestBed.inject(FacturacionService);
+    const query = createUltimaFechaQuery('2026-04-21');
+    const fromSpy = vi.spyOn(supabase, 'from').mockReturnValue(query as never);
+
+    await service.cargarUltimaFechaComprobantePorTipo('cont-1', 'FACTURA C', 1);
+    vi.advanceTimersByTime(15 * 60 * 1000 + 1);
+    await service.cargarUltimaFechaComprobantePorTipo('cont-1', 'FACTURA C', 1);
+
+    expect(fromSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('permite reintentar un prefetch bloqueado cuando vence el lease compartido', async () => {
+    const firstService = TestBed.inject(FacturacionService);
+    const secondService = TestBed.runInInjectionContext(() => new FacturacionService());
+    let resolveRequest!: () => void;
+    const request = new Promise<void>((resolve) => {
+      resolveRequest = resolve;
+    });
+    vi.spyOn(firstService as any, 'llamarPrecalentarUltimoComprobante').mockReturnValue(request);
+    const secondSpy = vi
+      .spyOn(secondService as any, 'llamarPrecalentarUltimoComprobante')
+      .mockResolvedValue(undefined);
+
+    const first = firstService.precalentarUltimoComprobante('FACTURA C');
+    vi.advanceTimersByTime(30 * 1000 + 1);
+    await secondService.precalentarUltimoComprobante('FACTURA C');
+
+    expect(secondSpy).toHaveBeenCalledTimes(1);
+
+    resolveRequest();
+    await first;
   });
 
   it('rechaza nota de credito con fecha anterior a la ultima NC del mismo tipo', async () => {

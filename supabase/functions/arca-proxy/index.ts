@@ -3,6 +3,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { Arca } from 'npm:@arcasdk/core@0.3.6';
 import { readArcaTicketBucket } from '../../../src/app/core/utils/arca-ticket.util.ts';
 import { corsHeaders, RequestTimings } from '../_shared/http-observability.ts';
+import { getVerifiedUserId } from '../_shared/supabase-auth.ts';
 
 const ARCA_TICKET_PATH = '/tmp/factos-arca-tickets';
 const WSFE_SERVICE_NAME = 'wsfe';
@@ -93,14 +94,10 @@ async function getAuthenticatedUser(req: Request, timings?: RequestTimings) {
 
   const supabase = getSupabaseClient(authHeader);
   const token = authHeader.replace('Bearer ', '').trim();
-  const authenticate = () => supabase.auth.getUser(token);
-  const {
-    data: { user },
-    error,
-  } = timings ? await timings.measure('auth', authenticate) : await authenticate();
+  const authenticate = () => getVerifiedUserId(supabase.auth, token);
+  const userId = timings ? await timings.measure('auth', authenticate) : await authenticate();
 
-  if (error || !user) throw new Error('Sesion invalida');
-  return { supabase, user };
+  return { supabase, user: { id: userId } };
 }
 
 function getCbteTipo(tipoComprobante: string): number {
@@ -336,32 +333,6 @@ function isNumberingRejection(parsed: ReturnType<typeof extractWsfeResult>, mess
   );
 }
 
-async function getCachedLastVoucher(params: {
-  supabase: any;
-  contribuyenteId: string;
-  puntoVenta: number;
-  tipoComprobante: string;
-  cbteTipo: number;
-}): Promise<number | null> {
-  const { data, error } = await params.supabase
-    .from('ultimo_comprobante_cache')
-    .select('ultimo_comprobante, synced_at')
-    .eq('contribuyente_id', params.contribuyenteId)
-    .eq('punto_venta', params.puntoVenta)
-    .eq('tipo_comprobante', params.tipoComprobante)
-    .eq('cbte_tipo', params.cbteTipo)
-    .gte('synced_at', getLastVoucherCacheCutoffIso())
-    .maybeSingle();
-
-  if (error) {
-    console.error('No se pudo leer cache de ultimo comprobante:', error.message);
-    return null;
-  }
-
-  const cachedNumber = Number(data?.ultimo_comprobante);
-  return Number.isFinite(cachedNumber) ? cachedNumber : null;
-}
-
 async function upsertLastVoucherCache(params: {
   supabase: any;
   contribuyenteId: string;
@@ -458,20 +429,7 @@ function getArcaRejectionError(parsed: ReturnType<typeof extractWsfeResult>) {
   };
 }
 
-async function getUserArcaInstance(req: Request, timings?: RequestTimings) {
-  const { supabase: supabaseUser, user } = await getAuthenticatedUser(req, timings);
-
-  const loadContribuyente = () =>
-    supabaseUser
-      .from('contribuyentes')
-      .select('id, cuit, arca_cert, arca_key, arca_production, arca_ticket')
-      .eq('user_id', user.id)
-      .single();
-  const { data: contribuyente, error } = timings
-    ? await timings.measure('contribuyente_db', loadContribuyente)
-    : await loadContribuyente();
-
-  if (error) throw new Error(error.message || 'No se pudo obtener el contribuyente');
+function buildUserArcaInstance(supabaseUser: any, contribuyente: any) {
   if (!contribuyente) throw new Error('No se encontro el contribuyente');
   if (!contribuyente.arca_cert || !contribuyente.arca_key) {
     throw new Error('Certificados no configurados');
@@ -502,6 +460,66 @@ async function getUserArcaInstance(req: Request, timings?: RequestTimings) {
         production,
         originalTicket: credentials || undefined,
       }),
+  };
+}
+
+async function getUserArcaInstance(req: Request, timings?: RequestTimings) {
+  const { supabase: supabaseUser, user } = await getAuthenticatedUser(req, timings);
+
+  const loadContribuyente = () =>
+    supabaseUser
+      .from('contribuyentes')
+      .select('id, cuit, arca_cert, arca_key, arca_production, arca_ticket')
+      .eq('user_id', user.id)
+      .single();
+  const { data: contribuyente, error } = await measureStage(
+    timings,
+    'contribuyente_db',
+    loadContribuyente,
+  );
+
+  if (error) throw new Error(error.message || 'No se pudo obtener el contribuyente');
+  return buildUserArcaInstance(supabaseUser, contribuyente);
+}
+
+async function getUserArcaInvoiceContext(params: {
+  req: Request;
+  puntoVenta: number;
+  tipoComprobante: string;
+  cbteTipo: number;
+  timings?: RequestTimings;
+}) {
+  const { supabase: supabaseUser } = await getAuthenticatedUser(params.req, params.timings);
+  const loadContext = () =>
+    supabaseUser
+      .rpc('get_arca_invoice_context', {
+        p_punto_venta: params.puntoVenta,
+        p_tipo_comprobante: params.tipoComprobante,
+        p_cbte_tipo: params.cbteTipo,
+        p_cache_cutoff: getLastVoucherCacheCutoffIso(),
+      })
+      .single();
+  const { data: context, error } = await measureStage(
+    params.timings,
+    'invoice_context_db',
+    loadContext,
+  );
+
+  if (error) throw new Error(error.message || 'No se pudo obtener el contexto de facturacion');
+  const arcaInstance = buildUserArcaInstance(supabaseUser, {
+    id: context?.contribuyente_id,
+    cuit: context?.cuit,
+    arca_cert: context?.arca_cert,
+    arca_key: context?.arca_key,
+    arca_production: context?.arca_production,
+    arca_ticket: context?.arca_ticket,
+  });
+  const cachedNumber =
+    context?.ultimo_comprobante == null ? null : Number(context.ultimo_comprobante);
+
+  return {
+    ...arcaInstance,
+    cachedLastNumber: cachedNumber !== null && Number.isFinite(cachedNumber) ? cachedNumber : null,
   };
 }
 
@@ -562,21 +580,16 @@ async function handleCrearFactura(
       return buildErrorResponse('Validacion fallida: fecha debe estar en formato YYYY-MM-DD');
     }
 
-    const { arca, persistTicket, supabase, contribuyenteId } = await getUserArcaInstance(
-      req,
-      timings,
-    );
     const cbteTipo = getCbteTipo(tipo_comprobante);
     const normalizedTipoComprobante = String(tipo_comprobante).toUpperCase();
-    const cachedLastNumber = await measureStage(timings, 'cache_read', () =>
-      getCachedLastVoucher({
-        supabase,
-        contribuyenteId,
+    const { arca, persistTicket, supabase, contribuyenteId, cachedLastNumber } =
+      await getUserArcaInvoiceContext({
+        req,
         puntoVenta: punto_venta,
         tipoComprobante: normalizedTipoComprobante,
         cbteTipo,
-      }),
-    );
+        timings,
+      });
     logArcaProxy('crear_factura_last_voucher_source', {
       contribuyenteId,
       puntoVenta: punto_venta,
@@ -999,10 +1012,6 @@ async function handlePrecalentarUltimoComprobante(
   timings?: RequestTimings,
 ): Promise<Response> {
   try {
-    const { arca, persistTicket, supabase, contribuyenteId } = await getUserArcaInstance(
-      req,
-      timings,
-    );
     const { punto_venta, tipo_comprobante } = body;
 
     if (!punto_venta || !Number.isInteger(punto_venta) || punto_venta <= 0) {
@@ -1017,15 +1026,14 @@ async function handlePrecalentarUltimoComprobante(
 
     const cbteTipo = getCbteTipo(tipo_comprobante);
     const normalizedTipoComprobante = String(tipo_comprobante).toUpperCase();
-    const cachedLastNumber = await measureStage(timings, 'cache_read', () =>
-      getCachedLastVoucher({
-        supabase,
-        contribuyenteId,
+    const { arca, persistTicket, supabase, contribuyenteId, cachedLastNumber } =
+      await getUserArcaInvoiceContext({
+        req,
         puntoVenta: punto_venta,
         tipoComprobante: normalizedTipoComprobante,
         cbteTipo,
-      }),
-    );
+        timings,
+      });
 
     if (cachedLastNumber !== null) {
       logArcaProxy('prefetch_last_voucher_cache_hit', {
