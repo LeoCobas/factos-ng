@@ -52,7 +52,6 @@ CREATE TABLE comprobantes (
   vencimiento_cae TEXT,
   estado TEXT DEFAULT 'emitida' CHECK (estado IN ('emitida', 'anulada')),
   concepto TEXT,
-  pdf_url TEXT,
   afip_id INTEGER,
   cliente_cuit TEXT,
   cliente_doc_tipo INTEGER,

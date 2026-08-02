@@ -16,7 +16,6 @@ function crearComprobante(overrides: Partial<Comprobante> = {}): Comprobante {
     vencimiento_cae: null,
     estado: 'emitida',
     concepto: null,
-    pdf_url: null,
     afip_id: null,
     cliente_cuit: null,
     cliente_doc_tipo: null,

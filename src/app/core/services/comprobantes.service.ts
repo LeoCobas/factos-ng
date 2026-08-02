@@ -195,7 +195,6 @@ export class ComprobantesService {
       cae: comprobante.cae || undefined,
       vencimiento_cae: comprobante.vencimiento_cae || undefined,
       tipo_comprobante: comprobante.tipo_comprobante,
-      pdf_url: comprobante.pdf_url || undefined,
       concepto: comprobante.concepto || undefined,
       punto_venta: comprobante.punto_venta || undefined,
       cliente_cuit: comprobante.cliente_cuit || undefined,

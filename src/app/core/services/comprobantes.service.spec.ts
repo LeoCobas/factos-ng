@@ -38,7 +38,6 @@ describe('ComprobantesService', () => {
       tipo_comprobante: 'FACTURA C',
       cae: '123',
       vencimiento_cae: '20260430',
-      pdf_url: null,
       concepto: 'Servicios',
       punto_venta: 1,
       cliente_cuit: '20123456789',

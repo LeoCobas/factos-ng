@@ -93,7 +93,6 @@ export interface Database {
           vencimiento_cae: string | null;
           estado: string | null;
           concepto: string | null;
-          pdf_url: string | null;
           afip_id: number | null;
           cliente_cuit: string | null;
           cliente_doc_tipo: number | null;
@@ -117,7 +116,6 @@ export interface Database {
           vencimiento_cae?: string | null;
           estado?: string | null;
           concepto?: string | null;
-          pdf_url?: string | null;
           afip_id?: number | null;
           cliente_cuit?: string | null;
           cliente_doc_tipo?: number | null;
@@ -141,7 +139,6 @@ export interface Database {
           vencimiento_cae?: string | null;
           estado?: string | null;
           concepto?: string | null;
-          pdf_url?: string | null;
           afip_id?: number | null;
           cliente_cuit?: string | null;
           cliente_doc_tipo?: number | null;

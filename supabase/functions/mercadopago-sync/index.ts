@@ -887,7 +887,6 @@ Deno.serve(async (req: Request) => {
                     vencimiento_cae: parsed.caeFchVto,
                     estado: 'emitida',
                     concepto: invoiceDescription,
-                    pdf_url: null,
                     cliente_cuit: null,
                     cliente_doc_tipo: 99,
                     cliente_doc_nro: 0,

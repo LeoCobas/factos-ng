@@ -74,7 +74,6 @@ export interface NotaCreditoResult {
     numero: string;
     cae?: string;
     vencimiento_cae?: string;
-    pdf_url?: string;
     comprobante: Comprobante;
   };
   error?: string;
@@ -294,7 +293,6 @@ export class FacturacionService {
         vencimiento_cae: resultado.data.CAEFchVto,
         estado: 'emitida',
         concepto: contribuyente.concepto,
-        pdf_url: null,
         cliente_cuit: cliente.cliente_cuit,
         cliente_doc_tipo: cliente.cliente_doc_tipo,
         cliente_doc_nro: cliente.cliente_doc_nro,
@@ -663,7 +661,6 @@ export class FacturacionService {
           vencimiento_cae: responseData.data.CAEFchVto,
           estado: 'emitida',
           concepto: `Anulacion de ${numeroComprobanteOriginal}`,
-          pdf_url: null,
           comprobante_asociado_id: comprobanteId,
           cliente_cuit: sanitizeCuit(comprobanteOriginal.cliente_cuit) || null,
           cliente_doc_tipo: clienteDocData.docTipo,
@@ -694,7 +691,6 @@ export class FacturacionService {
           numero: ncNumero,
           cae: responseData.data.CAE,
           vencimiento_cae: responseData.data.CAEFchVto,
-          pdf_url: undefined,
           comprobante: ncComprobante,
         },
       };

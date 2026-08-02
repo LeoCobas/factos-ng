@@ -1185,7 +1185,6 @@ export class ListadoComponent {
           numero: resultado.data?.numero,
           cae: resultado.data?.cae,
           vencimiento_cae: resultado.data?.vencimiento_cae,
-          pdf_url: resultado.data?.pdf_url,
           monto: factura.monto,
           facturaOriginal: factura.numero_factura,
           tipo_comprobante: resultado.data?.comprobante.tipo_comprobante,

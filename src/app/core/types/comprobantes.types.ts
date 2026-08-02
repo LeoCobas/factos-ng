@@ -11,7 +11,6 @@ export interface ComprobanteListadoItem {
   cae?: string;
   vencimiento_cae?: string;
   tipo_comprobante: string;
-  pdf_url?: string;
   concepto?: string;
   punto_venta?: number;
   cliente_cuit?: string;
@@ -47,7 +46,6 @@ export interface NotaCreditoEmitida {
   numero?: string;
   cae?: string;
   vencimiento_cae?: string;
-  pdf_url?: string;
   monto: number;
   facturaOriginal: string;
   tipo_comprobante?: string;

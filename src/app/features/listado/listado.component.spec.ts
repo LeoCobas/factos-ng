@@ -474,7 +474,6 @@ describe('ListadoComponent', () => {
         numero: '0001-00000021',
         cae: '12345678901234',
         vencimiento_cae: '20260501',
-        pdf_url: 'https://example.com/nc.pdf',
         comprobante: {
           id: 'nc-1',
           tipo_comprobante: 'NOTA DE CREDITO C',
