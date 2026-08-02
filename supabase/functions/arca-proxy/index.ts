@@ -2,12 +2,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { Arca } from 'npm:@arcasdk/core@0.3.6';
 import { readArcaTicketBucket } from '../../../src/app/core/utils/arca-ticket.util.ts';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+import { corsHeaders, RequestTimings } from '../_shared/http-observability.ts';
 
 const ARCA_TICKET_PATH = '/tmp/factos-arca-tickets';
 const WSFE_SERVICE_NAME = 'wsfe';
@@ -20,6 +15,14 @@ type ArcaProxyErrorType =
   | 'arca_rejected'
   | 'validation'
   | 'server';
+
+function measureStage<T>(
+  timings: RequestTimings | undefined,
+  name: string,
+  operation: () => Promise<T>,
+): Promise<T> {
+  return timings ? timings.measure(name, operation) : operation();
+}
 
 function getTicketFilePath(cuit: number, serviceName: string, production: boolean): string {
   return `${ARCA_TICKET_PATH}/TA-${cuit}-${serviceName}${production ? '-production' : ''}.json`;
@@ -84,16 +87,17 @@ function getSupabaseClient(authHeader: string | null) {
   return createClient(supabaseUrl, supabaseKey);
 }
 
-async function getAuthenticatedUser(req: Request) {
+async function getAuthenticatedUser(req: Request, timings?: RequestTimings) {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) throw new Error('No autorizado');
 
   const supabase = getSupabaseClient(authHeader);
   const token = authHeader.replace('Bearer ', '').trim();
+  const authenticate = () => supabase.auth.getUser(token);
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser(token);
+  } = timings ? await timings.measure('auth', authenticate) : await authenticate();
 
   if (error || !user) throw new Error('Sesion invalida');
   return { supabase, user };
@@ -173,6 +177,20 @@ function logArcaProxy(event: string, data: Record<string, unknown>): void {
       ...data,
     }),
   );
+}
+
+function finalizeTimedResponse(
+  response: Response,
+  timings: RequestTimings,
+  action: string | null,
+): Response {
+  response.headers.set('Server-Timing', timings.toServerTimingHeader());
+  logArcaProxy('request_timing', {
+    action: action || 'unknown',
+    status: response.status,
+    timings: timings.toJSON(),
+  });
+  return response;
 }
 
 function getTodayInArgentina(): string {
@@ -377,13 +395,13 @@ async function fetchAndCacheLastVoucher(params: {
   puntoVenta: number;
   tipoComprobante: string;
   cbteTipo: number;
+  timings?: RequestTimings;
 }): Promise<number> {
   const startedAt = Date.now();
-  const lastVoucher = await params.arca.electronicBillingService.getLastVoucher(
-    params.puntoVenta,
-    params.cbteTipo,
+  const lastVoucher = await measureStage(params.timings, 'arca_last_voucher', () =>
+    params.arca.electronicBillingService.getLastVoucher(params.puntoVenta, params.cbteTipo),
   );
-  await params.persistTicket();
+  await measureStage(params.timings, 'ticket_persist', params.persistTicket);
   const ultimoComprobante = parseLastVoucherNumber(lastVoucher);
   logArcaProxy('last_voucher_fetch', {
     contribuyenteId: params.contribuyenteId,
@@ -393,14 +411,16 @@ async function fetchAndCacheLastVoucher(params: {
     ultimoComprobante,
     durationMs: Date.now() - startedAt,
   });
-  await upsertLastVoucherCache({
-    supabase: params.supabase,
-    contribuyenteId: params.contribuyenteId,
-    puntoVenta: params.puntoVenta,
-    tipoComprobante: params.tipoComprobante,
-    cbteTipo: params.cbteTipo,
-    ultimoComprobante,
-  });
+  await measureStage(params.timings, 'cache_write', () =>
+    upsertLastVoucherCache({
+      supabase: params.supabase,
+      contribuyenteId: params.contribuyenteId,
+      puntoVenta: params.puntoVenta,
+      tipoComprobante: params.tipoComprobante,
+      cbteTipo: params.cbteTipo,
+      ultimoComprobante,
+    }),
+  );
 
   return ultimoComprobante;
 }
@@ -438,14 +458,18 @@ function getArcaRejectionError(parsed: ReturnType<typeof extractWsfeResult>) {
   };
 }
 
-async function getUserArcaInstance(req: Request) {
-  const { supabase: supabaseUser, user } = await getAuthenticatedUser(req);
+async function getUserArcaInstance(req: Request, timings?: RequestTimings) {
+  const { supabase: supabaseUser, user } = await getAuthenticatedUser(req, timings);
 
-  const { data: contribuyente, error } = await supabaseUser
-    .from('contribuyentes')
-    .select('cuit, arca_cert, arca_key, arca_production, arca_ticket')
-    .eq('user_id', user.id)
-    .single();
+  const loadContribuyente = () =>
+    supabaseUser
+      .from('contribuyentes')
+      .select('id, cuit, arca_cert, arca_key, arca_production, arca_ticket')
+      .eq('user_id', user.id)
+      .single();
+  const { data: contribuyente, error } = timings
+    ? await timings.measure('contribuyente_db', loadContribuyente)
+    : await loadContribuyente();
 
   if (error) throw new Error(error.message || 'No se pudo obtener el contribuyente');
   if (!contribuyente) throw new Error('No se encontro el contribuyente');
@@ -510,7 +534,11 @@ function buildErrorResponse(
  * Requiere JWT valido, contribuyente existente, certificados cargados y bucket `wsfe` operativo.
  * Responde `success/data` en altas autorizadas y `success/error` para validacion, rechazo AFIP o error interno.
  */
-async function handleCrearFactura(req: Request, body: any): Promise<Response> {
+async function handleCrearFactura(
+  req: Request,
+  body: any,
+  timings?: RequestTimings,
+): Promise<Response> {
   const { punto_venta, tipo_comprobante, monto, fecha, concepto_afip, iva_porcentaje } = body;
   const { docTipo, docNro, condicionIvaReceptorId } = getDocPayload(body);
 
@@ -534,16 +562,21 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
       return buildErrorResponse('Validacion fallida: fecha debe estar en formato YYYY-MM-DD');
     }
 
-    const { arca, persistTicket, supabase, contribuyenteId } = await getUserArcaInstance(req);
+    const { arca, persistTicket, supabase, contribuyenteId } = await getUserArcaInstance(
+      req,
+      timings,
+    );
     const cbteTipo = getCbteTipo(tipo_comprobante);
     const normalizedTipoComprobante = String(tipo_comprobante).toUpperCase();
-    const cachedLastNumber = await getCachedLastVoucher({
-      supabase,
-      contribuyenteId,
-      puntoVenta: punto_venta,
-      tipoComprobante: normalizedTipoComprobante,
-      cbteTipo,
-    });
+    const cachedLastNumber = await measureStage(timings, 'cache_read', () =>
+      getCachedLastVoucher({
+        supabase,
+        contribuyenteId,
+        puntoVenta: punto_venta,
+        tipoComprobante: normalizedTipoComprobante,
+        cbteTipo,
+      }),
+    );
     logArcaProxy('crear_factura_last_voucher_source', {
       contribuyenteId,
       puntoVenta: punto_venta,
@@ -562,6 +595,7 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
         puntoVenta: punto_venta,
         tipoComprobante: normalizedTipoComprobante,
         cbteTipo,
+        timings,
       }));
     let cbteNro = lastNumber + 1;
 
@@ -616,9 +650,11 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
 
     let createStartedAt = Date.now();
     let parsed = extractWsfeResult(
-      await arca.electronicBillingService.createVoucher(voucherPayload),
+      await measureStage(timings, 'arca_create', () =>
+        arca.electronicBillingService.createVoucher(voucherPayload),
+      ),
     );
-    await persistTicket();
+    await measureStage(timings, 'ticket_persist', persistTicket);
     logArcaProxy('create_voucher_result', {
       contribuyenteId,
       puntoVenta: punto_venta,
@@ -650,15 +686,18 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
           puntoVenta: punto_venta,
           tipoComprobante: normalizedTipoComprobante,
           cbteTipo,
+          timings,
         });
         cbteNro = refreshedLastNumber + 1;
         voucherPayload.CbteDesde = cbteNro;
         voucherPayload.CbteHasta = cbteNro;
         createStartedAt = Date.now();
         parsed = extractWsfeResult(
-          await arca.electronicBillingService.createVoucher(voucherPayload),
+          await measureStage(timings, 'arca_create', () =>
+            arca.electronicBillingService.createVoucher(voucherPayload),
+          ),
         );
-        await persistTicket();
+        await measureStage(timings, 'ticket_persist', persistTicket);
         logArcaProxy('create_voucher_result', {
           contribuyenteId,
           puntoVenta: punto_venta,
@@ -683,14 +722,16 @@ async function handleCrearFactura(req: Request, body: any): Promise<Response> {
       );
     }
 
-    await upsertLastVoucherCache({
-      supabase,
-      contribuyenteId,
-      puntoVenta: punto_venta,
-      tipoComprobante: normalizedTipoComprobante,
-      cbteTipo,
-      ultimoComprobante: Number(parsed.cbteDesde || cbteNro),
-    });
+    await measureStage(timings, 'cache_write', () =>
+      upsertLastVoucherCache({
+        supabase,
+        contribuyenteId,
+        puntoVenta: punto_venta,
+        tipoComprobante: normalizedTipoComprobante,
+        cbteTipo,
+        ultimoComprobante: Number(parsed.cbteDesde || cbteNro),
+      }),
+    );
     logArcaProxy('last_voucher_cache_updated_after_authorization', {
       contribuyenteId,
       puntoVenta: punto_venta,
@@ -952,9 +993,16 @@ async function handleUltimoComprobante(req: Request, body: any): Promise<Respons
  * Precarga el ultimo numero autorizado para reducir latencia en la emision siguiente.
  * Si hay cache fresca, evita ARCA; si no, consulta `getLastVoucher` y renueva ticket WSFE.
  */
-async function handlePrecalentarUltimoComprobante(req: Request, body: any): Promise<Response> {
+async function handlePrecalentarUltimoComprobante(
+  req: Request,
+  body: any,
+  timings?: RequestTimings,
+): Promise<Response> {
   try {
-    const { arca, persistTicket, supabase, contribuyenteId } = await getUserArcaInstance(req);
+    const { arca, persistTicket, supabase, contribuyenteId } = await getUserArcaInstance(
+      req,
+      timings,
+    );
     const { punto_venta, tipo_comprobante } = body;
 
     if (!punto_venta || !Number.isInteger(punto_venta) || punto_venta <= 0) {
@@ -969,13 +1017,15 @@ async function handlePrecalentarUltimoComprobante(req: Request, body: any): Prom
 
     const cbteTipo = getCbteTipo(tipo_comprobante);
     const normalizedTipoComprobante = String(tipo_comprobante).toUpperCase();
-    const cachedLastNumber = await getCachedLastVoucher({
-      supabase,
-      contribuyenteId,
-      puntoVenta: punto_venta,
-      tipoComprobante: normalizedTipoComprobante,
-      cbteTipo,
-    });
+    const cachedLastNumber = await measureStage(timings, 'cache_read', () =>
+      getCachedLastVoucher({
+        supabase,
+        contribuyenteId,
+        puntoVenta: punto_venta,
+        tipoComprobante: normalizedTipoComprobante,
+        cbteTipo,
+      }),
+    );
 
     if (cachedLastNumber !== null) {
       logArcaProxy('prefetch_last_voucher_cache_hit', {
@@ -1002,6 +1052,7 @@ async function handlePrecalentarUltimoComprobante(req: Request, body: any): Prom
       puntoVenta: punto_venta,
       tipoComprobante: normalizedTipoComprobante,
       cbteTipo,
+      timings,
     });
     logArcaProxy('prefetch_last_voucher_cache_miss', {
       contribuyenteId,
@@ -1035,37 +1086,56 @@ Deno.serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const timings = new RequestTimings();
+  let action: string | null = null;
+
   try {
     const url = new URL(req.url);
-    const action = url.searchParams.get('action');
+    action = url.searchParams.get('action');
 
     if (req.method !== 'POST') {
-      return new Response(JSON.stringify({ success: false, error: 'POST required' }), {
-        status: 405,
-        headers: corsHeaders,
-      });
+      return finalizeTimedResponse(
+        new Response(JSON.stringify({ success: false, error: 'POST required' }), {
+          status: 405,
+          headers: corsHeaders,
+        }),
+        timings,
+        action,
+      );
     }
 
-    const body = await req.json();
+    const body = await timings.measure('body_parse', () => req.json());
+    let response: Response;
 
     switch (action) {
       case 'crear-factura':
-        return await handleCrearFactura(req, body);
+        response = await handleCrearFactura(req, body, timings);
+        break;
       case 'crear-nota-credito':
-        return await handleCrearNotaCredito(req, body);
+        response = await handleCrearNotaCredito(req, body);
+        break;
       case 'ultimo-comprobante':
-        return await handleUltimoComprobante(req, body);
+        response = await handleUltimoComprobante(req, body);
+        break;
       case 'precalentar-ultimo-comprobante':
-        return await handlePrecalentarUltimoComprobante(req, body);
+        response = await handlePrecalentarUltimoComprobante(req, body, timings);
+        break;
       default:
-        return new Response(JSON.stringify({ success: false, error: 'Accion invalida' }), {
+        response = new Response(JSON.stringify({ success: false, error: 'Accion invalida' }), {
           status: 400,
           headers: corsHeaders,
         });
+        break;
     }
+
+    return finalizeTimedResponse(response, timings, action);
   } catch (error: any) {
-    return new Response(JSON.stringify({ success: false, error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return finalizeTimedResponse(
+      new Response(JSON.stringify({ success: false, error: error.message }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }),
+      timings,
+      action,
+    );
   }
 });
