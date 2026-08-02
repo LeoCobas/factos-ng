@@ -116,7 +116,7 @@ export class FacturacionService {
   private readonly ultimoComprobantePrefetchLeaseMs = 30 * 1000;
   private readonly ultimoComprobantePrefetchCache = new Map<string, number>();
   private readonly ultimoComprobantePrefetchRequests = new Map<string, Promise<void>>();
-  private readonly ultimaFechaCacheTtlMs = 15 * 60 * 1000;
+  private readonly ultimaFechaCacheTtlMs = 60 * 60 * 1000;
   private readonly ultimaFechaCache = new Map<string, { fecha: string | null; syncedAt: number }>();
 
   /**
@@ -380,7 +380,7 @@ export class FacturacionService {
     cacheKey: string,
   ): { status: 'pending' | 'fresh'; at: number } | null {
     try {
-      const raw = globalThis.sessionStorage?.getItem(`factos:arca-prefetch:${cacheKey}`);
+      const raw = globalThis.localStorage?.getItem(`factos:arca-prefetch:${cacheKey}`);
       if (!raw) return null;
 
       const parsed = JSON.parse(raw);
@@ -402,7 +402,7 @@ export class FacturacionService {
     state: { status: 'pending' | 'fresh'; at: number },
   ): void {
     try {
-      globalThis.sessionStorage?.setItem(`factos:arca-prefetch:${cacheKey}`, JSON.stringify(state));
+      globalThis.localStorage?.setItem(`factos:arca-prefetch:${cacheKey}`, JSON.stringify(state));
     } catch {
       // Prefetch must remain best-effort.
     }
@@ -410,7 +410,7 @@ export class FacturacionService {
 
   private clearSharedPrefetchState(cacheKey: string): void {
     try {
-      globalThis.sessionStorage?.removeItem(`factos:arca-prefetch:${cacheKey}`);
+      globalThis.localStorage?.removeItem(`factos:arca-prefetch:${cacheKey}`);
     } catch {
       // Prefetch must remain best-effort.
     }
