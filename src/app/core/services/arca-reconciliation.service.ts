@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { getRuntimeConfig } from '../config/runtime-config';
-import { getArcaProxyHeaders } from '../utils/arca-proxy-region.util';
+import { getArcaProxyHeaders } from '../utils/arca-proxy-request.util';
 import { supabase } from './supabase.service';
 
 export type AuditableInvoiceType = 'FACTURA A' | 'FACTURA B' | 'FACTURA C';

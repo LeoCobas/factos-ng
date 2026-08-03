@@ -14,7 +14,7 @@ import {
   sanitizeCuit,
 } from '../utils/factura-cliente.util';
 import { getFriendlyNetworkErrorMessage, isLikelyNetworkError } from '../utils/network-error.util';
-import { getArcaProxyHeaders } from '../utils/arca-proxy-region.util';
+import { getArcaProxyHeaders } from '../utils/arca-proxy-request.util';
 
 export interface FacturaRequestData {
   monto: number;
