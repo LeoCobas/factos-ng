@@ -5,6 +5,11 @@ import { corsHeaders, RequestTimings } from '../_shared/http-observability.ts';
 import { getVerifiedUserId } from '../_shared/supabase-auth.ts';
 import { SupabaseArcaTicketStorage } from '../_shared/arca-ticket-storage.ts';
 import { getEmissionTimingSnapshot } from '../_shared/arca-emission-timing.ts';
+import {
+  getPreparedEmissionAction,
+  getPreparedVoucherNumber,
+  type PreparedEmission,
+} from '../_shared/arca-emission-preparation.ts';
 import { normalizeVoucherInfo, voucherMatchesExpected } from '../_shared/arca-voucher.ts';
 import { verifyAndLoadContext } from '../_shared/parallel-context.ts';
 
@@ -488,6 +493,45 @@ async function getUserArcaInvoiceContext(params: {
   };
 }
 
+async function prepareUserArcaEmission(params: {
+  req: Request;
+  emisionId: string;
+  puntoVenta: number;
+  tipoComprobante: string;
+  cbteTipo: number;
+  requestPayload: Record<string, unknown>;
+  timings?: RequestTimings;
+}) {
+  const authHeader = params.req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) throw new Error('No autorizado');
+
+  const supabaseUser = getSupabaseClient(authHeader);
+  const { data, error } = await measureStage(params.timings, 'emission_prepare_db', () =>
+    supabaseUser
+      .rpc('prepare_arca_emission', {
+        p_emision_id: params.emisionId,
+        p_punto_venta: params.puntoVenta,
+        p_tipo_comprobante: params.tipoComprobante,
+        p_cbte_tipo: params.cbteTipo,
+        p_request_payload: params.requestPayload,
+        p_cache_cutoff: getLastVoucherCacheCutoffIso(),
+      })
+      .single(),
+  );
+
+  if (error) throw new Error(error.message || 'No se pudo preparar la emision');
+  const prepared = data as PreparedEmission & {
+    contribuyente_id: string;
+    cuit: string;
+    arca_cert: string;
+    arca_key: string;
+    arca_production: boolean;
+    arca_ticket: Record<string, unknown> | null;
+  };
+
+  return { supabase: supabaseUser, prepared };
+}
+
 function buildErrorResponse(
   errorMessage: string,
   extra?: Record<string, unknown>,
@@ -528,85 +572,6 @@ async function updateEmissionStatus(
     })
     .eq('id', emisionId);
   if (error) throw new Error(`No se pudo actualizar el intento de emision: ${error.message}`);
-}
-
-async function loadPersistedEmission(supabase: any, emisionId: string): Promise<any | null> {
-  const { data, error } = await supabase
-    .from('comprobantes')
-    .select('*')
-    .eq('emision_id', emisionId)
-    .maybeSingle();
-  if (error) throw new Error(`No se pudo consultar la emision existente: ${error.message}`);
-  return data ?? null;
-}
-
-async function registerEmissionAttempt(params: {
-  supabase: any;
-  emisionId: string;
-  contribuyenteId: string;
-  arcaEnvironment: string;
-  puntoVenta: number;
-  tipoComprobante: string;
-  cbteTipo: number;
-  cbteNro: number;
-  requestPayload: Record<string, unknown>;
-}): Promise<{ existing: boolean; attempt: any; comprobante?: any }> {
-  const sameRequest = (stored: any) =>
-    [
-      'fecha',
-      'monto',
-      'doc_tipo',
-      'doc_nro',
-      'concepto_afip',
-      'iva_porcentaje',
-      'condicion_iva_receptor_id',
-    ].every((key) => String(stored?.[key] ?? '') === String(params.requestPayload[key] ?? ''));
-  const { data: existing, error: lookupError } = await params.supabase
-    .from('arca_emisiones')
-    .select('*')
-    .eq('id', params.emisionId)
-    .maybeSingle();
-  if (lookupError) throw new Error(`No se pudo consultar el intento de emision: ${lookupError.message}`);
-
-  if (existing) {
-    if (existing.contribuyente_id !== params.contribuyenteId) {
-      throw new Error('El identificador de emision pertenece a otro contribuyente');
-    }
-    if (!sameRequest(existing.request_payload)) {
-      throw new Error('El identificador de emision fue reutilizado con un payload diferente');
-    }
-    if (existing.status === 'persisted') {
-      const comprobante = await loadPersistedEmission(params.supabase, params.emisionId);
-      if (comprobante) return { existing: true, attempt: existing, comprobante };
-    }
-    return { existing: true, attempt: existing };
-  }
-
-  const attempt = {
-    id: params.emisionId,
-    contribuyente_id: params.contribuyenteId,
-    arca_environment: params.arcaEnvironment,
-    punto_venta: params.puntoVenta,
-    tipo_comprobante: params.tipoComprobante,
-    cbte_tipo: params.cbteTipo,
-    cbte_nro: params.cbteNro,
-    request_payload: params.requestPayload,
-    status: 'pending',
-  };
-  const { error: insertError } = await params.supabase.from('arca_emisiones').insert(attempt);
-  if (insertError?.code === '23505') {
-    const { data: racedAttempt, error: racedError } = await params.supabase
-      .from('arca_emisiones')
-      .select('*')
-      .eq('id', params.emisionId)
-      .single();
-    if (racedError || !sameRequest(racedAttempt?.request_payload)) {
-      throw new Error('El identificador de emision ya existe con otro payload');
-    }
-    return { existing: true, attempt: racedAttempt };
-  }
-  if (insertError) throw new Error(`No se pudo registrar el intento de emision: ${insertError.message}`);
-  return { existing: false, attempt };
 }
 
 async function queryVoucherInfo(arca: any, cbteNro: number, puntoVenta: number, cbteTipo: number) {
@@ -920,15 +885,6 @@ async function handleCrearFactura(
 
     const cbteTipo = getCbteTipo(tipo_comprobante);
     const normalizedTipoComprobante = String(tipo_comprobante).toUpperCase();
-    const context = await getUserArcaInvoiceContext({
-      req,
-      puntoVenta: punto_venta,
-      tipoComprobante: normalizedTipoComprobante,
-      cbteTipo,
-      timings,
-    });
-    const { arca, supabase, contribuyenteId, cachedLastNumber, arcaEnvironment } = context;
-
     const isFacturaC = normalizedTipoComprobante === 'FACTURA C';
     const ivaPct = Number(iva_porcentaje) || 21;
     const impNeto = isFacturaC
@@ -937,17 +893,6 @@ async function handleCrearFactura(
     const impIVA = isFacturaC ? 0 : Number((montoTotal - impNeto).toFixed(2));
     const conceptoNum = Number(concepto_afip) || 2;
     const fechaNum = Number(String(fecha).replace(/-/g, ''));
-    const lastNumber =
-      cachedLastNumber ??
-      (await fetchAndCacheLastVoucher({
-        ...context,
-        puntoVenta: punto_venta,
-        tipoComprobante: normalizedTipoComprobante,
-        cbteTipo,
-        timings,
-      }));
-    let cbteNro = lastNumber + 1;
-
     const requestPayload = {
       fecha,
       monto: montoTotal,
@@ -962,24 +907,63 @@ async function handleCrearFactura(
       iva_porcentaje: ivaPct,
       condicion_iva_receptor_id: condicionIvaReceptorId,
     };
-    const registration = await measureStage(timings, 'attempt_write', () =>
-      registerEmissionAttempt({
-        supabase,
-        emisionId: body.emision_id,
-        contribuyenteId,
-        arcaEnvironment,
+    const context = await prepareUserArcaEmission({
+      req,
+      emisionId: body.emision_id,
+      puntoVenta: punto_venta,
+      tipoComprobante: normalizedTipoComprobante,
+      cbteTipo,
+      requestPayload,
+      timings,
+    });
+    const { supabase, prepared } = context;
+    const preparedAction = getPreparedEmissionAction(prepared);
+
+    if (preparedAction === 'return_persisted') {
+      return successEmissionResponse(prepared.comprobante);
+    }
+    if (preparedAction === 'reject_terminal') {
+      const status = prepared.attempt.status;
+      const message =
+        status === 'rejected'
+          ? String(prepared.attempt.error_message || 'La emision ya fue rechazada por ARCA')
+          : status === 'conflict'
+            ? 'La emision esta en conflicto con un comprobante existente en ARCA'
+            : 'La emision figura persistida pero no se encontro su comprobante';
+      return buildErrorResponse(message, {}, 409, 'arca_rejected');
+    }
+
+    const arcaContext = buildUserArcaInstance(supabase, {
+      id: prepared.contribuyente_id,
+      cuit: prepared.cuit,
+      arca_cert: prepared.arca_cert,
+      arca_key: prepared.arca_key,
+      arca_production: prepared.arca_production,
+      arca_ticket: prepared.arca_ticket,
+    });
+    const { arca, contribuyenteId } = arcaContext;
+    const preparedCbteNro = getPreparedVoucherNumber(prepared);
+    let cbteNro: number;
+    if (preparedAction === 'fetch_last_voucher') {
+      const lastNumber = await fetchAndCacheLastVoucher({
+        ...arcaContext,
         puntoVenta: punto_venta,
         tipoComprobante: normalizedTipoComprobante,
         cbteTipo,
-        cbteNro,
-        requestPayload,
-      }),
-    );
-    if (registration.comprobante) return successEmissionResponse(registration.comprobante);
-    if (registration.attempt.status === 'conflict') {
-      return buildErrorResponse('La emision esta en conflicto con un comprobante existente en ARCA', {}, 409, 'arca_rejected');
+        timings,
+      });
+      cbteNro = lastNumber + 1;
+      await updateEmissionStatus(
+        supabase,
+        body.emision_id,
+        { cbte_nro: cbteNro, status: 'pending' },
+        timings,
+      );
+    } else if (preparedCbteNro !== null) {
+      cbteNro = preparedCbteNro;
+    } else {
+      throw new Error('No se pudo determinar el numero de comprobante');
     }
-    cbteNro = Number(registration.attempt.cbte_nro ?? cbteNro);
 
     const buildVoucherPayload = (number: number) => {
       const payload: any = {
@@ -1040,7 +1024,7 @@ async function handleCrearFactura(
       return successEmissionResponse(comprobante, true);
     };
 
-    if (registration.existing && ['pending', 'uncertain', 'authorized'].includes(registration.attempt.status)) {
+    if (preparedAction === 'recover_voucher') {
       const recovery = await recover(cbteNro);
       if (recovery.matches) return finalizeRecovered(cbteNro, recovery);
       if (recovery.voucher) {
@@ -1094,7 +1078,7 @@ async function handleCrearFactura(
       if (recovery.matches) return finalizeRecovered(cbteNro, recovery);
 
       const refreshedLastNumber = await fetchAndCacheLastVoucher({
-        ...context,
+        ...arcaContext,
         puntoVenta: punto_venta,
         tipoComprobante: normalizedTipoComprobante,
         cbteTipo,

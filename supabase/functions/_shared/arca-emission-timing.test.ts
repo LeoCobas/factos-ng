@@ -11,7 +11,7 @@ Deno.test('getEmissionTimingSnapshot keeps only finite numeric stage durations',
     toJSON: () =>
       ({
         auth: 100,
-        invoice_context_db: 200,
+        emission_prepare_db: 200,
         total: 350,
         token: 'secret',
         certificate: 'certificate',
@@ -23,7 +23,7 @@ Deno.test('getEmissionTimingSnapshot keeps only finite numeric stage durations',
 
   assertEquals(snapshot, {
     auth: 100,
-    invoice_context_db: 200,
+    emission_prepare_db: 200,
     total: 350,
   });
 });
