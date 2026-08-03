@@ -5,6 +5,7 @@ import { corsHeaders, RequestTimings } from '../_shared/http-observability.ts';
 import { getVerifiedUserId } from '../_shared/supabase-auth.ts';
 import { SupabaseArcaTicketStorage } from '../_shared/arca-ticket-storage.ts';
 import { getEmissionTimingSnapshot } from '../_shared/arca-emission-timing.ts';
+import { scheduleEmissionTimingPersistence } from '../_shared/arca-emission-background-timing.ts';
 import {
   getPreparedEmissionAction,
   getPreparedVoucherNumber,
@@ -13,6 +14,8 @@ import {
 import { normalizeVoucherInfo, voucherMatchesExpected } from '../_shared/arca-voucher.ts';
 import { verifyAndLoadContext } from '../_shared/parallel-context.ts';
 import { warmWsfeConnection } from '../_shared/arca-warmup.ts';
+
+declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void };
 
 const WSFE_SERVICE_NAME = 'wsfe';
 const LAST_VOUCHER_CACHE_TTL_MS = 15 * 60 * 1000;
@@ -616,6 +619,31 @@ async function finalizeAuthorizedEmission(params: {
     ? await params.timings.measure('durable_persist', finalize)
     : await finalize();
   if (error) throw new Error(`ARCA autorizo pero no se pudo persistir el comprobante: ${error.message}`);
+
+  if (params.timings) {
+    scheduleEmissionTimingPersistence({
+      emisionId: params.emisionId,
+      timings: params.timings,
+      persist: async (emisionId, timingSnapshot) => {
+        const { error: timingError } = await params.supabase.rpc(
+          'record_arca_emission_timings',
+          {
+            p_emision_id: emisionId,
+            p_request_timings: timingSnapshot,
+          },
+        );
+        if (timingError) throw new Error(timingError.message);
+      },
+      waitUntil: (promise) => EdgeRuntime.waitUntil(promise),
+      onError: (timingError) => {
+        logArcaProxy('emission_timing_persist_failed', {
+          emisionId: params.emisionId,
+          error: timingError instanceof Error ? timingError.message : String(timingError),
+        });
+      },
+    });
+  }
+
   return data;
 }
 
