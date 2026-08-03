@@ -32,6 +32,25 @@ secretos globales `SYSTEM_ARCA_*`, usados solamente por el padron durante el
 onboarding previo a cargar un certificado, deben restaurarse desde la fuente
 segura original antes de habilitar nuevos registros sin certificado.
 
+### Validacion de emisiones 94 a 96
+
+Las tres facturas de homologacion quedaron autorizadas, persistidas y con CAE,
+sin duplicados ni estados recuperables. El prefetch se ejecuto antes de emitir y
+ninguna emision necesito `getLastVoucher` en su camino critico.
+
+Comparado con las facturas 91 a 93 de Virginia:
+
+- Preparacion DB: 420 ms promedio a 64 ms promedio (-356 ms, -85%).
+- Persistencia durable: 312 ms promedio a 39 ms promedio (-273 ms, -87%).
+- Trabajo ajeno a ARCA: 738 ms promedio a 110 ms promedio (-628 ms, -85%).
+- Mediana interna total: 1.029 ms a 563 ms (-466 ms).
+- Mediana HTTP de la Edge Function: 1.608 ms a 1.106 ms (-502 ms).
+
+La factura 96 tuvo `arca_create = 1.950 ms`, mientras 94 y 95 registraron 426
+y 270 ms. Ese outlier elevo el promedio interno de las tres nuevas a 992 ms,
+pero ocurrio dentro del servicio ARCA; preparacion y persistencia se mantuvieron
+en 83 ms combinados. Se conserva como variabilidad externa a seguir midiendo.
+
 ## Objetivo
 
 Migrar Factos desde Supabase `us-east-1` a un proyecto nuevo en `sa-east-1` para
