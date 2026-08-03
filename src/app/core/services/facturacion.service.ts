@@ -14,6 +14,7 @@ import {
   sanitizeCuit,
 } from '../utils/factura-cliente.util';
 import { getFriendlyNetworkErrorMessage, isLikelyNetworkError } from '../utils/network-error.util';
+import { getArcaProxyHeaders } from '../utils/arca-proxy-region.util';
 
 export interface FacturaRequestData {
   monto: number;
@@ -527,11 +528,7 @@ export class FacturacionService {
         `${this.supabaseUrl}/functions/v1/arca-proxy?action=crear-factura`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: getRuntimeConfig().supabase.anonKey,
-            Authorization: `Bearer ${accessToken}`,
-          },
+          headers: getArcaProxyHeaders(accessToken, getRuntimeConfig().supabase.anonKey),
           body: JSON.stringify(requestBody),
         },
       );
@@ -576,11 +573,7 @@ export class FacturacionService {
       `${this.supabaseUrl}/functions/v1/arca-proxy?action=precalentar-ultimo-comprobante`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: getRuntimeConfig().supabase.anonKey,
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: getArcaProxyHeaders(accessToken, getRuntimeConfig().supabase.anonKey),
         body: JSON.stringify({
           punto_venta: puntoVenta,
           tipo_comprobante: tipoComprobante,
@@ -656,11 +649,7 @@ export class FacturacionService {
         `${this.supabaseUrl}/functions/v1/arca-proxy?action=crear-nota-credito`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: getRuntimeConfig().supabase.anonKey,
-            Authorization: `Bearer ${accessToken}`,
-          },
+          headers: getArcaProxyHeaders(accessToken, getRuntimeConfig().supabase.anonKey),
           body: JSON.stringify({
             punto_venta: contribuyente.punto_venta,
             punto_venta_original: comprobanteOriginal.punto_venta ?? contribuyente.punto_venta,

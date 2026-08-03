@@ -8,7 +8,8 @@ function assertEquals(actual: unknown, expected: unknown): void {
 
 Deno.test('CORS caches preflight and exposes Server-Timing', () => {
   assertEquals(corsHeaders['Access-Control-Max-Age'], '86400');
-  assertEquals(corsHeaders['Access-Control-Expose-Headers'], 'Server-Timing');
+  assertEquals(corsHeaders['Access-Control-Allow-Headers'].includes('x-region'), true);
+  assertEquals(corsHeaders['Access-Control-Expose-Headers'], 'Server-Timing, x-sb-edge-region');
   assertEquals(corsHeaders['Timing-Allow-Origin'], '*');
 });
 

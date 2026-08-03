@@ -601,7 +601,8 @@ async function finalizeAuthorizedEmission(params: {
   recovered: boolean;
   timings?: RequestTimings;
 }): Promise<any> {
-  const { data, error } = await params.supabase.rpc('finalize_arca_emission', {
+  const finalize = () =>
+    params.supabase.rpc('finalize_arca_emission', {
       p_emision_id: params.emisionId,
       p_cbte_nro: params.cbteNro,
       p_cae: params.cae,
@@ -610,6 +611,9 @@ async function finalizeAuthorizedEmission(params: {
       p_recovered: params.recovered,
       p_request_timings: getEmissionTimingSnapshot(params.timings),
     });
+  const { data, error } = params.timings
+    ? await params.timings.measure('durable_persist', finalize)
+    : await finalize();
   if (error) throw new Error(`ARCA autorizo pero no se pudo persistir el comprobante: ${error.message}`);
   return data;
 }

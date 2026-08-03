@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { getRuntimeConfig } from '../config/runtime-config';
+import { getArcaProxyHeaders } from '../utils/arca-proxy-region.util';
 import { supabase } from './supabase.service';
 
 export type AuditableInvoiceType = 'FACTURA A' | 'FACTURA B' | 'FACTURA C';
@@ -44,11 +45,7 @@ export class ArcaReconciliationService {
     const config = getRuntimeConfig();
     const response = await fetch(`${config.supabase.url}/functions/v1/arca-proxy?action=${action}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: config.supabase.anonKey,
-        Authorization: `Bearer ${accessToken}`,
-      },
+      headers: getArcaProxyHeaders(accessToken, config.supabase.anonKey),
       body: JSON.stringify(body),
     });
     const payload = await response.json();
