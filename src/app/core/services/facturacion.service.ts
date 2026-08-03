@@ -29,12 +29,14 @@ export interface FacturaRequestData {
 export interface ArcaProxyResponse {
   success: boolean;
   data?: {
-    CAE: string;
-    CAEFchVto: string;
-    CbteDesde: number;
-    CbteTipo: number;
-    PtoVta: number;
-    Resultado: string;
+    comprobante?: Comprobante;
+    recovered?: boolean;
+    CAE?: string;
+    CAEFchVto?: string;
+    CbteDesde?: number;
+    CbteTipo?: number;
+    PtoVta?: number;
+    Resultado?: string;
   };
   error?: string;
   error_type?: FacturacionErrorType;
@@ -110,6 +112,8 @@ type TipoComprobanteFiscal =
   providedIn: 'root',
 })
 export class FacturacionService {
+  private readonly pendingEmissionIds = new Map<string, string>();
+  private readonly pendingEmissionStoragePrefix = 'factos:pending-emission:';
   private readonly contribuyenteService = inject(ContribuyenteService);
   private readonly ultimoComprobantePrefetchTtlMs = 15 * 60 * 1000;
   private readonly ultimoComprobantePrefetchLeaseMs = 30 * 1000;
@@ -197,6 +201,58 @@ export class FacturacionService {
     return `${String(ptoVta).padStart(4, '0')}-${String(cbteNro).padStart(8, '0')}`;
   }
 
+  private getPendingEmissionStorageKey(emissionKey: string): string {
+    let firstHash = 2166136261;
+    let secondHash = 5381;
+
+    for (let index = 0; index < emissionKey.length; index += 1) {
+      const code = emissionKey.charCodeAt(index);
+      firstHash = Math.imul(firstHash ^ code, 16777619);
+      secondHash = Math.imul(secondHash, 33) ^ code;
+    }
+
+    return `${this.pendingEmissionStoragePrefix}${(firstHash >>> 0).toString(36)}:${(secondHash >>> 0).toString(36)}`;
+  }
+
+  private getOrCreateEmissionId(emissionKey: string): string {
+    const memoryId = this.pendingEmissionIds.get(emissionKey);
+    if (memoryId) return memoryId;
+
+    const storageKey = this.getPendingEmissionStorageKey(emissionKey);
+    try {
+      const storedId = sessionStorage.getItem(storageKey);
+      if (
+        storedId &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          storedId,
+        )
+      ) {
+        this.pendingEmissionIds.set(emissionKey, storedId);
+        return storedId;
+      }
+    } catch {
+      // In-memory idempotency remains available when browser storage is unavailable.
+    }
+
+    const emissionId = crypto.randomUUID();
+    this.pendingEmissionIds.set(emissionKey, emissionId);
+    try {
+      sessionStorage.setItem(storageKey, emissionId);
+    } catch {
+      // The Edge Function still enforces idempotency for this service instance.
+    }
+    return emissionId;
+  }
+
+  private clearPendingEmissionId(emissionKey: string): void {
+    this.pendingEmissionIds.delete(emissionKey);
+    try {
+      sessionStorage.removeItem(this.getPendingEmissionStorageKey(emissionKey));
+    } catch {
+      // Nothing else is required after a successful persisted emission.
+    }
+  }
+
   /**
    * Obtiene un access token vigente para invocar Edge Functions protegidas.
    * Refresca la sesion si vence en menos de 60 segundos.
@@ -264,9 +320,27 @@ export class FacturacionService {
       puntoVenta: contribuyente.punto_venta,
     });
 
-    const resultado = await this.llamarArca(contribuyente, facturaData, cliente, tipoComprobante);
+    const emissionKey = JSON.stringify({
+      contribuyenteId: contribuyente.id,
+      tipoComprobante,
+      puntoVenta: contribuyente.punto_venta,
+      fecha: facturaData.fecha,
+      monto: facturaData.monto,
+      conceptoAfip: this.getConceptoAfip(actividad),
+      docTipo: cliente.cliente_doc_tipo,
+      docNro: cliente.cliente_doc_nro,
+      condicionIva: cliente.cliente_condicion_iva,
+    });
+    const emisionId = this.getOrCreateEmissionId(emissionKey);
+    const resultado = await this.llamarArca(
+      contribuyente,
+      facturaData,
+      cliente,
+      tipoComprobante,
+      emisionId,
+    );
 
-    if (!resultado.success || !resultado.data) {
+    if (!resultado.success || !resultado.data?.comprobante) {
       return {
         success: false,
         error: resultado.error || 'Error al emitir factura',
@@ -275,37 +349,8 @@ export class FacturacionService {
       };
     }
 
-    const numeroComprobante = this.formatNumeroComprobante(
-      resultado.data.PtoVta,
-      resultado.data.CbteDesde,
-    );
-
-    const { data: comprobante, error: insertError } = await supabase
-      .from('comprobantes')
-      .insert({
-        contribuyente_id: contribuyente.id,
-        tipo_comprobante: tipoComprobante,
-        numero_comprobante: numeroComprobante,
-        punto_venta: contribuyente.punto_venta,
-        fecha: this.fechaDDMMYYYYtoISO(facturaData.fecha),
-        total: facturaData.monto,
-        cae: resultado.data.CAE,
-        vencimiento_cae: resultado.data.CAEFchVto,
-        estado: 'emitida',
-        concepto: contribuyente.concepto,
-        cliente_cuit: cliente.cliente_cuit,
-        cliente_doc_tipo: cliente.cliente_doc_tipo,
-        cliente_doc_nro: cliente.cliente_doc_nro,
-        cliente_nombre: cliente.cliente_nombre,
-        cliente_domicilio: cliente.cliente_domicilio,
-        cliente_condicion_iva: cliente.cliente_condicion_iva,
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      throw new Error('No se pudo guardar el comprobante en la base de datos');
-    }
+    const comprobante = resultado.data.comprobante;
+    this.clearPendingEmissionId(emissionKey);
 
     this.updateUltimaFechaCache(
       contribuyente.id,
@@ -316,11 +361,7 @@ export class FacturacionService {
 
     return {
       success: true,
-      comprobante: {
-        ...comprobante,
-        cae: resultado.data.CAE,
-        vencimiento_cae: resultado.data.CAEFchVto,
-      },
+      comprobante,
     };
   }
 
@@ -452,6 +493,7 @@ export class FacturacionService {
       cliente_condicion_iva: string;
     },
     tipoComprobante: 'FACTURA A' | 'FACTURA B' | 'FACTURA C',
+    emisionId: string,
   ): Promise<{
     success: boolean;
     data?: ArcaProxyResponse['data'];
@@ -464,6 +506,7 @@ export class FacturacionService {
       const actividad = contribuyente.actividad === 'bienes' ? 'bienes' : 'servicios';
 
       const requestBody = {
+        emision_id: emisionId,
         punto_venta: contribuyente.punto_venta,
         tipo_comprobante: tipoComprobante,
         monto: facturaData.monto,
@@ -473,6 +516,11 @@ export class FacturacionService {
         doc_tipo: cliente.cliente_doc_tipo,
         doc_nro: cliente.cliente_doc_nro,
         condicion_iva_receptor_id: getCondicionIvaReceptorId(cliente.cliente_condicion_iva),
+        concepto: contribuyente.concepto,
+        cliente_cuit: cliente.cliente_cuit,
+        cliente_nombre: cliente.cliente_nombre,
+        cliente_domicilio: cliente.cliente_domicilio,
+        cliente_condicion_iva: cliente.cliente_condicion_iva,
       };
 
       const response = await fetch(
@@ -634,7 +682,12 @@ export class FacturacionService {
 
       const responseData: ArcaProxyResponse = await response.json();
 
-      if (!response.ok || !responseData.success || !responseData.data) {
+      if (
+        !response.ok ||
+        !responseData.success ||
+        !responseData.data?.PtoVta ||
+        !responseData.data.CbteDesde
+      ) {
         const error = new Error(responseData.error || 'Error al crear nota de credito');
         (error as Error & { shouldRetry?: boolean; errorType?: FacturacionErrorType }).shouldRetry =
           responseData.should_retry === true;

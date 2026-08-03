@@ -59,6 +59,13 @@ CREATE TABLE comprobantes (
   cliente_nombre TEXT,
   cliente_domicilio TEXT,
   cliente_condicion_iva TEXT,
+  cbte_nro INTEGER,
+  cbte_tipo INTEGER,
+  arca_environment TEXT CHECK (arca_environment IS NULL OR arca_environment IN ('homologacion', 'produccion')),
+  emision_id UUID UNIQUE,
+  origen TEXT NOT NULL DEFAULT 'emision' CHECK (origen IN ('emision', 'reconciliacion')),
+  reconciliado_at TIMESTAMPTZ,
+  arca_payload JSONB,
   -- Self-reference: la NC apunta a la factura que anula
   comprobante_asociado_id UUID REFERENCES comprobantes(id),
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -70,6 +77,12 @@ CREATE INDEX idx_comprobantes_contribuyente_created_at_desc
 CREATE INDEX idx_comprobantes_contribuyente_fecha_created_at_desc
   ON comprobantes(contribuyente_id, fecha DESC, created_at DESC);
 CREATE INDEX idx_comprobantes_asociado ON comprobantes(comprobante_asociado_id);
+CREATE UNIQUE INDEX comprobantes_arca_identity_unique
+  ON comprobantes (contribuyente_id, arca_environment, punto_venta, cbte_tipo, cbte_nro)
+  WHERE arca_environment IS NOT NULL
+    AND punto_venta IS NOT NULL
+    AND cbte_tipo IS NOT NULL
+    AND cbte_nro IS NOT NULL;
 
 -- Cache operativa para precalentar FECompUltimoAutorizado/getLastVoucher.
 CREATE TABLE ultimo_comprobante_cache (
@@ -88,6 +101,30 @@ CREATE TABLE ultimo_comprobante_cache (
 CREATE INDEX idx_ultimo_comprobante_cache_fresh
   ON ultimo_comprobante_cache (contribuyente_id, punto_venta, tipo_comprobante, synced_at DESC);
 
+CREATE TABLE arca_emisiones (
+  id UUID PRIMARY KEY,
+  contribuyente_id UUID NOT NULL REFERENCES contribuyentes(id) ON DELETE CASCADE,
+  arca_environment TEXT NOT NULL CHECK (arca_environment IN ('homologacion', 'produccion')),
+  punto_venta INTEGER NOT NULL CHECK (punto_venta > 0),
+  tipo_comprobante TEXT NOT NULL,
+  cbte_tipo INTEGER NOT NULL CHECK (cbte_tipo > 0),
+  cbte_nro INTEGER CHECK (cbte_nro > 0),
+  request_payload JSONB NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'authorized', 'persisted', 'rejected', 'uncertain', 'conflict')),
+  arca_response JSONB,
+  error_message TEXT,
+  authorized_at TIMESTAMPTZ,
+  persisted_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX arca_emisiones_owner_created_idx
+  ON arca_emisiones (contribuyente_id, created_at DESC);
+CREATE INDEX arca_emisiones_fiscal_idx
+  ON arca_emisiones (contribuyente_id, arca_environment, punto_venta, cbte_tipo, cbte_nro);
+
 -- =========================
 -- 3. ROW LEVEL SECURITY
 -- =========================
@@ -95,6 +132,7 @@ CREATE INDEX idx_ultimo_comprobante_cache_fresh
 ALTER TABLE contribuyentes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comprobantes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ultimo_comprobante_cache ENABLE ROW LEVEL SECURITY;
+ALTER TABLE arca_emisiones ENABLE ROW LEVEL SECURITY;
 
 -- Contribuyentes: solo acceder al propio
 CREATE POLICY "contribuyentes_select_own"
@@ -170,6 +208,35 @@ CREATE POLICY "ultimo_comprobante_cache_insert_own"
 
 CREATE POLICY "ultimo_comprobante_cache_update_own"
   ON ultimo_comprobante_cache FOR UPDATE
+  USING (
+    contribuyente_id IN (
+      SELECT id FROM contribuyentes WHERE user_id = (select auth.uid())
+    )
+  )
+  WITH CHECK (
+    contribuyente_id IN (
+      SELECT id FROM contribuyentes WHERE user_id = (select auth.uid())
+    )
+  );
+
+CREATE POLICY "arca_emisiones_select_own"
+  ON arca_emisiones FOR SELECT
+  USING (
+    contribuyente_id IN (
+      SELECT id FROM contribuyentes WHERE user_id = (select auth.uid())
+    )
+  );
+
+CREATE POLICY "arca_emisiones_insert_own"
+  ON arca_emisiones FOR INSERT
+  WITH CHECK (
+    contribuyente_id IN (
+      SELECT id FROM contribuyentes WHERE user_id = (select auth.uid())
+    )
+  );
+
+CREATE POLICY "arca_emisiones_update_own"
+  ON arca_emisiones FOR UPDATE
   USING (
     contribuyente_id IN (
       SELECT id FROM contribuyentes WHERE user_id = (select auth.uid())

@@ -1,7 +1,9 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { Arca } from 'npm:@arcasdk/core@0.3.6';
-import { readArcaTicketBucket } from '../../../src/app/core/utils/arca-ticket.util.ts';
+import { AccessTicket, Arca } from 'npm:@arcasdk/core@2.0.0';
+import { SupabaseArcaTicketStorage } from '../_shared/arca-ticket-storage.ts';
+
+declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void };
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,59 +11,8 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
-const ARCA_TICKET_PATH = '/tmp/factos-arca-tickets';
 const WSFE_SERVICE_NAME = 'wsfe';
 const LAST_VOUCHER_CACHE_TTL_MS = 15 * 60 * 1000;
-
-function getTicketFilePath(cuit: number, serviceName: string, production: boolean): string {
-  return `${ARCA_TICKET_PATH}/TA-${cuit}-${serviceName}${production ? '-production' : ''}.json`;
-}
-
-function isStoredTicketValid(ticket: any): boolean {
-  const expirationTime = ticket?.header?.[1]?.expirationtime;
-  if (!expirationTime) return false;
-
-  const expirationMs = new Date(String(expirationTime)).getTime();
-  return Number.isFinite(expirationMs) && expirationMs - Date.now() > 60_000;
-}
-
-function getValidStoredTicket(storedTicket: any, bucket: 'wsfe' | 'padron'): any | null {
-  const ticket = readArcaTicketBucket(storedTicket, bucket);
-  return isStoredTicketValid(ticket) ? ticket : null;
-}
-
-async function persistTicketFromFile(params: {
-  supabase: any;
-  cuit: number;
-  production: boolean;
-  originalTicket?: any;
-}): Promise<void> {
-  try {
-    const filePath = getTicketFilePath(params.cuit, WSFE_SERVICE_NAME, params.production);
-    const fileData = await Deno.readTextFile(filePath);
-    const ticket = JSON.parse(fileData);
-
-    if (!isStoredTicketValid(ticket)) return;
-
-    if (params.originalTicket && JSON.stringify(params.originalTicket) === JSON.stringify(ticket)) {
-      return;
-    }
-
-    const { error } = await params.supabase.rpc('merge_arca_ticket_bucket', {
-      p_bucket: 'wsfe',
-      p_ticket: ticket,
-    });
-
-    if (error) {
-      console.error('No se pudo guardar el ticket WSFE en Supabase:', error.message);
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (!message.includes('No such file') && !message.includes('os error 2')) {
-      console.error('No se pudo leer el ticket WSFE temporal:', message);
-    }
-  }
-}
 
 function getSupabaseClient(authHeader: string | null) {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -642,25 +593,21 @@ Deno.serve(async (req: Request) => {
 
             const cuitEmisor = parseInt(contribuyente.cuit, 10);
             const production = contribuyente.arca_production === true;
-            const credentials = getValidStoredTicket(contribuyente.arca_ticket, 'wsfe');
+            const ticketStorage = new SupabaseArcaTicketStorage(
+              supabaseUser,
+              'wsfe',
+              contribuyente.arca_ticket,
+              AccessTicket,
+            );
             const arca = new Arca({
               cert: contribuyente.arca_cert,
               key: contribuyente.arca_key,
               cuit: cuitEmisor,
               production,
-              credentials: credentials || undefined,
-              handleTicket: true,
+              ticketStorage,
               useHttpsAgent: false,
-              ticketPath: ARCA_TICKET_PATH,
             });
-
-            const persistTicket = () =>
-              persistTicketFromFile({
-                supabase: db,
-                cuit: cuitEmisor,
-                production,
-                originalTicket: credentials || undefined,
-              });
+            const persistTicket = async () => {};
 
             const emisorCondicion = (contribuyente.condicion_iva || '').toLowerCase();
             const tipoComprobante =

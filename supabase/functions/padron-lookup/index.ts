@@ -1,8 +1,8 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { Arca } from 'npm:@arcasdk/core@0.3.6';
-import { readArcaTicketBucket } from '../../../src/app/core/utils/arca-ticket.util.ts';
+import { AccessTicket, Arca, MemoryTicketStorage } from 'npm:@arcasdk/core@2.0.0';
 import { extractFiscalDataFromConstancia } from '../../../src/app/core/utils/constancia-inscripcion.util.ts';
+import { SupabaseArcaTicketStorage } from '../_shared/arca-ticket-storage.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,59 +11,6 @@ const corsHeaders = {
 };
 
 const ARCA_TIMEOUT_MS = 15000;
-const ARCA_TICKET_PATH = '/tmp/factos-arca-tickets';
-const PADRON_SERVICE_NAME = 'ws_sr_constancia_inscripcion';
-
-function getTicketFilePath(cuit: number, serviceName: string, production: boolean): string {
-  return `${ARCA_TICKET_PATH}/TA-${cuit}-${serviceName}${production ? '-production' : ''}.json`;
-}
-
-function isStoredTicketValid(ticket: any): boolean {
-  const expirationTime = ticket?.header?.[1]?.expirationtime;
-  if (!expirationTime) return false;
-
-  const expirationMs = new Date(String(expirationTime)).getTime();
-  return Number.isFinite(expirationMs) && expirationMs - Date.now() > 60_000;
-}
-
-function getValidStoredTicket(storedTicket: any): any | null {
-  const ticket = readArcaTicketBucket(storedTicket, 'padron');
-  return isStoredTicketValid(ticket) ? ticket : null;
-}
-
-async function persistTicketFromFile(params: {
-  db: any;
-  cuit: number;
-  production: boolean;
-  originalTicket?: any;
-}): Promise<void> {
-  try {
-    const filePath = getTicketFilePath(params.cuit, PADRON_SERVICE_NAME, params.production);
-    const fileData = await Deno.readTextFile(filePath);
-    const ticket = JSON.parse(fileData);
-
-    if (!isStoredTicketValid(ticket)) return;
-
-    if (params.originalTicket && JSON.stringify(params.originalTicket) === JSON.stringify(ticket)) {
-      return;
-    }
-
-    const { error } = await params.db.rpc('merge_arca_ticket_bucket', {
-      p_bucket: 'padron',
-      p_ticket: ticket,
-    });
-
-    if (error) {
-      console.error('No se pudo guardar el ticket Padron en Supabase:', error.message);
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (!message.includes('No such file') && !message.includes('os error 2')) {
-      console.error('No se pudo leer el ticket Padron temporal:', message);
-    }
-  }
-}
-
 function getArcaEnvironmentLabel(production: boolean): 'produccion' | 'homologacion' {
   return production ? 'produccion' : 'homologacion';
 }
@@ -250,7 +197,6 @@ Deno.serve(async (req: Request) => {
     let key = contribuyente?.arca_key;
     let cuitEmisor = contribuyente ? parseInt(contribuyente.cuit, 10) : null;
     let production = contribuyente?.arca_production === true;
-    let credentials = contribuyente ? getValidStoredTicket(contribuyente.arca_ticket) : null;
 
     const isFallbackMode = !cert || !key || !cuitEmisor;
     if (isFallbackMode) {
@@ -259,7 +205,6 @@ Deno.serve(async (req: Request) => {
       const systemCuit = Deno.env.get('SYSTEM_ARCA_CUIT');
       cuitEmisor = systemCuit ? parseInt(systemCuit, 10) : null;
       production = Deno.env.get('SYSTEM_ARCA_PRODUCTION') === 'true';
-      credentials = null;
 
       if (!cert || !key || !cuitEmisor) {
         return new Response(
@@ -272,36 +217,29 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    const ticketStorage = isFallbackMode
+      ? new MemoryTicketStorage({ cuit: cuitEmisor!, production })
+      : new SupabaseArcaTicketStorage(
+          supabase,
+          'padron',
+          contribuyente?.arca_ticket,
+          AccessTicket,
+        );
     const arca = new Arca({
       key: key!,
       cert: cert!,
       cuit: cuitEmisor!,
       production,
-      credentials: credentials || undefined,
-      handleTicket: true,
+      ticketStorage,
       useHttpsAgent: false,
-      ticketPath: ARCA_TICKET_PATH,
     });
-    const persistTicket = async () => {
-      if (isFallbackMode) return;
-      await persistTicketFromFile({
-        db: supabase,
-        cuit: cuitEmisor!,
-        production,
-        originalTicket: credentials || undefined,
-      });
-    };
 
     try {
       const normalizedCuit = parseInt(String(cuit), 10);
       const arcaEnvironment = getArcaEnvironmentLabel(production);
 
       let personaObj: Record<string, unknown> | null = null;
-      try {
-        personaObj = await fetchTaxpayerFromArca(arca, normalizedCuit);
-      } finally {
-        await persistTicket();
-      }
+      personaObj = await fetchTaxpayerFromArca(arca, normalizedCuit);
 
       if (!personaObj) {
         return new Response(

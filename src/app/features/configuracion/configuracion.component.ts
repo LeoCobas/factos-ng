@@ -19,6 +19,7 @@ import { ConfiguracionFacturacionFormComponent } from './configuracion-facturaci
 import { ConfiguracionCertificadoFormComponent } from './configuracion-certificado-form.component';
 import { ConfiguracionCuentaFormComponent } from './configuracion-cuenta-form.component';
 import { ConfiguracionMercadopagoFormComponent } from './configuracion-mercadopago-form.component';
+import { ConfiguracionReconciliacionComponent } from './configuracion-reconciliacion.component';
 import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.util';
 
 @Component({
@@ -27,6 +28,18 @@ import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.u
     <div class="space-y-5">
       <div class="config-tabs-wrapper">
         <div class="config-tabs-list">
+          <button
+            type="button"
+            (click)="tabActiva.set('reconciliacion')"
+            class="config-tab"
+            title="Reconciliaci&oacute;n ARCA"
+            aria-label="Reconciliaci&oacute;n ARCA"
+            [class.config-tab-active]="tabActiva() === 'reconciliacion'"
+            [class.config-tab-inactive]="tabActiva() !== 'reconciliacion'">
+            <svg class="config-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M4 7h11a4 4 0 0 1 4 4v1M4 7l3-3M4 7l3 3M20 17H9a4 4 0 0 1-4-4v-1M20 17l-3-3M20 17l-3 3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
           <button
             type="button"
             (click)="tabActiva.set('facturacion')"
@@ -146,6 +159,12 @@ import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.u
             (changePassword)="cambiarPassword()"
           />
         }
+
+        @if (tabActiva() === 'reconciliacion') {
+          <app-configuracion-reconciliacion
+            [puntoVentaInicial]="facturacionForm.controls.punto_venta.value"
+          />
+        }
       }
     </div>
   `,
@@ -155,6 +174,7 @@ import { getFriendlyNetworkErrorMessage } from '../../core/utils/network-error.u
     ConfiguracionCertificadoFormComponent,
     ConfiguracionCuentaFormComponent,
     ConfiguracionMercadopagoFormComponent,
+    ConfiguracionReconciliacionComponent,
   ],
   standalone: true
 })

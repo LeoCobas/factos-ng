@@ -151,6 +151,78 @@ describe('FacturacionService', () => {
     expect(arcaSpy).not.toHaveBeenCalled();
   });
 
+  it('usa el comprobante persistido por Edge y no lo inserta nuevamente desde Angular', async () => {
+    const service = TestBed.inject(FacturacionService);
+    vi.spyOn(service, 'validarFechaNoAnteriorAUltimoTipo').mockResolvedValue(undefined);
+    const fromSpy = vi.spyOn(supabase, 'from');
+    const comprobante = {
+      id: 'cmp-1',
+      contribuyente_id: 'cont-1',
+      tipo_comprobante: 'FACTURA C',
+      numero_comprobante: '0001-00000067',
+      punto_venta: 1,
+      fecha: '2026-04-22',
+      total: 1000,
+      cae: '12345678901234',
+      vencimiento_cae: '20260502',
+      estado: 'emitida',
+      concepto: 'Servicios',
+      afip_id: null,
+      cliente_cuit: null,
+      cliente_doc_tipo: 99,
+      cliente_doc_nro: 0,
+      cliente_nombre: null,
+      cliente_domicilio: null,
+      cliente_condicion_iva: 'Consumidor Final',
+      comprobante_asociado_id: null,
+      created_at: null,
+      updated_at: null,
+    };
+    vi.spyOn(service as any, 'llamarArca').mockResolvedValue({
+      success: true,
+      data: { comprobante },
+    });
+
+    const result = await service.emitirFactura({
+      monto: 1000,
+      fecha: '22/04/2026',
+      tipo_comprobante_resuelto: 'FACTURA C',
+    });
+
+    expect(result).toEqual({ success: true, comprobante });
+    expect(fromSpy).not.toHaveBeenCalledWith('comprobantes');
+  });
+
+  it('reutiliza el emision_id pendiente despues de recrear el servicio', async () => {
+    const firstService = TestBed.inject(FacturacionService);
+    vi.spyOn(firstService, 'validarFechaNoAnteriorAUltimoTipo').mockResolvedValue(undefined);
+    const firstCall = vi.spyOn(firstService as any, 'llamarArca').mockResolvedValue({
+      success: false,
+      error: 'Respuesta ambigua',
+      shouldRetry: true,
+    });
+    const request = {
+      monto: 1000,
+      fecha: '22/04/2026',
+      tipo_comprobante_resuelto: 'FACTURA C' as const,
+    };
+
+    await firstService.emitirFactura(request);
+    const firstEmissionId = firstCall.mock.calls[0][4];
+
+    const secondService = TestBed.runInInjectionContext(() => new FacturacionService());
+    vi.spyOn(secondService, 'validarFechaNoAnteriorAUltimoTipo').mockResolvedValue(undefined);
+    const secondCall = vi.spyOn(secondService as any, 'llamarArca').mockResolvedValue({
+      success: false,
+      error: 'Respuesta ambigua',
+      shouldRetry: true,
+    });
+
+    await secondService.emitirFactura(request);
+
+    expect(secondCall.mock.calls[0][4]).toBe(firstEmissionId);
+  });
+
   it('precalienta el ultimo comprobante y deduplica pedidos en curso por tipo', async () => {
     const service = TestBed.inject(FacturacionService);
     let resolveRequest!: () => void;

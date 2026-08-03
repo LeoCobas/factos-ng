@@ -1,11 +1,11 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { Arca } from 'npm:@arcasdk/core@0.3.6';
-import { readArcaTicketBucket } from '../../../src/app/core/utils/arca-ticket.util.ts';
+import { AccessTicket, Arca } from 'npm:@arcasdk/core@2.0.0';
 import { corsHeaders, RequestTimings } from '../_shared/http-observability.ts';
 import { getVerifiedUserId } from '../_shared/supabase-auth.ts';
+import { SupabaseArcaTicketStorage } from '../_shared/arca-ticket-storage.ts';
+import { normalizeVoucherInfo, voucherMatchesExpected } from '../_shared/arca-voucher.ts';
 
-const ARCA_TICKET_PATH = '/tmp/factos-arca-tickets';
 const WSFE_SERVICE_NAME = 'wsfe';
 const LAST_VOUCHER_CACHE_TTL_MS = 15 * 60 * 1000;
 
@@ -20,59 +20,11 @@ type ArcaProxyErrorType =
 function measureStage<T>(
   timings: RequestTimings | undefined,
   name: string,
-  operation: () => Promise<T>,
+  operation: () => PromiseLike<T>,
 ): Promise<T> {
-  return timings ? timings.measure(name, operation) : operation();
-}
-
-function getTicketFilePath(cuit: number, serviceName: string, production: boolean): string {
-  return `${ARCA_TICKET_PATH}/TA-${cuit}-${serviceName}${production ? '-production' : ''}.json`;
-}
-
-function isStoredTicketValid(ticket: any): boolean {
-  const expirationTime = ticket?.header?.[1]?.expirationtime;
-  if (!expirationTime) return false;
-
-  const expirationMs = new Date(String(expirationTime)).getTime();
-  return Number.isFinite(expirationMs) && expirationMs - Date.now() > 60_000;
-}
-
-function getValidStoredTicket(storedTicket: any, bucket: 'wsfe' | 'padron'): any | null {
-  const ticket = readArcaTicketBucket(storedTicket, bucket);
-  return isStoredTicketValid(ticket) ? ticket : null;
-}
-
-async function persistTicketFromFile(params: {
-  supabase: any;
-  cuit: number;
-  production: boolean;
-  originalTicket?: any;
-}): Promise<void> {
-  try {
-    const filePath = getTicketFilePath(params.cuit, WSFE_SERVICE_NAME, params.production);
-    const fileData = await Deno.readTextFile(filePath);
-    const ticket = JSON.parse(fileData);
-
-    if (!isStoredTicketValid(ticket)) return;
-
-    if (params.originalTicket && JSON.stringify(params.originalTicket) === JSON.stringify(ticket)) {
-      return;
-    }
-
-    const { error } = await params.supabase.rpc('merge_arca_ticket_bucket', {
-      p_bucket: 'wsfe',
-      p_ticket: ticket,
-    });
-
-    if (error) {
-      console.error('No se pudo guardar el ticket WSFE en Supabase:', error.message);
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (!message.includes('No such file') && !message.includes('os error 2')) {
-      console.error('No se pudo leer el ticket WSFE temporal:', message);
-    }
-  }
+  return timings
+    ? timings.measure(name, async () => await operation())
+    : Promise.resolve(operation());
 }
 
 function getSupabaseClient(authHeader: string | null) {
@@ -437,29 +389,27 @@ function buildUserArcaInstance(supabaseUser: any, contribuyente: any) {
 
   const cuit = parseInt(contribuyente.cuit, 10);
   const production = contribuyente.arca_production === true;
-  const credentials = getValidStoredTicket(contribuyente.arca_ticket, 'wsfe');
+  const ticketStorage = new SupabaseArcaTicketStorage(
+    supabaseUser,
+    'wsfe',
+    contribuyente.arca_ticket,
+    AccessTicket,
+  );
   const arca = new Arca({
     cert: contribuyente.arca_cert,
     key: contribuyente.arca_key,
     cuit,
     production,
-    credentials: credentials || undefined,
-    handleTicket: true,
+    ticketStorage,
     useHttpsAgent: false,
-    ticketPath: ARCA_TICKET_PATH,
   });
 
   return {
     supabase: supabaseUser,
     contribuyenteId: contribuyente.id,
+    arcaEnvironment: production ? 'produccion' : 'homologacion',
     arca,
-    persistTicket: () =>
-      persistTicketFromFile({
-        supabase: supabaseUser,
-        cuit,
-        production,
-        originalTicket: credentials || undefined,
-      }),
+    persistTicket: async () => {},
   };
 }
 
@@ -499,13 +449,14 @@ async function getUserArcaInvoiceContext(params: {
         p_cache_cutoff: getLastVoucherCacheCutoffIso(),
       })
       .single();
-  const { data: context, error } = await measureStage(
+  const { data: contextData, error } = await measureStage(
     params.timings,
     'invoice_context_db',
     loadContext,
   );
 
   if (error) throw new Error(error.message || 'No se pudo obtener el contexto de facturacion');
+  const context: any = contextData;
   const arcaInstance = buildUserArcaInstance(supabaseUser, {
     id: context?.contribuyente_id,
     cuit: context?.cuit,
@@ -547,12 +498,147 @@ function buildErrorResponse(
   );
 }
 
+async function updateEmissionStatus(
+  supabase: any,
+  emisionId: string,
+  values: Record<string, unknown>,
+): Promise<void> {
+  const { error } = await supabase
+    .from('arca_emisiones')
+    .update({ ...values, updated_at: new Date().toISOString() })
+    .eq('id', emisionId);
+  if (error) throw new Error(`No se pudo actualizar el intento de emision: ${error.message}`);
+}
+
+async function loadPersistedEmission(supabase: any, emisionId: string): Promise<any | null> {
+  const { data, error } = await supabase
+    .from('comprobantes')
+    .select('*')
+    .eq('emision_id', emisionId)
+    .maybeSingle();
+  if (error) throw new Error(`No se pudo consultar la emision existente: ${error.message}`);
+  return data ?? null;
+}
+
+async function registerEmissionAttempt(params: {
+  supabase: any;
+  emisionId: string;
+  contribuyenteId: string;
+  arcaEnvironment: string;
+  puntoVenta: number;
+  tipoComprobante: string;
+  cbteTipo: number;
+  cbteNro: number;
+  requestPayload: Record<string, unknown>;
+}): Promise<{ existing: boolean; attempt: any; comprobante?: any }> {
+  const sameRequest = (stored: any) =>
+    [
+      'fecha',
+      'monto',
+      'doc_tipo',
+      'doc_nro',
+      'concepto_afip',
+      'iva_porcentaje',
+      'condicion_iva_receptor_id',
+    ].every((key) => String(stored?.[key] ?? '') === String(params.requestPayload[key] ?? ''));
+  const { data: existing, error: lookupError } = await params.supabase
+    .from('arca_emisiones')
+    .select('*')
+    .eq('id', params.emisionId)
+    .maybeSingle();
+  if (lookupError) throw new Error(`No se pudo consultar el intento de emision: ${lookupError.message}`);
+
+  if (existing) {
+    if (existing.contribuyente_id !== params.contribuyenteId) {
+      throw new Error('El identificador de emision pertenece a otro contribuyente');
+    }
+    if (!sameRequest(existing.request_payload)) {
+      throw new Error('El identificador de emision fue reutilizado con un payload diferente');
+    }
+    if (existing.status === 'persisted') {
+      const comprobante = await loadPersistedEmission(params.supabase, params.emisionId);
+      if (comprobante) return { existing: true, attempt: existing, comprobante };
+    }
+    return { existing: true, attempt: existing };
+  }
+
+  const attempt = {
+    id: params.emisionId,
+    contribuyente_id: params.contribuyenteId,
+    arca_environment: params.arcaEnvironment,
+    punto_venta: params.puntoVenta,
+    tipo_comprobante: params.tipoComprobante,
+    cbte_tipo: params.cbteTipo,
+    cbte_nro: params.cbteNro,
+    request_payload: params.requestPayload,
+    status: 'pending',
+  };
+  const { error: insertError } = await params.supabase.from('arca_emisiones').insert(attempt);
+  if (insertError?.code === '23505') {
+    const { data: racedAttempt, error: racedError } = await params.supabase
+      .from('arca_emisiones')
+      .select('*')
+      .eq('id', params.emisionId)
+      .single();
+    if (racedError || !sameRequest(racedAttempt?.request_payload)) {
+      throw new Error('El identificador de emision ya existe con otro payload');
+    }
+    return { existing: true, attempt: racedAttempt };
+  }
+  if (insertError) throw new Error(`No se pudo registrar el intento de emision: ${insertError.message}`);
+  return { existing: false, attempt };
+}
+
+async function queryVoucherInfo(arca: any, cbteNro: number, puntoVenta: number, cbteTipo: number) {
+  try {
+    const raw = await arca.electronicBillingService.getVoucherInfo(
+      cbteNro,
+      puntoVenta,
+      cbteTipo,
+    );
+    return { raw, voucher: normalizeVoucherInfo(raw) };
+  } catch (error) {
+    const message = normalizeErrorText(error instanceof Error ? error.message : String(error));
+    if (message.includes('no existe') || message.includes('no encontrado') || message.includes('602')) {
+      return { raw: null, voucher: null };
+    }
+    throw error;
+  }
+}
+
+async function finalizeAuthorizedEmission(params: {
+  supabase: any;
+  emisionId: string;
+  cbteNro: number;
+  cae: string;
+  caeFchVto: string;
+  arcaPayload: any;
+  recovered: boolean;
+}): Promise<any> {
+  const { data, error } = await params.supabase.rpc('finalize_arca_emission', {
+      p_emision_id: params.emisionId,
+      p_cbte_nro: params.cbteNro,
+      p_cae: params.cae,
+      p_vencimiento_cae: params.caeFchVto,
+      p_arca_payload: params.arcaPayload,
+      p_recovered: params.recovered,
+    });
+  if (error) throw new Error(`ARCA autorizo pero no se pudo persistir el comprobante: ${error.message}`);
+  return data;
+}
+
+function successEmissionResponse(comprobante: any, recovered = false): Response {
+  return new Response(JSON.stringify({ success: true, data: { comprobante, recovered } }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 /**
  * Contrato operativo: emite una factura autorizada por ARCA para el contribuyente autenticado.
  * Requiere JWT valido, contribuyente existente, certificados cargados y bucket `wsfe` operativo.
  * Responde `success/data` en altas autorizadas y `success/error` para validacion, rechazo AFIP o error interno.
  */
-async function handleCrearFactura(
+async function handleCrearFacturaLegacy(
   req: Request,
   body: any,
   timings?: RequestTimings,
@@ -773,6 +859,263 @@ async function handleCrearFactura(
     return buildErrorResponse(
       `Error del servidor: ${detail}`,
       { debug: { detalle: err.message } },
+      500,
+      classifyArcaError(rawMessage || detail),
+    );
+  }
+}
+
+async function handleCrearFactura(
+  req: Request,
+  body: any,
+  timings?: RequestTimings,
+): Promise<Response> {
+  if (!body?.emision_id) {
+    logArcaProxy('legacy_invoice_client', { reason: 'missing_emision_id' });
+    return handleCrearFacturaLegacy(req, body, timings);
+  }
+
+  const { punto_venta, tipo_comprobante, monto, fecha, concepto_afip, iva_porcentaje } = body;
+  const { docTipo, docNro, condicionIvaReceptorId } = getDocPayload(body);
+
+  try {
+    if (!punto_venta || !Number.isInteger(punto_venta) || punto_venta <= 0) {
+      return buildErrorResponse('Validacion fallida: punto_venta debe ser un entero positivo');
+    }
+    if (!tipo_comprobante || typeof tipo_comprobante !== 'string') {
+      return buildErrorResponse('Validacion fallida: tipo_comprobante es requerido');
+    }
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(body.emision_id ?? ''))) {
+      return buildErrorResponse('Validacion fallida: emision_id debe ser un UUID');
+    }
+    const montoTotal = Number(monto);
+    if (!Number.isFinite(montoTotal) || montoTotal <= 0) {
+      return buildErrorResponse('Validacion fallida: monto debe ser un numero positivo');
+    }
+    if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(String(fecha))) {
+      return buildErrorResponse('Validacion fallida: fecha debe estar en formato YYYY-MM-DD');
+    }
+
+    const cbteTipo = getCbteTipo(tipo_comprobante);
+    const normalizedTipoComprobante = String(tipo_comprobante).toUpperCase();
+    const context = await getUserArcaInvoiceContext({
+      req,
+      puntoVenta: punto_venta,
+      tipoComprobante: normalizedTipoComprobante,
+      cbteTipo,
+      timings,
+    });
+    const { arca, supabase, contribuyenteId, cachedLastNumber, arcaEnvironment } = context;
+
+    const isFacturaC = normalizedTipoComprobante === 'FACTURA C';
+    const ivaPct = Number(iva_porcentaje) || 21;
+    const impNeto = isFacturaC
+      ? montoTotal
+      : Number((montoTotal / (1 + ivaPct / 100)).toFixed(2));
+    const impIVA = isFacturaC ? 0 : Number((montoTotal - impNeto).toFixed(2));
+    const conceptoNum = Number(concepto_afip) || 2;
+    const fechaNum = Number(String(fecha).replace(/-/g, ''));
+    const lastNumber =
+      cachedLastNumber ??
+      (await fetchAndCacheLastVoucher({
+        ...context,
+        puntoVenta: punto_venta,
+        tipoComprobante: normalizedTipoComprobante,
+        cbteTipo,
+        timings,
+      }));
+    let cbteNro = lastNumber + 1;
+
+    const requestPayload = {
+      fecha,
+      monto: montoTotal,
+      concepto: body.concepto ?? null,
+      doc_tipo: docTipo,
+      doc_nro: docNro,
+      cliente_cuit: body.cliente_cuit ?? null,
+      cliente_nombre: body.cliente_nombre ?? null,
+      cliente_domicilio: body.cliente_domicilio ?? null,
+      cliente_condicion_iva: body.cliente_condicion_iva ?? null,
+      concepto_afip: conceptoNum,
+      iva_porcentaje: ivaPct,
+      condicion_iva_receptor_id: condicionIvaReceptorId,
+    };
+    const registration = await measureStage(timings, 'attempt_write', () =>
+      registerEmissionAttempt({
+        supabase,
+        emisionId: body.emision_id,
+        contribuyenteId,
+        arcaEnvironment,
+        puntoVenta: punto_venta,
+        tipoComprobante: normalizedTipoComprobante,
+        cbteTipo,
+        cbteNro,
+        requestPayload,
+      }),
+    );
+    if (registration.comprobante) return successEmissionResponse(registration.comprobante);
+    if (registration.attempt.status === 'conflict') {
+      return buildErrorResponse('La emision esta en conflicto con un comprobante existente en ARCA', {}, 409, 'arca_rejected');
+    }
+    cbteNro = Number(registration.attempt.cbte_nro ?? cbteNro);
+
+    const buildVoucherPayload = (number: number) => {
+      const payload: any = {
+        CantReg: 1,
+        PtoVta: punto_venta,
+        CbteTipo: cbteTipo,
+        Concepto: conceptoNum,
+        DocTipo: docTipo,
+        DocNro: docNro,
+        CondicionIVAReceptorId: condicionIvaReceptorId,
+        CbteDesde: number,
+        CbteHasta: number,
+        CbteFch: fechaNum,
+        ImpTotal: montoTotal,
+        ImpTotConc: 0,
+        ImpNeto: impNeto,
+        ImpOpEx: 0,
+        ImpIVA: impIVA,
+        ImpTrib: 0,
+        MonId: 'PES',
+        MonCotiz: 1,
+      };
+      if (!isFacturaC) payload.Iva = [{ Id: getIvaId(ivaPct), BaseImp: impNeto, Importe: impIVA }];
+      if (conceptoNum >= 2) {
+        payload.FchServDesde = fechaNum;
+        payload.FchServHasta = fechaNum;
+        payload.FchVtoPago = fechaNum;
+      }
+      return payload;
+    };
+    const expectedFor = (number: number) => ({
+      concepto: conceptoNum,
+      docTipo,
+      docNro,
+      cbteNro: number,
+      cbteFch: fechaNum,
+      impTotal: montoTotal,
+      monId: 'PES',
+      monCotiz: 1,
+    });
+    const recover = async (number: number) => {
+      const info = await measureStage(timings, 'arca_voucher_info', () =>
+        queryVoucherInfo(arca, number, punto_venta, cbteTipo),
+      );
+      return { ...info, matches: voucherMatchesExpected(info.voucher, expectedFor(number)) };
+    };
+    const finalizeRecovered = async (number: number, recovery: any) => {
+      const comprobante = await finalizeAuthorizedEmission({
+        supabase,
+        emisionId: body.emision_id,
+        cbteNro: number,
+        cae: String(recovery.voucher.codAutorizacion ?? ''),
+        caeFchVto: String(recovery.voucher.fchVto ?? ''),
+        arcaPayload: recovery.raw,
+        recovered: true,
+      });
+      return successEmissionResponse(comprobante, true);
+    };
+
+    if (registration.existing && ['pending', 'uncertain', 'authorized'].includes(registration.attempt.status)) {
+      const recovery = await recover(cbteNro);
+      if (recovery.matches) return finalizeRecovered(cbteNro, recovery);
+      if (recovery.voucher) {
+        await updateEmissionStatus(supabase, body.emision_id, {
+          status: 'conflict',
+          arca_response: recovery.raw,
+          error_message: 'El numero intentado pertenece a otro payload',
+        });
+        return buildErrorResponse('El numero intentado ya corresponde a otro comprobante en ARCA', {}, 409, 'arca_rejected');
+      }
+    }
+
+    let parsed: ReturnType<typeof extractWsfeResult>;
+    let rawCreateResult: any;
+    const create = async () => {
+      rawCreateResult = await measureStage(timings, 'arca_create', () =>
+        arca.electronicBillingService.createVoucher(buildVoucherPayload(cbteNro)),
+      );
+      parsed = extractWsfeResult(rawCreateResult);
+      return parsed;
+    };
+
+    try {
+      await create();
+    } catch (error) {
+      const recovery = await recover(cbteNro);
+      if (recovery.matches) return finalizeRecovered(cbteNro, recovery);
+      await updateEmissionStatus(supabase, body.emision_id, {
+        status: recovery.voucher ? 'conflict' : 'uncertain',
+        arca_response: recovery.raw,
+        error_message: error instanceof Error ? error.message : String(error),
+      });
+      if (recovery.voucher) {
+        return buildErrorResponse('ARCA tiene otro comprobante para el numero intentado', {}, 409, 'arca_rejected');
+      }
+      throw error;
+    }
+
+    if (parsed!.resultado !== 'A' && isNumberingRejection(parsed!, getArcaRejectionError(parsed!).errorMessage)) {
+      const recovery = await recover(cbteNro);
+      if (recovery.matches) return finalizeRecovered(cbteNro, recovery);
+
+      const refreshedLastNumber = await fetchAndCacheLastVoucher({
+        ...context,
+        puntoVenta: punto_venta,
+        tipoComprobante: normalizedTipoComprobante,
+        cbteTipo,
+        timings,
+      });
+      cbteNro = refreshedLastNumber + 1;
+      await updateEmissionStatus(supabase, body.emision_id, { cbte_nro: cbteNro, status: 'pending' });
+      try {
+        await create();
+      } catch (error) {
+        const retryRecovery = await recover(cbteNro);
+        if (retryRecovery.matches) return finalizeRecovered(cbteNro, retryRecovery);
+        await updateEmissionStatus(supabase, body.emision_id, {
+          status: retryRecovery.voucher ? 'conflict' : 'uncertain',
+          arca_response: retryRecovery.raw,
+          error_message: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
+    }
+
+    if (parsed!.resultado !== 'A') {
+      const rejected = getArcaRejectionError(parsed!);
+      await updateEmissionStatus(supabase, body.emision_id, {
+        status: 'rejected',
+        arca_response: parsed!.raw,
+        error_message: rejected.errorMessage,
+      });
+      return buildErrorResponse(rejected.errorMessage, { debug: rejected.debug }, 400, 'arca_rejected');
+    }
+
+    const authorizedNumber = Number(parsed!.cbteDesde || cbteNro);
+    const comprobante = await finalizeAuthorizedEmission({
+      supabase,
+      emisionId: body.emision_id,
+      cbteNro: authorizedNumber,
+      cae: String(parsed!.cae ?? ''),
+      caeFchVto: String(parsed!.caeFchVto ?? ''),
+      arcaPayload: rawCreateResult,
+      recovered: false,
+    });
+    logArcaProxy('durable_invoice_persisted', {
+      emisionId: body.emision_id,
+      contribuyenteId,
+      cbteNro: authorizedNumber,
+      recovered: false,
+    });
+    return successEmissionResponse(comprobante);
+  } catch (err: any) {
+    const rawMessage = String(err?.message || '');
+    const detail = mapArcaServerErrorMessage(rawMessage);
+    return buildErrorResponse(
+      `Error del servidor: ${detail}`,
+      { debug: { detalle: rawMessage } },
       500,
       classifyArcaError(rawMessage || detail),
     );
@@ -1089,6 +1432,166 @@ async function handlePrecalentarUltimoComprobante(
   }
 }
 
+const AUDITABLE_INVOICE_TYPES = new Set(['FACTURA A', 'FACTURA B', 'FACTURA C']);
+
+function formatArcaDate(value: unknown): string {
+  const digits = String(value ?? '').replace(/\D/g, '');
+  if (digits.length !== 8) return getTodayInArgentina();
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+}
+
+function getConceptDescription(concepto?: number): string {
+  return concepto === 1 ? 'Productos' : concepto === 3 ? 'Productos y servicios' : 'Servicios';
+}
+
+async function persistReconciledVoucher(params: {
+  supabase: any;
+  puntoVenta: number;
+  tipoComprobante: string;
+  cbteTipo: number;
+  cbteNro: number;
+  raw: any;
+  voucher: any;
+}) {
+  const { data, error } = await params.supabase.rpc('reconcile_arca_voucher', {
+      p_punto_venta: params.puntoVenta,
+      p_tipo_comprobante: params.tipoComprobante,
+      p_cbte_tipo: params.cbteTipo,
+      p_cbte_nro: params.cbteNro,
+      p_fecha: formatArcaDate(params.voucher.cbteFch),
+      p_total: Number(params.voucher.impTotal ?? 0),
+      p_cae: String(params.voucher.codAutorizacion ?? ''),
+      p_vencimiento_cae: String(params.voucher.fchVto ?? ''),
+      p_concepto: getConceptDescription(params.voucher.concepto),
+      p_doc_tipo: Number(params.voucher.docTipo ?? 99),
+      p_doc_nro: Number(params.voucher.docNro ?? 0),
+      p_arca_payload: params.raw,
+    });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function handleReconciliarComprobante(req: Request, body: any): Promise<Response> {
+  try {
+    const puntoVenta = Number(body.punto_venta);
+    const tipoComprobante = String(body.tipo_comprobante ?? '').toUpperCase();
+    const cbteNro = Number(body.cbte_nro);
+    if (!Number.isInteger(puntoVenta) || puntoVenta <= 0 || !Number.isInteger(cbteNro) || cbteNro <= 0) {
+      return buildErrorResponse('Validacion fallida: punto de venta y numero deben ser enteros positivos');
+    }
+    if (!AUDITABLE_INVOICE_TYPES.has(tipoComprobante)) {
+      return buildErrorResponse('La reconciliacion admite solamente facturas A, B y C');
+    }
+
+    const cbteTipo = getCbteTipo(tipoComprobante);
+    const { arca, supabase } = await getUserArcaInstance(req);
+    const info = await queryVoucherInfo(arca, cbteNro, puntoVenta, cbteTipo);
+    if (!info.voucher) {
+      return new Response(JSON.stringify({ success: true, data: { status: 'not_found' } }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const comprobante = await persistReconciledVoucher({
+      supabase,
+      puntoVenta,
+      tipoComprobante,
+      cbteTipo,
+      cbteNro,
+      raw: info.raw,
+      voucher: info.voucher,
+    });
+    return new Response(JSON.stringify({ success: true, data: { status: 'reconciled', comprobante } }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    return buildErrorResponse(error instanceof Error ? error.message : String(error), {}, 500);
+  }
+}
+
+async function handleAuditarComprobantes(req: Request, body: any): Promise<Response> {
+  try {
+    const puntoVenta = Number(body.punto_venta);
+    const tipoComprobante = String(body.tipo_comprobante ?? '').toUpperCase();
+    if (!Number.isInteger(puntoVenta) || puntoVenta <= 0) {
+      return buildErrorResponse('Validacion fallida: punto_venta debe ser un entero positivo');
+    }
+    if (!AUDITABLE_INVOICE_TYPES.has(tipoComprobante)) {
+      return buildErrorResponse('La auditoria admite solamente facturas A, B y C');
+    }
+
+    const cbteTipo = getCbteTipo(tipoComprobante);
+    const context = await getUserArcaInstance(req);
+    const last = parseLastVoucherNumber(
+      await context.arca.electronicBillingService.getLastVoucher(puntoVenta, cbteTipo),
+    );
+    const first = Math.max(1, last - 99);
+    const environment = context.arcaEnvironment;
+    const { data: localRows, error: localError } = await context.supabase
+      .from('comprobantes')
+      .select('id, cbte_nro, cae, total, fecha')
+      .eq('contribuyente_id', context.contribuyenteId)
+      .eq('arca_environment', environment)
+      .eq('punto_venta', puntoVenta)
+      .eq('cbte_tipo', cbteTipo)
+      .gte('cbte_nro', first)
+      .lte('cbte_nro', last);
+    if (localError) throw new Error(localError.message);
+
+    const localByNumber = new Map((localRows ?? []).map((row: any) => [Number(row.cbte_nro), row]));
+    const candidates = Array.from({ length: Math.max(0, last - first + 1) }, (_, index) => first + index)
+      .filter((number) => {
+        const row: any = localByNumber.get(number);
+        return !row || !row.cae || row.total == null || !row.fecha;
+      });
+    const results: any[] = [];
+    for (let offset = 0; offset < candidates.length; offset += 4) {
+      const batch = candidates.slice(offset, offset + 4);
+      const batchResults = await Promise.all(
+        batch.map(async (cbteNro) => {
+          try {
+            const info = await queryVoucherInfo(context.arca, cbteNro, puntoVenta, cbteTipo);
+            if (!info.voucher) return { cbte_nro: cbteNro, status: 'not_found' };
+            const comprobante = await persistReconciledVoucher({
+              supabase: context.supabase,
+              puntoVenta,
+              tipoComprobante,
+              cbteTipo,
+              cbteNro,
+              raw: info.raw,
+              voucher: info.voucher,
+            });
+            return {
+              cbte_nro: cbteNro,
+              status: localByNumber.has(cbteNro) ? 'repaired' : 'imported',
+              comprobante,
+            };
+          } catch (error) {
+            return { cbte_nro: cbteNro, status: 'error', error: error instanceof Error ? error.message : String(error) };
+          }
+        }),
+      );
+      results.push(...batchResults);
+    }
+
+    const summary = results.reduce(
+      (acc, result) => ({ ...acc, [result.status]: (acc[result.status] ?? 0) + 1 }),
+      { existing: (localRows ?? []).length - candidates.filter((n) => localByNumber.has(n)).length },
+    );
+    logArcaProxy('voucher_audit_completed', {
+      puntoVenta,
+      tipoComprobante,
+      first,
+      last,
+      summary,
+    });
+    return new Response(JSON.stringify({ success: true, data: { first, last, summary, results } }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    return buildErrorResponse(error instanceof Error ? error.message : String(error), {}, 500);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -1127,6 +1630,12 @@ Deno.serve(async (req: Request) => {
         break;
       case 'precalentar-ultimo-comprobante':
         response = await handlePrecalentarUltimoComprobante(req, body, timings);
+        break;
+      case 'reconciliar-comprobante':
+        response = await handleReconciliarComprobante(req, body);
+        break;
+      case 'auditar-comprobantes':
+        response = await handleAuditarComprobantes(req, body);
         break;
       default:
         response = new Response(JSON.stringify({ success: false, error: 'Accion invalida' }), {
