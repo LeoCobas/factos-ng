@@ -243,16 +243,30 @@ describe('FacturacionService', () => {
     await Promise.all([first, second]);
   });
 
-  it('respeta TTL local despues de un prefetch exitoso', async () => {
+  it('respeta el TTL local de calentamiento durante 3 minutos', async () => {
     const service = TestBed.inject(FacturacionService);
     const prefetchSpy = vi
       .spyOn(service as any, 'llamarPrecalentarUltimoComprobante')
       .mockResolvedValue(undefined);
 
     await service.precalentarUltimoComprobante('FACTURA C');
+    vi.advanceTimersByTime(3 * 60 * 1000 - 1);
     await service.precalentarUltimoComprobante('FACTURA C');
 
     expect(prefetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('vuelve a precalentar al vencer los 3 minutos de calentamiento', async () => {
+    const service = TestBed.inject(FacturacionService);
+    const prefetchSpy = vi
+      .spyOn(service as any, 'llamarPrecalentarUltimoComprobante')
+      .mockResolvedValue(undefined);
+
+    await service.precalentarUltimoComprobante('FACTURA C');
+    vi.advanceTimersByTime(3 * 60 * 1000 + 1);
+    await service.precalentarUltimoComprobante('FACTURA C');
+
+    expect(prefetchSpy).toHaveBeenCalledTimes(2);
   });
 
   it('vuelve a precalentar cuando cambia el tipo de comprobante', async () => {

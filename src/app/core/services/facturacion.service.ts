@@ -116,7 +116,7 @@ export class FacturacionService {
   private readonly pendingEmissionIds = new Map<string, string>();
   private readonly pendingEmissionStoragePrefix = 'factos:pending-emission:';
   private readonly contribuyenteService = inject(ContribuyenteService);
-  private readonly ultimoComprobantePrefetchTtlMs = 15 * 60 * 1000;
+  private readonly ultimoComprobanteWarmupTtlMs = 3 * 60 * 1000;
   private readonly ultimoComprobantePrefetchLeaseMs = 30 * 1000;
   private readonly ultimoComprobantePrefetchCache = new Map<string, number>();
   private readonly ultimoComprobantePrefetchRequests = new Map<string, Promise<void>>();
@@ -378,7 +378,7 @@ export class FacturacionService {
 
     const cacheKey = `${contribuyente.id}:${puntoVenta}:${tipoComprobante}`;
     const lastPrefetchAt = this.ultimoComprobantePrefetchCache.get(cacheKey) ?? 0;
-    if (Date.now() - lastPrefetchAt < this.ultimoComprobantePrefetchTtlMs) {
+    if (Date.now() - lastPrefetchAt < this.ultimoComprobanteWarmupTtlMs) {
       return;
     }
 
@@ -387,7 +387,7 @@ export class FacturacionService {
       sharedState &&
       Date.now() - sharedState.at <
         (sharedState.status === 'fresh'
-          ? this.ultimoComprobantePrefetchTtlMs
+          ? this.ultimoComprobanteWarmupTtlMs
           : this.ultimoComprobantePrefetchLeaseMs)
     ) {
       return;
