@@ -114,6 +114,7 @@ CREATE TABLE arca_emisiones (
     CHECK (status IN ('pending', 'authorized', 'persisted', 'rejected', 'uncertain', 'conflict')),
   arca_response JSONB,
   error_message TEXT,
+  request_timings JSONB,
   authorized_at TIMESTAMPTZ,
   persisted_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

@@ -185,6 +185,7 @@ export interface Database {
           status: string;
           arca_response: Json | null;
           error_message: string | null;
+          request_timings: Json | null;
           authorized_at: string | null;
           persisted_at: string | null;
           created_at: string;
@@ -202,6 +203,7 @@ export interface Database {
           status?: string;
           arca_response?: Json | null;
           error_message?: string | null;
+          request_timings?: Json | null;
           authorized_at?: string | null;
           persisted_at?: string | null;
           created_at?: string;
@@ -219,6 +221,7 @@ export interface Database {
           status?: string;
           arca_response?: Json | null;
           error_message?: string | null;
+          request_timings?: Json | null;
           authorized_at?: string | null;
           persisted_at?: string | null;
           created_at?: string;
