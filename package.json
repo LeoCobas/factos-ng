@@ -11,9 +11,10 @@
     "prewatch": "node ./scripts/generate-runtime-config.mjs",
     "watch": "ng build --watch --configuration development",
     "pretest": "node ./scripts/generate-runtime-config.mjs",
-    "test": "ng test --watch=false",
+    "test": "node ./scripts/check-runtime-config.mjs && ng test --watch=false",
     "test:watch": "ng test",
-    "test:facturar": "ng test --watch=false --include src/app/features/facturar/**/*.spec.ts",
+    "test:facturar": "node ./scripts/check-runtime-config.mjs && ng test --watch=false --include src/app/features/facturar/**/*.spec.ts",
+    "test:runtime-config": "node ./scripts/check-runtime-config.mjs && ng test --watch=false --include src/app/core/config/runtime-config.spec.ts",
     "prenetlify:build": "node ./scripts/generate-runtime-config.mjs",
     "netlify:build": "ng build --configuration production",
     "lint": "ng lint"

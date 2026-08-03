@@ -16,7 +16,6 @@ declare global {
 }
 
 let runtimeConfig: RuntimeConfig | null = null;
-const RUNTIME_CONFIG_STORAGE_KEY = 'factos.runtime-config';
 
 function assertSupabaseConfig(config: RuntimeConfig): RuntimeConfig {
   const url = String(config.supabase?.url || '').trim();
@@ -36,35 +35,6 @@ function assertSupabaseConfig(config: RuntimeConfig): RuntimeConfig {
       anonKey,
     },
   };
-}
-
-function cacheRuntimeConfig(config: RuntimeConfig): void {
-  if (typeof localStorage === 'undefined') {
-    return;
-  }
-
-  try {
-    localStorage.setItem(RUNTIME_CONFIG_STORAGE_KEY, JSON.stringify(config));
-  } catch {
-    // Ignore cache write failures.
-  }
-}
-
-function readCachedRuntimeConfig(): RuntimeConfig | null {
-  if (typeof localStorage === 'undefined') {
-    return null;
-  }
-
-  try {
-    const cached = localStorage.getItem(RUNTIME_CONFIG_STORAGE_KEY);
-    if (!cached) {
-      return null;
-    }
-
-    return assertSupabaseConfig(JSON.parse(cached) as RuntimeConfig);
-  } catch {
-    return null;
-  }
 }
 
 export async function loadRuntimeConfig(): Promise<RuntimeConfig> {
@@ -88,21 +58,19 @@ export async function loadRuntimeConfig(): Promise<RuntimeConfig> {
 
     runtimeConfig = assertSupabaseConfig((await response.json()) as RuntimeConfig);
     window.__FACTOS_RUNTIME_CONFIG__ = runtimeConfig;
-    cacheRuntimeConfig(runtimeConfig);
     return runtimeConfig;
   } catch (error) {
     const cachedWindowConfig =
       typeof window !== 'undefined' && window.__FACTOS_RUNTIME_CONFIG__
         ? assertSupabaseConfig(window.__FACTOS_RUNTIME_CONFIG__)
         : null;
-    const cachedConfig = cachedWindowConfig || readCachedRuntimeConfig();
 
-    if (cachedConfig) {
-      runtimeConfig = cachedConfig;
+    if (cachedWindowConfig) {
+      runtimeConfig = cachedWindowConfig;
       if (typeof window !== 'undefined') {
-        window.__FACTOS_RUNTIME_CONFIG__ = cachedConfig;
+        window.__FACTOS_RUNTIME_CONFIG__ = cachedWindowConfig;
       }
-      return cachedConfig;
+      return cachedWindowConfig;
     }
 
     throw new Error(

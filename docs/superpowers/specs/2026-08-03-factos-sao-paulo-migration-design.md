@@ -1,5 +1,37 @@
 # Migracion de Factos a Sao Paulo
 
+## Estado de ejecucion
+
+El proyecto destino `veqpyhqnpuemdysdorse` fue creado en `sa-east-1`. CC-App
+esta pausado temporalmente y Factos Virginia permanece activo como rollback.
+
+El backup se realizo mediante consultas logicas por Management API porque el
+host no dispone de Docker. Los artefactos sensibles quedaron fuera de Git con
+ACL limitada al usuario local y `SYSTEM`. Se restauraron y verificaron:
+
+- 4 usuarios y 4 identidades de Auth.
+- 547 comprobantes y 24 intentos ARCA.
+- 4 contribuyentes, 5 entradas de numeracion, 12 lotes y 398 conciliaciones.
+- Hashes logicos identicos para las ocho tablas restauradas.
+- Las RPC fiscales criticas y las cuatro Edge Functions.
+
+La restauracion detecto dos columnas existentes en Virginia que no estaban
+representadas por migraciones reproducibles: `contribuyentes.arca_ticket` y
+`mp_batch_jobs.user_id`. Ambas quedaron incorporadas al historial versionado.
+La relacion entre `mp_batch_jobs.user_id` y su contribuyente quedo protegida
+ademas por una clave foranea compuesta.
+
+Virginia ya tenia nueve migraciones aplicadas con timestamps distintos a los
+archivos equivalentes del repositorio. Esto no afecta el rollback de la app,
+pero un futuro `db push` contra Virginia debe comenzar con una reconciliacion
+explicita mediante `supabase migration list` y `supabase migration repair`; no
+se debe reparar ese historial automaticamente durante este corte.
+
+Los cuatro contribuyentes actuales tienen credenciales ARCA propias. Los
+secretos globales `SYSTEM_ARCA_*`, usados solamente por el padron durante el
+onboarding previo a cargar un certificado, deben restaurarse desde la fuente
+segura original antes de habilitar nuevos registros sin certificado.
+
 ## Objetivo
 
 Migrar Factos desde Supabase `us-east-1` a un proyecto nuevo en `sa-east-1` para

@@ -1,9 +1,9 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
-const DEFAULT_SUPABASE_URL = 'https://ifkfofyylfkxwtxvyewi.supabase.co';
+const DEFAULT_SUPABASE_URL = 'https://veqpyhqnpuemdysdorse.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlma2ZvZnl5bGZreHd0eHZ5ZXdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NDM0MTYsImV4cCI6MjA5MTAxOTQxNn0.Hjk3DasdvKTNgQqmu-RB1O-PIeFV-t7nHQcd9stPHUo';
+  'sb_publishable_bDBNWFoVt4Hj8DuGSb59IA_mluAzyez';
 
 const outputPath = resolve('public/app-config.json');
 

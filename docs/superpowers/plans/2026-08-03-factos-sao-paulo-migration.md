@@ -250,8 +250,10 @@ Resume `bmusmkjknqmwddqzjrtl` and poll until `ACTIVE_HEALTHY`.
 - [ ] **Step 4: Commit and push repository changes**
 
 ```powershell
-git add scripts/generate-runtime-config.mjs public/app-config.json ngsw-config.json docs/runtime-config.md docs/superpowers/specs/2026-08-03-factos-sao-paulo-migration-design.md
+git add package.json package-lock.json scripts public/app-config.json ngsw-config.json docs/runtime-config.md docs/superpowers/plans/2026-08-03-factos-sao-paulo-migration.md docs/superpowers/specs/2026-08-03-factos-sao-paulo-migration-design.md src/app/core/config/runtime-config.ts src/app/core/config/runtime-config.spec.ts supabase/migrations
 git commit -m "perf: move Factos backend to Sao Paulo"
+git switch main
+git merge --ff-only codex/factos-sao-paulo
 git push origin main
 ```
 

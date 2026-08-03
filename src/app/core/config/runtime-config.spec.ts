@@ -16,7 +16,7 @@ describe('runtime-config', () => {
     vi.unstubAllGlobals();
   });
 
-  it('guarda en cache la configuracion luego de cargarla', async () => {
+  it('carga la configuracion de runtime sin persistirla', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -29,16 +29,15 @@ describe('runtime-config', () => {
     const result = await loadRuntimeConfig();
 
     expect(result).toEqual(config);
-    expect(JSON.parse(localStorage.getItem('factos.runtime-config') || '{}')).toEqual(config);
+    expect(localStorage.getItem('factos.runtime-config')).toBeNull();
   });
 
-  it('usa la configuracion cacheada cuando falla la red', async () => {
+  it('no reutiliza configuracion persistida cuando falla la red', async () => {
     localStorage.setItem('factos.runtime-config', JSON.stringify(config));
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
 
     const { loadRuntimeConfig } = await import('./runtime-config');
-    const result = await loadRuntimeConfig();
 
-    expect(result).toEqual(config);
+    await expect(loadRuntimeConfig()).rejects.toThrow('No se pudo iniciar la app');
   });
 });
