@@ -12,6 +12,7 @@ import {
 } from '../_shared/arca-emission-preparation.ts';
 import { normalizeVoucherInfo, voucherMatchesExpected } from '../_shared/arca-voucher.ts';
 import { verifyAndLoadContext } from '../_shared/parallel-context.ts';
+import { warmWsfeConnection } from '../_shared/arca-warmup.ts';
 
 const WSFE_SERVICE_NAME = 'wsfe';
 const LAST_VOUCHER_CACHE_TTL_MS = 15 * 60 * 1000;
@@ -1416,6 +1417,9 @@ async function handlePrecalentarUltimoComprobante(
       });
 
     if (cachedLastNumber !== null) {
+      await measureStage(timings, 'arca_auth_warmup', () =>
+        warmWsfeConnection(arca.electronicBillingService),
+      );
       logArcaProxy('prefetch_last_voucher_cache_hit', {
         contribuyenteId,
         puntoVenta: punto_venta,
