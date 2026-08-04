@@ -8,7 +8,7 @@ declare
   v_result public.comprobantes%rowtype;
   v_count integer;
   v_punto_venta integer := 9876;
-  v_fecha date := date '2026-08-04';
+  v_fecha date := date '2026-01-02';
 begin
   select c.user_id, c.id
     into v_user_id, v_contribuyente_id
@@ -93,6 +93,9 @@ begin
   );
   if v_result.cbte_nro <> 44 or v_result.origen <> 'reconciliacion' then
     raise exception 'Missing ARCA voucher was not imported: %', row_to_json(v_result);
+  end if;
+  if (v_result.created_at at time zone 'America/Argentina/Buenos_Aires')::date <> v_fecha then
+    raise exception 'Imported voucher did not preserve its fiscal date: %', row_to_json(v_result);
   end if;
 end;
 $$;
