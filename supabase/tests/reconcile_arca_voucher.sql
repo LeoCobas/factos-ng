@@ -97,6 +97,46 @@ begin
   if (v_result.created_at at time zone 'America/Argentina/Buenos_Aires')::date <> v_fecha then
     raise exception 'Imported voucher did not preserve its fiscal date: %', row_to_json(v_result);
   end if;
+
+  begin
+    perform public.reconcile_arca_voucher(
+      v_punto_venta, 'FACTURA C', 11, 44, v_fecha, 901,
+      '77777777777777', '20260814', 'Servicios', 99, 0, '{}'::jsonb
+    );
+    raise exception 'Existing fiscal identity mismatch was accepted';
+  exception
+    when others then
+      if sqlerrm = 'Existing fiscal identity mismatch was accepted' then
+        raise;
+      end if;
+      if sqlerrm not like 'Conflicto de comprobante existente:%' then
+        raise;
+      end if;
+  end;
+
+  insert into public.comprobantes (
+    contribuyente_id, tipo_comprobante, numero_comprobante, punto_venta,
+    fecha, total, cae, estado, origen
+  ) values (
+    v_contribuyente_id, 'FACTURA C', '9876-00000045', v_punto_venta,
+    v_fecha, 100, '66666666666666', 'emitida', 'emision'
+  );
+
+  begin
+    perform public.reconcile_arca_voucher(
+      v_punto_venta, 'FACTURA C', 11, 45, v_fecha, 100.01,
+      '66666666666666', '20260814', 'Servicios', 99, 0, '{}'::jsonb
+    );
+    raise exception 'One-cent legacy mismatch was accepted';
+  exception
+    when others then
+      if sqlerrm = 'One-cent legacy mismatch was accepted' then
+        raise;
+      end if;
+      if sqlerrm not like 'Conflicto de comprobante historico:%' then
+        raise;
+      end if;
+  end;
 end;
 $$;
 

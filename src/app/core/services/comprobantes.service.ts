@@ -45,7 +45,10 @@ export class ComprobantesService {
     }
 
     const { data: comprobantes, error } = await query
+      .order('fecha', { ascending: false })
+      .order('numero_comprobante', { ascending: false })
       .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
       .range(options.offset, options.offset + options.limit);
 
     if (error) {

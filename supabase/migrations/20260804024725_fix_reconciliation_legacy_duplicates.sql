@@ -15,6 +15,9 @@ revoke all on table private.reconciliation_duplicate_backup_20260804
 comment on table private.reconciliation_duplicate_backup_20260804 is
   'Backup previo a fusionar duplicados exactos creados por la auditoria ARCA del 2026-08-04.';
 
+create temporary table reconciliation_pairs_20260804
+on commit drop
+as
 with candidates as (
   select
     legacy.id as legacy_id,
@@ -31,7 +34,7 @@ with candidates as (
    and imported.tipo_comprobante = legacy.tipo_comprobante
    and imported.cae = legacy.cae
    and imported.fecha = legacy.fecha
-   and abs(imported.total - legacy.total) <= 0.01
+   and imported.total = legacy.total
    and imported.origen = 'reconciliacion'
    and imported.cbte_nro is not null
    and imported.cbte_tipo is not null
@@ -41,6 +44,36 @@ with candidates as (
     and legacy.arca_environment is null
     and legacy.id <> imported.id
 )
+select legacy_id, imported_id, legacy_row, imported_row
+from candidates
+where matches_for_legacy = 1
+  and matches_for_imported = 1;
+
+do $$
+declare
+  v_total integer;
+  v_adrian integer;
+  v_leo integer;
+  v_paula integer;
+begin
+  select
+    count(*),
+    count(*) filter (where (legacy_row->>'contribuyente_id')::uuid = '30ca9bed-6951-4e47-8a2c-c2f2577ad275'),
+    count(*) filter (where (legacy_row->>'contribuyente_id')::uuid = '23bcd008-256e-4637-b453-d7f7a271fa83'),
+    count(*) filter (where (legacy_row->>'contribuyente_id')::uuid = 'debaa3d1-903f-4dfe-9d3a-ac8fa6751bc3')
+    into v_total, v_adrian, v_leo, v_paula
+  from reconciliation_pairs_20260804;
+
+  if v_total <> 0 and (
+    v_total <> 183 or v_adrian <> 76 or v_leo <> 7 or v_paula <> 100
+  ) then
+    raise exception
+      'Reparacion ARCA fuera del alcance auditado: total %, Adrian %, Leo %, Paula %',
+      v_total, v_adrian, v_leo, v_paula;
+  end if;
+end;
+$$;
+
 insert into private.reconciliation_duplicate_backup_20260804 (
   legacy_id,
   imported_id,
@@ -48,42 +81,40 @@ insert into private.reconciliation_duplicate_backup_20260804 (
   imported_row
 )
 select legacy_id, imported_id, legacy_row, imported_row
-from candidates
-where matches_for_legacy = 1
-  and matches_for_imported = 1
+from reconciliation_pairs_20260804
 on conflict (legacy_id) do nothing;
 
 delete from public.comprobantes imported
-using private.reconciliation_duplicate_backup_20260804 backup
-where imported.id = backup.imported_id;
+using reconciliation_pairs_20260804 repair
+where imported.id = repair.imported_id;
 
 update public.comprobantes legacy
 set
-  cbte_nro = (backup.imported_row->>'cbte_nro')::integer,
-  cbte_tipo = (backup.imported_row->>'cbte_tipo')::integer,
-  arca_environment = backup.imported_row->>'arca_environment',
-  vencimiento_cae = coalesce(legacy.vencimiento_cae, backup.imported_row->>'vencimiento_cae'),
-  concepto = coalesce(legacy.concepto, backup.imported_row->>'concepto'),
+  cbte_nro = (repair.imported_row->>'cbte_nro')::integer,
+  cbte_tipo = (repair.imported_row->>'cbte_tipo')::integer,
+  arca_environment = repair.imported_row->>'arca_environment',
+  vencimiento_cae = coalesce(legacy.vencimiento_cae, repair.imported_row->>'vencimiento_cae'),
+  concepto = coalesce(legacy.concepto, repair.imported_row->>'concepto'),
   cliente_doc_tipo = coalesce(
     legacy.cliente_doc_tipo,
-    nullif(backup.imported_row->>'cliente_doc_tipo', '')::integer
+    nullif(repair.imported_row->>'cliente_doc_tipo', '')::integer
   ),
   cliente_doc_nro = coalesce(
     legacy.cliente_doc_nro,
-    nullif(backup.imported_row->>'cliente_doc_nro', '')::bigint
+    nullif(repair.imported_row->>'cliente_doc_nro', '')::bigint
   ),
   reconciliado_at = coalesce(
     legacy.reconciliado_at,
-    (backup.imported_row->>'reconciliado_at')::timestamptz,
+    (repair.imported_row->>'reconciliado_at')::timestamptz,
     now()
   ),
   arca_payload = coalesce(
-    nullif(backup.imported_row->'arca_payload', 'null'::jsonb),
+    nullif(repair.imported_row->'arca_payload', 'null'::jsonb),
     legacy.arca_payload
   ),
   updated_at = now()
-from private.reconciliation_duplicate_backup_20260804 backup
-where legacy.id = backup.legacy_id;
+from reconciliation_pairs_20260804 repair
+where legacy.id = repair.legacy_id;
 
 create or replace function public.reconcile_arca_voucher(
   p_punto_venta integer,
@@ -140,7 +171,7 @@ begin
     and c.numero_comprobante = v_formatted_number
     and c.cae = p_cae
     and c.fecha = p_fecha
-    and abs(c.total - p_total) <= 0.01;
+    and c.total = p_total;
 
   if v_exact_matches > 1 then
     raise exception 'Conflicto de comprobante historico: hay % coincidencias exactas para %',

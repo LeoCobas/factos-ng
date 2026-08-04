@@ -67,7 +67,12 @@ describe('ComprobantesService', () => {
 
     expect(builder.eq).toHaveBeenCalledWith('contribuyente_id', 'cont-1');
     expect(builder.eq).not.toHaveBeenCalledWith('fecha', expect.any(String));
-    expect(builder.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(builder.order.mock.calls).toEqual([
+      ['fecha', { ascending: false }],
+      ['numero_comprobante', { ascending: false }],
+      ['created_at', { ascending: false }],
+      ['id', { ascending: false }],
+    ]);
     expect(builder.range).toHaveBeenCalledWith(0, 10);
     expect(result.items).toHaveLength(10);
     expect(result.hasMore).toBe(true);

@@ -2,7 +2,9 @@ update public.comprobantes
 set created_at = fecha::timestamp at time zone 'America/Argentina/Buenos_Aires'
 where origen = 'reconciliacion'
   and reconciliado_at is not null
-  and fecha is not null;
+  and fecha is not null
+  and reconciliado_at >= timestamptz '2026-08-04 02:22:00+00'
+  and reconciliado_at < timestamptz '2026-08-04 02:28:00+00';
 
 create or replace function public.reconcile_arca_voucher(
   p_punto_venta integer,
@@ -59,7 +61,7 @@ begin
     and c.numero_comprobante = v_formatted_number
     and c.cae = p_cae
     and c.fecha = p_fecha
-    and abs(c.total - p_total) <= 0.01;
+    and c.total = p_total;
 
   if v_exact_matches > 1 then
     raise exception 'Conflicto de comprobante historico: hay % coincidencias exactas para %',
