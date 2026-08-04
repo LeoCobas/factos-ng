@@ -26,6 +26,8 @@ Request:
 - `doc_tipo: number`
 - `doc_nro: number`
 - `condicion_iva_receptor_id: number`
+- `emision_id: UUID` estable para idempotencia
+- datos locales del receptor necesarios para persistir el comprobante en backend
 
 Response exitosa:
 
@@ -81,13 +83,15 @@ Response:
 - `405`: metodo distinto de `POST`.
 - `500`: error interno, credenciales faltantes, fallo de ARCA SDK o sesion invalida.
 - Rechazo AFIP/ARCA: `success=false`, `error` legible y bloque `debug` con resumen de respuesta cruda.
+- Respuestas ambiguas: consulta `getVoucherInfo` antes de cualquier reintento.
+- Rechazo por numeracion: recuperacion del numero intentado y un unico retry cuando corresponde.
 
 ### Dependencias operativas
 
-- `@arcasdk/core@0.3.6`
+- `@arcasdk/core@2.0.0`
 - `contribuyentes.arca_ticket` para cachear credenciales WSAA
-- `readArcaTicketBucket(..., 'wsfe')`
-- `writeArcaTicketBucket(..., 'wsfe', ...)`
+- `prepare_arca_emission` y `finalize_arca_emission` para durabilidad transaccional
+- `ultimo_comprobante_cache` con TTL de 15 minutos
 
 ## `padron-lookup`
 
@@ -98,7 +102,8 @@ Response:
 - La verificacion ocurre dentro de la function, no en el gateway legacy de Edge Functions.
 - Si el usuario autenticado tiene un perfil en `contribuyentes` con `arca_cert` y `arca_key` configurados, se utiliza su certificado personal.
 - **Modo Fallback**: Si el usuario no tiene un registro de contribuyente o sus certificados ARCA están vacíos, la función recurre a las credenciales de sistema (`SYSTEM_ARCA_CERT`, `SYSTEM_ARCA_KEY`, `SYSTEM_ARCA_CUIT`, `SYSTEM_ARCA_PRODUCTION`) leídas desde las variables de entorno de Deno.
-- Si se usa el modo fallback, la función **no** intenta persistir los tickets WSAA generados. Si usa credenciales de contribuyente, persiste el ticket en el bucket `padron` de `contribuyentes.arca_ticket`.
+- En fallback persiste el ticket en `arca_system_tickets`; con certificado propio persiste el bucket `padron` en `contribuyentes.arca_ticket`.
+- Aplica un limite atomico de 10 consultas por usuario cada 60 segundos antes de contactar ARCA.
 
 ### Request minimo
 
@@ -130,13 +135,13 @@ Response:
 - `success=false` con mensaje operacional cuando falta perfil de contribuyente.
 - `success=false` cuando faltan certificados o ARCA no devuelve datos.
 - `504` cuando la consulta al padron vence por timeout.
+- `429` cuando se supera la cuota; incluye `Retry-After`.
 - `success=false` con `"CUIT no encontrado"` cuando ARCA informa ausencia de persona.
 
 ### Lectura administrativa
 
-- Si existe `SUPABASE_SERVICE_ROLE_KEY`, la funcion puede leer `contribuyentes` con un cliente administrativo.
-- Si no existe, reutiliza el cliente autenticado del usuario.
-- Esa elevacion es solo de lectura del perfil operativo, no del request del cliente.
+- `SUPABASE_SERVICE_ROLE_KEY` se usa solo dentro de la Edge Function para leer el perfil operativo, consumir la cuota y acceder al ticket de sistema.
+- La identidad del solicitante siempre proviene de la sesion validada; no se confia en un `user_id` enviado por el cliente.
 
 ## `FacturacionService`
 

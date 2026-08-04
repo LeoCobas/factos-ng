@@ -20,6 +20,7 @@ La app cliente ya no versiona la `anonKey` de Supabase dentro de `src/environmen
   `sa-east-1`).
 - Si en el futuro se separan entornos, cada deploy puede sobreescribir ese archivo sin tocar el bundle.
 - Las Edge Functions de este proyecto usan autenticacion propia en codigo y no dependen del verificador legacy `verify_jwt` del gateway.
+- El certificado dedicado para lookup de onboarding se configura con `SYSTEM_ARCA_CERT`, `SYSTEM_ARCA_KEY`, `SYSTEM_ARCA_CUIT` y `SYSTEM_ARCA_PRODUCTION`; nunca forma parte del runtime config del navegador.
 
 ## Despliegue
 
@@ -27,7 +28,8 @@ La app cliente ya no versiona la `anonKey` de Supabase dentro de `src/environmen
 - Netlify: no requiere edicion manual del archivo. Si definis `SUPABASE_URL` y `SUPABASE_ANON_KEY`, el build las usa; si no, usa el proyecto actual por defecto.
 - Produccion: se puede sobreescribir ese archivo durante build o deploy si cambia el proyecto.
 - Rollback: mientras Virginia siga disponible, restaurar la URL y clave publica
-  anteriores en el hosting y volver a desplegar antes de emitir nuevamente.
+  anteriores en el hosting, reactivar el proyecto y reconciliar cualquier emision
+  posterior al respaldo antes de volver a emitir.
 - Si falta o queda invalido, la app falla al iniciar con un error explicito.
 - La configuracion no se persiste en `localStorage`: ante una falla de red el
   arranque falla cerrado para evitar reutilizar un backend anterior.

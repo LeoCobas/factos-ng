@@ -15,7 +15,7 @@ El flujo base actual es:
 7. la app clasifica la condición fiscal del cliente y resuelve si corresponde `FACTURA A`, `B` o `C`
 8. valida ventana fiscal (bienes/servicios), monto máximo configurado y monotonía de fecha por tipo/punto de venta
 9. emite comprobantes individuales via `arca-proxy` o lotes completos via `mercadopago-sync`
-10. persiste el resultado autorizado en `comprobantes` (y opcionalmente vincula el cobro en `mp_conciliaciones`)
+10. la Edge Function persiste el resultado autorizado de forma idempotente en `comprobantes` (y opcionalmente vincula el cobro en `mp_conciliaciones`)
 11. genera tickets PDF en el cliente con `pdfmake`
 12. visualiza e imprime PDFs con PDF.js local
 
@@ -38,10 +38,12 @@ El flujo base actual es:
 - Supabase Postgres para persistencia de datos:
   - `contribuyentes` (almacena el `mp_access_token` del emisor)
   - `comprobantes`
+  - `arca_emisiones` y `ultimo_comprobante_cache`
+  - `arca_system_tickets` y `padron_lookup_rate_limits`, sin acceso para roles cliente
   - `mp_conciliaciones` (registra el mapeo de cobros MP y su estado de facturación)
   - `mp_batch_jobs` (lotes de facturación y progreso reactivo)
 - Edge Functions:
-  - `arca-proxy`: emision, nota de credito y consulta del ultimo comprobante
+  - `arca-proxy`: emision durable, cache/prefetch de numeracion, recuperacion y reconciliacion
   - `padron-lookup`: consulta de constancia de inscripcion con fallback a credenciales de sistema si el contribuyente no tiene certificados
   - `generate-csr`: generación de claves RSA de 2048-bit y archivo CSR en Deno
   - `mercadopago-sync`: búsqueda en la API de Mercado Pago y facturación secuencial resiliente del lote
@@ -51,14 +53,14 @@ El flujo base actual es:
 
 ### Integracion ARCA
 
-Las funciones `supabase/functions/arca-proxy/index.ts` y `supabase/functions/padron-lookup/index.ts` usan `@arcasdk/core@0.3.6`.
+Las funciones ARCA usan `@arcasdk/core@2.0.0`.
 
-La aplicacion persiste los tickets ARCA en `contribuyentes.arca_ticket`, separados por bucket:
+Los tickets propios se persisten en `contribuyentes.arca_ticket`, separados por bucket:
 
 - `wsfe`
 - `padron`
 
-Esa separacion esta implementada en `src/app/core/utils/arca-ticket.util.ts`.
+La Edge Function usa `SupabaseArcaTicketStorage`. El fallback de onboarding persiste su ticket en `arca_system_tickets`, separado por servicio, CUIT y ambiente, mediante `SupabaseSystemArcaTicketStorage`.
 
 ## Modulos del frontend
 
@@ -114,6 +116,9 @@ Esa separacion esta implementada en `src/app/core/utils/arca-ticket.util.ts`.
   - `servicios`: hasta 10 dias hacia atras
 - consulta la ultima fecha emitida para el tipo resuelto y punto de venta para impedir comprobantes con fecha anterior a la ultima autorizada.
 - si el monto supera `monto_maximo_factura`, muestra una confirmacion modal con cuenta regresiva antes de emitir.
+- enfocar o escribir un monto valido precalienta de forma no bloqueante la numeracion; el prefetch se repite si cambia el tipo resuelto.
+- la Edge Function registra `arca_emisiones` antes de contactar ARCA y finaliza comprobante, intento y cache en una transaccion.
+- ante respuestas ambiguas usa `getVoucherInfo`; el mismo `emision_id` no vuelve a emitir una factura ya autorizada.
 
 ### Reglas fiscales
 
@@ -190,6 +195,8 @@ Ademas de los campos clasicos del comprobante, hoy almacena datos del receptor:
 - `cliente_domicilio`
 - `cliente_condicion_iva`
 - `comprobante_asociado_id`
+- identidad fiscal estructurada: `cbte_nro`, `cbte_tipo`, `arca_environment`
+- trazabilidad: `emision_id`, `origen`, `reconciliado_at`, `arca_payload`
 
 ### `mp_conciliaciones`
 
@@ -215,7 +222,7 @@ Controla las ejecuciones en lote e informa al frontend del progreso.
 ## Observaciones de arquitectura
 
 - La app depende de un unico contribuyente por usuario.
-- Los certificados ARCA se guardan en base de datos y no en secrets por funcion.
+- Los certificados de contribuyentes se guardan en base de datos. Solo el certificado dedicado al lookup de onboarding usa secrets `SYSTEM_ARCA_*`.
 - El schema SQL versionado esta alineado con `database.types.ts` y con los campos que persisten frontend y functions.
 - `padron-lookup` ya no devuelve una condicion fija: deriva estado fiscal desde constancia de inscripcion.
 - La monotonia de fechas por tipo de comprobante se valida en frontend/servicio antes de llamar a ARCA; no reemplaza controles de ARCA.

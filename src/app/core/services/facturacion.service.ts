@@ -292,7 +292,7 @@ export class FacturacionService {
   /**
    * Contrato frontend -> backend para emitir factura.
    * Entrada: monto, fecha DD/MM/YYYY y datos fiscales del receptor.
-   * Side effects: invoca `arca-proxy?action=crear-factura` y persiste en `comprobantes`.
+   * Side effects: invoca `arca-proxy?action=crear-factura`; la Edge Function persiste el comprobante.
    */
   async emitirFactura(facturaData: FacturaRequestData): Promise<FacturaResult> {
     const contribuyente = this.getValidatedConfig();

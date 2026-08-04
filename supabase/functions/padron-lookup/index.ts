@@ -1,13 +1,16 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { AccessTicket, Arca, MemoryTicketStorage } from 'npm:@arcasdk/core@2.0.0';
+import { AccessTicket, Arca } from 'npm:@arcasdk/core@2.0.0';
 import { extractFiscalDataFromConstancia } from '../../../src/app/core/utils/constancia-inscripcion.util.ts';
 import { SupabaseArcaTicketStorage } from '../_shared/arca-ticket-storage.ts';
+import { SupabaseSystemArcaTicketStorage } from '../_shared/arca-system-ticket-storage.ts';
+import { consumePadronLookupRateLimit } from '../_shared/padron-rate-limit.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Expose-Headers': 'Retry-After',
 };
 
 const ARCA_TIMEOUT_MS = 15000;
@@ -177,6 +180,24 @@ Deno.serve(async (req: Request) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const db = serviceKey?.length ? createClient(supabaseUrl, serviceKey) : supabase;
 
+    const rateLimit = await consumePadronLookupRateLimit(db, user.id);
+    if (!rateLimit.allowed) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Demasiadas consultas de constancia. Espera un momento y vuelve a intentar.',
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+            'Retry-After': String(rateLimit.retryAfterSeconds),
+          },
+        },
+      );
+    }
+
     const { data: contribuyente, error: contribErr } = await db
       .from('contribuyentes')
       .select('cuit, arca_cert, arca_key, arca_production, arca_ticket')
@@ -218,7 +239,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const ticketStorage = isFallbackMode
-      ? new MemoryTicketStorage({ cuit: cuitEmisor!, production })
+      ? new SupabaseSystemArcaTicketStorage(db, cuitEmisor!, production, AccessTicket)
       : new SupabaseArcaTicketStorage(
           supabase,
           'padron',

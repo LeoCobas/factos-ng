@@ -18,7 +18,7 @@ No es un proyecto open source listo para reutilizar, exponer publicamente ni des
   - Auth
   - Postgres con `contribuyentes` (con `mp_access_token`), `comprobantes`, `mp_conciliaciones` y `mp_batch_jobs` (suscripción Realtime activa)
   - Edge Functions `arca-proxy`, `padron-lookup` (con fallback de sistema), y `generate-csr` / `mercadopago-sync`
-- `@arcasdk/core@0.3.6` en las Edge Functions `arca-proxy` y `padron-lookup`
+- `@arcasdk/core@2.0.0` en `arca-proxy`, `padron-lookup` y `mercadopago-sync`
 - Tailwind CSS 4
 - `pdfmake` para generar tickets PDF localmente
 - PDF.js empaquetado localmente con worker servido desde `/assets/pdfjs`
@@ -59,6 +59,7 @@ docs/
   backend-operational-contracts.md
   flujos-clave.md
   runtime-config.md
+  arca-operacion.md
   sectores-a-documentar.md
 ```
 
@@ -107,6 +108,9 @@ docs/
   - `ComprobantesService` como frontera de lectura para `listado` y `totales`
   - validacion de fecha contra la ultima autorizada del mismo tipo de comprobante y punto de venta
   - confirmacion temporizada cuando el monto supera `monto_maximo_factura`
+  - prefetch no bloqueante y cache de 15 minutos para el ultimo comprobante
+  - emision idempotente y persistencia transaccional desde la Edge Function
+  - recuperacion con `getVoucherInfo` ante respuestas ambiguas y reconciliacion administrativa
 - PDF:
   - nuevo contrato `PdfComprobanteData` / `PdfInfo`
   - eliminacion de `any` en el flujo principal de PDF
@@ -137,6 +141,7 @@ docs/
 - [Flujos clave](./docs/flujos-clave.md)
 - [Runtime config](./docs/runtime-config.md)
 - [Contratos operativos de backend](./docs/backend-operational-contracts.md)
+- [Operacion ARCA](./docs/arca-operacion.md)
 - [Sectores a documentar mejor](./docs/sectores-a-documentar.md)
 
 ## Observaciones e inconsistencias vigentes
@@ -203,9 +208,10 @@ Segun el codigo, las Edge Functions necesitan al menos:
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` para el acceso privilegiado de lectura en `padron-lookup`
+- `SUPABASE_SERVICE_ROLE_KEY` para el rate limit, la lectura operativa y el ticket de sistema de `padron-lookup`
+- `SYSTEM_ARCA_CERT`, `SYSTEM_ARCA_KEY`, `SYSTEM_ARCA_CUIT` y `SYSTEM_ARCA_PRODUCTION` para el lookup durante onboarding
 
-Los certificados ARCA y el ticket WSAA no se leen desde secrets globales: se guardan en la fila del contribuyente.
+Los certificados y tickets de cada contribuyente se guardan en su fila. El certificado dedicado de onboarding se lee desde secrets y su ticket se persiste en `arca_system_tickets`, sin acceso para roles cliente.
 
 ## Alcance y limites
 

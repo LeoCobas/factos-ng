@@ -53,6 +53,9 @@
 - `?action=crear-factura`
 - `?action=crear-nota-credito`
 - `?action=ultimo-comprobante`
+- `?action=precalentar-ultimo-comprobante`
+- `?action=reconciliar-comprobante`
+- `?action=auditar-comprobantes`
 
 ### Flujo de factura
 
@@ -61,14 +64,14 @@
    - `doc_tipo`
    - `doc_nro`
    - `condicion_iva_receptor_id`
-3. valida usuario y carga el contribuyente por `user_id`
-4. crea instancia `Arca` con `arca_cert`, `arca_key`, `cuit` y `arca_production`
+3. recibe un `emision_id` estable y valida el payload fiscal
+4. `prepare_arca_emission` obtiene contexto y registra el intento en una transaccion
 5. lee o renueva ticket WSFE en el bucket `wsfe`
-6. consulta el ultimo comprobante
-7. calcula importes neto/IVA cuando corresponde
-8. arma payload WSFE
-9. llama `createVoucher`
-10. normaliza la respuesta y devuelve `CAE`, vencimiento y numeracion
+6. usa cache fresca de 15 minutos o consulta `getLastVoucher` si esta vencida
+7. calcula importes, arma el payload y llama `createVoucher` con numeracion explicita
+8. ante respuesta ambigua consulta `getVoucherInfo` antes de reintentar
+9. `finalize_arca_emission` persiste comprobante, intento y cache atomicamente
+10. devuelve el comprobante local ya persistido junto con CAE y numeracion
 
 ### Flujo de nota de credito
 
@@ -86,11 +89,11 @@
 
 1. recibe `cuit`
 2. valida usuario autenticado
-3. busca el contribuyente del usuario
-4. exige `arca_cert` y `arca_key`
+3. consume la cuota atomica de 10 consultas por 60 segundos
+4. busca el contribuyente y usa su certificado o el fallback `SYSTEM_ARCA_*`
 5. crea instancia `Arca`
-6. consulta `registerInscriptionProofService.getTaxpayersDetails([cuit])`
-7. lee o renueva ticket en el bucket `padron`
+6. lee o renueva el ticket propio o el ticket durable de sistema
+7. consulta `registerInscriptionProofService.getTaxpayersDetails([cuit])`
 8. procesa la constancia de inscripcion
 9. devuelve:
    - `razon_social`
@@ -150,7 +153,7 @@
 9. consulta la ultima fecha emitida para el tipo resuelto y punto de venta; si la nueva fecha es anterior, corta antes de ARCA.
 10. obtiene un access token fresco de Supabase.
 11. llama `arca-proxy?action=crear-factura`.
-12. si ARCA autoriza, inserta un registro en `comprobantes` con datos del receptor.
+12. si ARCA autoriza, recibe el registro de `comprobantes` ya persistido por la Edge Function.
 13. el resultado se muestra en UI y se habilita PDF local usando el contrato `PdfComprobanteData`.
 
 ## 7. Facturas recientes
@@ -188,6 +191,7 @@ Uso verificado:
 - `new Arca({...})`
 - `arca.electronicBillingService.getLastVoucher(...)`
 - `arca.electronicBillingService.createVoucher(...)`
+- `arca.electronicBillingService.getVoucherInfo(...)`
 
 ### Desde `padron-lookup`
 
@@ -198,7 +202,7 @@ Uso verificado:
 
 ## 11. Persistencia de tickets ARCA
 
-La app usa `handleTicket: true` y persiste el ticket en `contribuyentes.arca_ticket`.
+Las Edge Functions implementan el contrato `ticketStorage` del SDK y descartan tickets con menos de 60 segundos de vigencia.
 
 El almacenamiento esta bucketizado:
 
@@ -206,6 +210,8 @@ El almacenamiento esta bucketizado:
 - `padron` para constancia
 
 Ademas, si cambian certificados o entorno ARCA desde configuracion, la app limpia `arca_ticket`.
+
+El certificado de sistema del onboarding usa `arca_system_tickets`; la fila se identifica por servicio, CUIT y ambiente y solo es accesible con `service_role`.
 
 ## 12. PDF
 
@@ -301,4 +307,3 @@ Ademas, si cambian certificados o entorno ARCA desde configuracion, la app limpi
       - Actualiza el registro de `mp_batch_jobs` en base a los contadores de progreso actualizados y añade el resultado detallado al campo JSONB `results`.
 11. Durante todo este proceso, el frontend está suscrito via Supabase Realtime a los cambios en la tabla `mp_batch_jobs` para el ID del lote en curso. Actualiza en tiempo real la barra de progreso, los contadores de éxitos/errores y el listado de resultados.
 12. Al finalizar, si quedaron cobros con estado `fallido`, el modal permite al usuario revisarlos y presionar el botón "Reintentar fallidas" para volver a iniciar un lote únicamente con esos elementos.
-
