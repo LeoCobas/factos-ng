@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
 import { AuthService } from './auth.service';
+import { ContribuyenteService } from './contribuyente.service';
 import { supabase } from './supabase.service';
 
 type AuthChangeCallback = (event: string, session: { user?: { id: string } } | null) => void;
@@ -16,6 +17,10 @@ const mockSupabaseAuth = {
 };
 
 describe('AuthService', () => {
+  const contribuyenteServiceStub = {
+    reiniciarEstado: vi.fn(),
+  };
+
   const createRouterStub = (url = '/') => ({
     url,
     navigate: vi.fn().mockResolvedValue(true),
@@ -33,6 +38,7 @@ describe('AuthService', () => {
     mockSupabaseAuth.resetPasswordForEmail.mockReset();
     mockSupabaseAuth.getSession.mockReset();
     mockSupabaseAuth.onAuthStateChange.mockReset();
+    contribuyenteServiceStub.reiniciarEstado.mockReset();
 
     mockSupabaseAuth.getSession.mockResolvedValue({
       data: { session: null },
@@ -101,5 +107,46 @@ describe('AuthService', () => {
     await Promise.resolve();
 
     expect(routerStub.navigateByUrl).toHaveBeenCalledWith('/');
+  });
+
+  it('limpia el estado del contribuyente al cerrar sesion', async () => {
+    const routerStub = createRouterStub('/facturar');
+
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: Router, useValue: routerStub },
+        { provide: ContribuyenteService, useValue: contribuyenteServiceStub },
+      ],
+    });
+
+    const service = TestBed.inject(AuthService);
+    await service.waitForInitialization();
+
+    authChangeCallback?.('SIGNED_OUT', null);
+
+    expect(contribuyenteServiceStub.reiniciarEstado).toHaveBeenCalledOnce();
+  });
+
+  it('limpia el estado al cambiar de usuario pero no al refrescar el token del mismo usuario', async () => {
+    const routerStub = createRouterStub('/facturar');
+
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: Router, useValue: routerStub },
+        { provide: ContribuyenteService, useValue: contribuyenteServiceStub },
+      ],
+    });
+
+    const service = TestBed.inject(AuthService);
+    await service.waitForInitialization();
+
+    authChangeCallback?.('SIGNED_IN', { user: { id: 'user-1' } });
+    contribuyenteServiceStub.reiniciarEstado.mockClear();
+
+    authChangeCallback?.('TOKEN_REFRESHED', { user: { id: 'user-1' } });
+    expect(contribuyenteServiceStub.reiniciarEstado).not.toHaveBeenCalled();
+
+    authChangeCallback?.('SIGNED_IN', { user: { id: 'user-2' } });
+    expect(contribuyenteServiceStub.reiniciarEstado).toHaveBeenCalledOnce();
   });
 });

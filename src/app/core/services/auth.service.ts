@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { AuthChangeEvent, AuthError, Session, User } from '@supabase/supabase-js';
 
 import { supabase } from './supabase.service';
+import { ContribuyenteService } from './contribuyente.service';
 import { getFriendlyNetworkErrorMessage } from '../utils/network-error.util';
 
 export interface AuthState {
@@ -20,6 +21,7 @@ export interface AuthServiceError {
 })
 export class AuthService {
   private readonly router = inject(Router);
+  private readonly contribuyenteService = inject(ContribuyenteService);
   private readonly authState = signal<AuthState>({
     user: null,
     session: null,
@@ -165,6 +167,13 @@ export class AuthService {
       });
 
       supabase.auth.onAuthStateChange((event: AuthChangeEvent, nextSession: Session | null) => {
+        const currentUserId = this.authState().user?.id ?? null;
+        const nextUserId = nextSession?.user.id ?? null;
+
+        if (event === 'SIGNED_OUT' || currentUserId !== nextUserId) {
+          this.contribuyenteService.reiniciarEstado();
+        }
+
         this.authState.set({
           user: nextSession?.user ?? null,
           session: nextSession,

@@ -20,27 +20,60 @@ export class ContribuyenteService {
   // Computed útiles
   readonly tieneContribuyente = computed(() => !!this.contribuyente());
 
-  constructor() {}
+  private usuarioInicializadoId: string | null = null;
+  private cargaId = 0;
+
+  reiniciarEstado(): void {
+    this.cargaId++;
+    this.usuarioInicializadoId = null;
+    this.contribuyente.set(null);
+    this.cargando.set(false);
+    this.inicializado.set(false);
+    this.errorCarga.set(null);
+  }
 
   async cargarContribuyente(force = false): Promise<void> {
-    if (this.inicializado() && !force) {
-      return;
-    }
-    this.cargando.set(true);
-    this.errorCarga.set(null);
+    const estadoId = this.cargaId;
+    let cargaActualId: number | null = null;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        this.contribuyente.set(null);
+
+      if (estadoId !== this.cargaId) {
         return;
       }
+
+      if (!user) {
+        this.contribuyente.set(null);
+        this.usuarioInicializadoId = null;
+        this.errorCarga.set(null);
+        this.inicializado.set(true);
+        return;
+      }
+
+      if (this.inicializado() && this.usuarioInicializadoId === user.id && !force) {
+        return;
+      }
+
+      if (this.usuarioInicializadoId !== user.id) {
+        this.contribuyente.set(null);
+        this.inicializado.set(false);
+      }
+
+      this.usuarioInicializadoId = user.id;
+      cargaActualId = ++this.cargaId;
+      this.cargando.set(true);
+      this.errorCarga.set(null);
 
       const { data, error } = await supabase
         .from('contribuyentes')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
+
+      if (cargaActualId !== this.cargaId) {
+        return;
+      }
 
       if (error) {
         console.error('Error cargando contribuyente:', error);
@@ -57,6 +90,12 @@ export class ContribuyenteService {
       this.contribuyente.set(data);
 
     } catch (error) {
+      const cargaSigueVigente =
+        cargaActualId === null ? estadoId === this.cargaId : cargaActualId === this.cargaId;
+      if (!cargaSigueVigente) {
+        return;
+      }
+
       console.error('Error inesperado cargando contribuyente:', error);
       this.errorCarga.set(
         getFriendlyNetworkErrorMessage(
@@ -66,8 +105,12 @@ export class ContribuyenteService {
         ),
       );
     } finally {
-      this.cargando.set(false);
-      this.inicializado.set(true);
+      const cargaSigueVigente =
+        cargaActualId === null ? estadoId === this.cargaId : cargaActualId === this.cargaId;
+      if (cargaSigueVigente) {
+        this.cargando.set(false);
+        this.inicializado.set(true);
+      }
     }
   }
 
